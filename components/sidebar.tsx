@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Youtube, BookOpen, Bell, ExternalLink } from "lucide-react";
-import Link from "next/link";
+import { Youtube, BookOpen, ExternalLink } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 
 export function Sidebar() {
   const [slideArticles, setSlideArticles] = useState([]);
@@ -14,7 +14,7 @@ export function Sidebar() {
     const fetchSlideArticles = async () => {
       const { data, error } = await supabase
         .from("posts")
-        .select("id, title, description, link")
+        .select("id, title, description")
         .eq("is_slide", true)
         .order("created_at", { ascending: false });
 
@@ -43,15 +43,28 @@ export function Sidebar() {
             <ul className="space-y-4">
               {slideArticles.map((article) => (
                 <li key={article.id} className="text-sm">
-                  <Link href={article.link || "#"} className="hover:underline block">
-                    {article.title}
-                  </Link>
-                  <p className="text-muted-foreground mt-1">{article.description}</p>
+                  {article.link ? (
+                    <a
+                      href={article.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline block"
+                    >
+                      {article.title}
+                    </a>
+                  ) : (
+                    <span>{article.title}</span>
+                  )}
+                  <p className="text-muted-foreground mt-1">
+                    {article.description}
+                  </p>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-muted-foreground">No featured articles available.</p>
+            <p className="text-muted-foreground">
+              No featured articles available.
+            </p>
           )}
         </CardContent>
       </Card>
@@ -69,16 +82,21 @@ export function Sidebar() {
             <iframe
               width="100%"
               height="100%"
-              src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+              src="https://www.youtube.com/embed/feI18rMv3JQ"
               title="YouTube video player"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
               className="border-0"
             />
           </div>
           <Button variant="outline" className="w-full" asChild>
-            <Link href="https://youtube.com" target="_blank">
+            <a
+              href="https://youtube.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Visit Channel <ExternalLink className="ml-2 h-4 w-4" />
-            </Link>
+            </a>
           </Button>
         </CardContent>
       </Card>

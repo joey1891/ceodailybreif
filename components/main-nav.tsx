@@ -11,21 +11,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-
-const industryItems = [
-  { title: "의료", href: "/industry/medical" },
-  { title: "제약", href: "/industry/pharmaceutical" },
-  { title: "의료기기", href: "/industry/medical-devices" },
-  { title: "화장품", href: "/industry/cosmetics" },
-  { title: "건강기능식품", href: "/industry/health-supplements" },
-  { title: "디지털헬스케어", href: "/industry/digital-healthcare" },
-];
-
-const mediaReviewItems = [
-  { title: "뉴스", href: "/media-review/news" },
-  { title: "매거진", href: "/media-review/magazine" },
-  { title: "도서", href: "/media-review/books" },
-];
+import { categoryOptions } from "@/lib/category-options";
 
 const keyScheduleItems = [
   { title: "연간일정", href: "/schedule/annual" },
@@ -34,7 +20,7 @@ const keyScheduleItems = [
 
 const ListItem = React.forwardRef<
   React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
+  React.ComponentPropsWithoutRef<"a"> & { title: string }
 >(({ className, title, children, ...props }, ref) => {
   return (
     <li>
@@ -64,137 +50,63 @@ export function MainNav() {
   return (
     <NavigationMenu className="flex justify-center py-2">
       <NavigationMenuList className="space-x-0.5">
-        {/* Home */}
+        {/* Home는 categoryOptions에 포함되지 않음 */}
         <NavigationMenuItem>
-          <Link href="/" className="text-sm font-medium text-primary hover:text-primary/80 px-2 py-2">
+          <Link
+            href="/"
+            className="text-sm font-medium text-primary hover:text-primary/80 px-2 py-2"
+          >
             Home
           </Link>
         </NavigationMenuItem>
 
-        {/* Report */}
-        <NavigationMenuItem>
-          <Link href="/report" className="text-sm font-medium text-primary hover:text-primary/80 px-2 py-2">
-            Report
-          </Link>
-        </NavigationMenuItem>
+        {Array.from(categoryOptions.values()).map((category) => {
+          // 자식 항목이 없으면 바로 링크로 렌더링
+          if (!category.items.length) {
+            return (
+              <NavigationMenuItem key={category.title}>
+                <Link
+                  href={
+                    category.href ||
+                    `/${category.title.toLowerCase().replace(/\s/g, "-")}`
+                  }
+                  className="text-sm font-medium text-primary hover:text-primary/80 px-2 py-2"
+                >
+                  {category.title}
+                </Link>
+              </NavigationMenuItem>
+            );
+          }
 
-        {/* 경제동향 */}
-        <NavigationMenuItem>
-          <Link href="/economic-trends" className="text-sm font-medium text-primary hover:text-primary/80 px-2 py-2">
-            경제동향
-          </Link>
-        </NavigationMenuItem>
+          // 자식 항목이 있는 경우 드롭다운 메뉴로 렌더링
+          return (
+            <NavigationMenuItem key={category.title} className="relative">
+              <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-transparent px-2">
+                {category.title}
+              </NavigationMenuTrigger>
+              <NavigationMenuContent className="absolute left-0 bg-white">
+                <ul className="grid w-[400px] gap-2 p-4 grid-cols-2">
+                  {category.items.map((item) => {
+                    const href = `${category.base}/${item.slug}`;
+                    return (
+                      <ListItem key={href} href={href} title={item.title} />
+                    );
+                  })}
+                </ul>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+          );
+        })}
 
-        {/* 산업동향 */}
-        <NavigationMenuItem>
-          <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-transparent px-2">
-            산업동향
-          </NavigationMenuTrigger>
-          <NavigationMenuContent className="bg-white">
-            <ul className="grid w-[400px] gap-2 p-4 grid-cols-2">
-              {industryItems.map((item) => (
-                <ListItem
-                  key={item.href}
-                  href={item.href}
-                  title={item.title}
-                />
-              ))}
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-
-        {/* 기업동향 */}
-        <NavigationMenuItem>
-          <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-transparent px-2">
-            기업동향
-          </NavigationMenuTrigger>
-          <NavigationMenuContent className="bg-white">
-            <ul className="grid w-[400px] gap-2 p-4 grid-cols-2">
-              {industryItems.map((item) => (
-                <ListItem
-                  key={item.href}
-                  href={item.href.replace('industry', 'company')}
-                  title={item.title}
-                />
-              ))}
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-
-        {/* 정책동향 */}
-        <NavigationMenuItem>
-          <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-transparent px-2">
-            정책동향
-          </NavigationMenuTrigger>
-          <NavigationMenuContent className="bg-white">
-            <ul className="grid w-[400px] gap-2 p-4 grid-cols-2">
-              {industryItems.map((item) => (
-                <ListItem
-                  key={item.href}
-                  href={item.href.replace('industry', 'policy')}
-                  title={item.title}
-                />
-              ))}
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-
-        {/* 언론동향 */}
-        <NavigationMenuItem>
-          <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-transparent px-2">
-            언론동향
-          </NavigationMenuTrigger>
-          <NavigationMenuContent className="bg-white">
-            <ul className="grid w-[400px] gap-2 p-4 grid-cols-2">
-              {industryItems.map((item) => (
-                <ListItem
-                  key={item.href}
-                  href={item.href.replace('industry', 'media')}
-                  title={item.title}
-                />
-              ))}
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-
-        {/* 인물 */}
-        <NavigationMenuItem>
-          <Link href="/people" className="text-sm font-medium text-primary hover:text-primary/80 px-2 py-2">
-            인물
-          </Link>
-        </NavigationMenuItem>
-
-        {/* 미디어리뷰 */}
-        <NavigationMenuItem>
-          <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-transparent px-2">
-            미디어리뷰
-          </NavigationMenuTrigger>
-          <NavigationMenuContent className="bg-white">
-            <ul className="grid w-[400px] gap-2 p-4 grid-cols-2">
-              {mediaReviewItems.map((item) => (
-                <ListItem
-                  key={item.href}
-                  href={item.href}
-                  title={item.title}
-                />
-              ))}
-            </ul>
-          </NavigationMenuContent>
-        </NavigationMenuItem>
-
-        {/* 주요일정 */}
-        <NavigationMenuItem>
+        {/* 주요일정은 별도 하드코딩 */}
+        <NavigationMenuItem className="relative">
           <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-transparent px-2">
             주요일정
           </NavigationMenuTrigger>
-          <NavigationMenuContent className="bg-white">
+          <NavigationMenuContent className="absolute left-0 bg-white">
             <ul className="grid w-[400px] gap-2 p-4 grid-cols-2">
               {keyScheduleItems.map((item) => (
-                <ListItem
-                  key={item.href}
-                  href={item.href}
-                  title={item.title}
-                />
+                <ListItem key={item.href} href={item.href} title={item.title} />
               ))}
             </ul>
           </NavigationMenuContent>

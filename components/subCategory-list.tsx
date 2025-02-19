@@ -7,18 +7,25 @@ import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import Link from "next/link";
 
-export default function ReportPage() {
+interface SubCategoryListProps {
+  category: string;
+  subcategory: string;
+}
+
+export default function SubCategoryList({ category, subcategory }: SubCategoryListProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchReports = async () => {
+    const fetchPosts = async () => {
+      if (!category || !subcategory) return;
+
       setLoading(true);
       const { data, error } = await supabase
         .from("posts")
         .select("*")
-        // Report 카테고리의 모든 게시글을 조회 (DB에 저장된 category 값은 "report")
-        .eq("category", "report")
+        .eq("category", category)
+        .eq("subcategory", subcategory)
         .order("updated_at", { ascending: false });
 
       if (!error && data) {
@@ -27,12 +34,14 @@ export default function ReportPage() {
       setLoading(false);
     };
 
-    fetchReports();
-  }, []);
+    fetchPosts();
+  }, [category, subcategory]);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8">Reports</h1>
+      <h1 className="text-4xl font-bold mb-8">
+        {subcategory} in {category}
+      </h1>
       {loading ? (
         <p>Loading reports...</p>
       ) : posts.length === 0 ? (

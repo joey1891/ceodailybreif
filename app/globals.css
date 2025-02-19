@@ -1,5 +1,6 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
 
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -108,4 +109,8 @@
   min-height: 150px; /* 타일 높이를 늘려 일정 표시 공간 확보 */
   vertical-align: top; /* 내용이 위쪽 정렬되도록 */
   padding: 0.5rem; /* 필요 시 조정 */
+}
+
+.custom-quill .ql-editor {
+  min-height: 300px;
 }
