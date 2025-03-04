@@ -8,7 +8,7 @@ import { TopHeader } from "@/components/top-header";
 import SearchDropdown from "@/components/search-dropdown";
 
 export const metadata: Metadata = {
-  title: "Healthcare Industry Blog",
+  title: "CEO Daily Brief",
   description: "Comprehensive coverage of healthcare industry trends and news",
 };
 
@@ -35,7 +35,7 @@ export default function RootLayout({
                   <div>
                     <div className="py-4">
                       <h1 className="text-2xl font-bold text-gray-900">
-                        Healthcare Industry Blog
+                        CEO Daily Brief
                       </h1>
                     </div>
                     <MainNav />

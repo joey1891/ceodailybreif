@@ -4,7 +4,16 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  images: { unoptimized: true },
+  images: { 
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'www.yoonsupchoi.com',
+        pathname: '/wp-content/uploads/**',
+      },
+    ],
+  },
 };
 
 module.exports = nextConfig;

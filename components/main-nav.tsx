@@ -50,18 +50,7 @@ export function MainNav() {
   return (
     <NavigationMenu className="flex justify-center py-2">
       <NavigationMenuList className="space-x-0.5">
-        {/* Home는 categoryOptions에 포함되지 않음 */}
-        <NavigationMenuItem>
-          <Link
-            href="/"
-            className="text-sm font-medium text-primary hover:text-primary/80 px-2 py-2"
-          >
-            Home
-          </Link>
-        </NavigationMenuItem>
-
         {Array.from(categoryOptions.values()).map((category) => {
-          // 자식 항목이 없으면 바로 링크로 렌더링
           if (!category.items.length) {
             return (
               <NavigationMenuItem key={category.title}>
@@ -78,7 +67,6 @@ export function MainNav() {
             );
           }
 
-          // 자식 항목이 있는 경우 드롭다운 메뉴로 렌더링
           return (
             <NavigationMenuItem key={category.title} className="relative">
               <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-transparent px-2">
@@ -98,7 +86,6 @@ export function MainNav() {
           );
         })}
 
-        {/* 주요일정은 별도 하드코딩 */}
         <NavigationMenuItem className="relative">
           <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-transparent px-2">
             주요일정

@@ -16,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 27%;
  
-    --primary: 221 83% 53%;
+    --primary: 0 0% 20%;
     --primary-foreground: 210 40% 98%;
  
     --secondary: 0 0% 100%;
@@ -113,4 +113,13 @@
 
 .custom-quill .ql-editor {
   min-height: 300px;
+}
+
+/* Hide chevron-down icons in navigation menu */
+@layer utilities {
+  .NavigationMenuTrigger svg,
+  [data-radix-collection-item] svg.lucide-chevron-down,
+  [data-state] svg.lucide-chevron-down {
+    display: none !important;
+  }
 }

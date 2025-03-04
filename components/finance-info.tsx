@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
-import { LineChart, Clock, DollarSign } from "lucide-react";
+import { LineChart, Clock, DollarSign, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type MarketIndex = {
@@ -22,19 +22,11 @@ type CityTime = {
   time: string;
 };
 
-const ROTATION_INTERVAL = 5000; // 5초마다 순환
-
-const INFO_TITLES = [
-  { title: "주요 지수현황", icon: LineChart },
-  { title: "주요 도시 시간", icon: Clock },
-  { title: "환율", icon: DollarSign }
-];
+type InterestRate = {
+  rate: number;
+};
 
 export function FinanceInfo() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  
-  // 주요 지수 현황
   const [indices, setIndices] = useState<MarketIndex[]>([
     { name: "코스피", value: 2567.45, change: 0.45 },
     { name: "코스닥", value: 892.31, change: -0.28 },
@@ -43,16 +35,14 @@ export function FinanceInfo() {
     { name: "다우존스", value: 37562, change: -0.15 }
   ]);
 
-  // 환율 정보
   const [rates, setRates] = useState<ExchangeRate[]>([
-    { currency: "USD", rate: 1324.50, trend: "up" },
+    { currency: "USD", rate: 1324.5, trend: "up" },
     { currency: "EUR", rate: 1445.32, trend: "down" },
     { currency: "JPY", rate: 932.45, trend: "up" },
     { currency: "CNY", rate: 184.67, trend: "down" },
-    { currency: "GBP", rate: 1678.90, trend: "up" }
+    { currency: "GBP", rate: 1678.9, trend: "up" }
   ]);
 
-  // 주요 도시 시간
   const [times, setTimes] = useState<CityTime[]>([
     { name: "뉴욕", time: "" },
     { name: "런던", time: "" },
@@ -61,7 +51,8 @@ export function FinanceInfo() {
     { name: "서울", time: "" }
   ]);
 
-  // 시간 업데이트
+  const [interestRate, setInterestRate] = useState<InterestRate>({ rate: 3.5 });
+
   useEffect(() => {
     const updateTimes = () => {
       const newTimes = times.map(city => ({
@@ -81,35 +72,34 @@ export function FinanceInfo() {
     return () => clearInterval(timeInterval);
   }, []);
 
-  // 지수와 환율 업데이트
   useEffect(() => {
     const dataInterval = setInterval(() => {
-      setIndices(prev => prev.map(index => ({
-        ...index,
-        value: index.value + (Math.random() - 0.5) * (index.value * 0.001),
-        change: (Math.random() - 0.5) * 0.5
-      })));
+      setIndices(prev =>
+        prev.map(index => ({
+          ...index,
+          value: index.value + (Math.random() - 0.5) * (index.value * 0.001),
+          change: (Math.random() - 0.5) * 0.5
+        }))
+      );
 
-      setRates(prev => prev.map(rate => ({
-        ...rate,
-        rate: rate.rate + (Math.random() - 0.5) * 2,
-        trend: Math.random() > 0.5 ? "up" : "down"
-      })));
+      setRates(prev =>
+        prev.map(rate => ({
+          ...rate,
+          rate: rate.rate + (Math.random() - 0.5) * 2,
+          trend: Math.random() > 0.5 ? "up" : "down"
+        }))
+      );
     }, 3000);
 
     return () => clearInterval(dataInterval);
   }, []);
 
-  // 순환 효과
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % 3);
-        setIsTransitioning(false);
-      }, 300);
-    }, ROTATION_INTERVAL);
-
+      setInterestRate(() => ({
+        rate: 3.0 + Math.random() * 1.0 // 3.0 ~ 4.0
+      }));
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -125,37 +115,16 @@ export function FinanceInfo() {
   }
 
   return (
-    <div className="relative h-[140px] border-2 border-primary/50 rounded-lg p-4">
-      {/* Title */}
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
-        <div className="flex items-center gap-2 text-gray-500">
-          {INFO_TITLES.map((info, index) => (
-            <div
-              key={info.title}
-              className={cn(
-                "flex items-center gap-1 transition-opacity duration-300",
-                currentIndex === index ? "opacity-100" : "opacity-50"
-              )}
-            >
-              {index > 0 && <span className="mx-2">/</span>}
-              <info.icon className="h-4 w-4" />
-              <span className="text-sm font-medium">{info.title}</span>
-            </div>
-          ))}
+    <div className="grid grid-cols-1 gap-4">
+      {/* 주요 지수 현황 박스 */}
+      <div className="relative h-[140px] border-2 border-primary/50 rounded-lg p-4">
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
+          <div className="flex items-center gap-2 text-gray-500">
+            <LineChart className="h-4 w-4" />
+            <span className="text-sm font-medium">주요 지수현황</span>
+          </div>
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="mt-4">
-        {/* 주요 지수 현황 */}
-        <div
-          className={cn(
-            "absolute w-full transition-all duration-300 ease-in-out grid grid-cols-5 gap-4",
-            currentIndex === 0
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-4 pointer-events-none"
-          )}
-        >
+        <div className="mt-4 grid grid-cols-5 gap-4">
           {indices.map((index) => (
             <div key={index.name} className="text-center">
               <div className="text-sm text-gray-500 mb-1">{index.name}</div>
@@ -171,16 +140,17 @@ export function FinanceInfo() {
             </div>
           ))}
         </div>
+      </div>
 
-        {/* 주요 도시 시간 */}
-        <div
-          className={cn(
-            "absolute w-full transition-all duration-300 ease-in-out grid grid-cols-5 gap-4",
-            currentIndex === 1
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-4 pointer-events-none"
-          )}
-        >
+      {/* 주요 도시 시간 박스 */}
+      <div className="relative h-[140px] border-2 border-primary/50 rounded-lg p-4">
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
+          <div className="flex items-center gap-2 text-gray-500">
+            <Clock className="h-4 w-4" />
+            <span className="text-sm font-medium">주요 도시 시간</span>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-5 gap-4">
           {times.map((city) => (
             <div key={city.name} className="text-center">
               <div className="text-sm text-gray-500 mb-1">{city.name}</div>
@@ -188,16 +158,17 @@ export function FinanceInfo() {
             </div>
           ))}
         </div>
+      </div>
 
-        {/* 환율 정보 */}
-        <div
-          className={cn(
-            "absolute w-full transition-all duration-300 ease-in-out grid grid-cols-5 gap-4",
-            currentIndex === 2
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-4 pointer-events-none"
-          )}
-        >
+      {/* 환율 정보 박스 */}
+      <div className="relative h-[140px] border-2 border-primary/50 rounded-lg p-4">
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
+          <div className="flex items-center gap-2 text-gray-500">
+            <DollarSign className="h-4 w-4" />
+            <span className="text-sm font-medium">환율</span>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-5 gap-4">
           {rates.map((rate) => (
             <div key={rate.currency} className="text-center">
               <div className="text-sm text-gray-500 mb-1">{rate.currency}</div>
@@ -212,26 +183,22 @@ export function FinanceInfo() {
         </div>
       </div>
 
-      {/* Navigation dots */}
-      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex justify-center gap-2">
-        {[0, 1, 2].map((index) => (
-          <button
-            key={index}
-            className={cn(
-              "w-2 h-2 rounded-full transition-all",
-              currentIndex === index
-                ? "bg-primary w-4"
-                : "bg-gray-200 hover:bg-gray-300"
-            )}
-            onClick={() => {
-              setIsTransitioning(true);
-              setTimeout(() => {
-                setCurrentIndex(index);
-                setIsTransitioning(false);
-              }, 300);
-            }}
-          />
-        ))}
+      {/* 금리 정보 박스 */}
+      <div className="relative h-[140px] border-2 border-primary/50 rounded-lg p-4">
+        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
+          <div className="flex items-center gap-2 text-gray-500">
+            <Percent className="h-4 w-4" />
+            <span className="text-sm font-medium">금리</span>
+          </div>
+        </div>
+        <div className="mt-4">
+          <div className="text-center">
+            <div className="text-sm text-gray-500 mb-1">기준 금리</div>
+            <div className="text-base font-bold text-gray-700">
+              {interestRate.rate.toFixed(2)}%
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,13 @@
+{
+  "id": "5a387977-76f5-48e8-a439-03b75aca7ec8",
+  "title": "최근 수출입 동향 관련 소식",
+  "content": "최근 수출은 반도체와 자동차를 중심으로 증가세를 이어가고 있으나, 수입은 에너지 가격 상승으로 인해 증가폭이 확대되고 있습니다.",
+  "category": "경제 동향",
+  "subcategory": "수출입",
+  "created_at": "2024-01-01T00:00:00+00:00",
+  "updated_at": "2024-01-01T00:00:00+00:00",
+  "author_id": null,
+  "image_url": "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&q=80",
+  "date": "2024-01-01",
+  "is_slide": false
+}

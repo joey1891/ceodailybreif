@@ -6,7 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import { Button } from "@/components/ui/button";
-import { Sidebar } from "@/components/sidebar";
+import { Sidebar } from "@/components/Sidebar";
 
 export function ArticleContent({ params }: { params: { id: string } }) {
   const [post, setPost] = useState<Post | null>(null);
@@ -61,7 +61,7 @@ export function ArticleContent({ params }: { params: { id: string } }) {
             </div>
           </div>
           <div className="w-full lg:w-1/3">
-            <Sidebar />
+            <Sidebar recentPosts={[]} />
           </div>
         </div>
       </div>
@@ -155,7 +155,7 @@ export function ArticleContent({ params }: { params: { id: string } }) {
 
         {/* Sidebar */}
         <div className="w-full lg:w-1/3">
-          <Sidebar />
+          <Sidebar recentPosts={[]} />
         </div>
       </div>
     </div>

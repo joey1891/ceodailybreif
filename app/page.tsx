@@ -16,41 +16,62 @@ import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import { FinanceInfo } from "@/components/finance-info";
 import { CalendarSection } from "@/components/calendar-section";
-import { Sidebar } from "@/components/sidebar";
+import { Sidebar } from "@/components/Sidebar";
 import { categoryOptions } from "@/lib/category-options";
+import { ArticlesSection } from "@/components/ArticlesSection";
 
 export default function Home() {
   // mainCategories를 컴포넌트가 마운트될 때 한 번만 생성
   const [mainCategories] = useState(() => Array.from(categoryOptions.values()));
-
-  // 각 메인 카테고리별 게시글 상태 (키: computed mainPath)
   const [categoryPosts, setCategoryPosts] = useState<Record<string, Post[]>>({});
+  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
+  const [popularPosts, setPopularPosts] = useState<Post[]>([]);
 
   useEffect(() => {
     const fetchCategoryPosts = async () => {
       const posts: Record<string, Post[]> = {};
+      let allPosts: Post[] = [];
 
-      for (const mainCat of mainCategories) {
+      for (const [key, mainCat] of categoryOptions) {
         // Report 등 href가 정의되어 있다면 우선 사용
         const mainPath = mainCat.href
           ? mainCat.href.replace(/^\//, "")
           : mainCat.base
-          ? mainCat.base.replace(/^\//, "")
+          ? mainCat.base?.replace(/^\//, "")
           : mainCat.title.toLowerCase().replace(/\s+/g, "-");
 
+        // 하위 카테고리 slug 추출
+        const subcategorySlugs = mainCat.items?.map((item) => item.slug).filter(slug => slug !== undefined) || [];
+        
         const { data, error } = await supabase
           .from("posts")
-          .select("*")
+          .select("*, subcategory")
           .eq("category", mainPath)
           .order("updated_at", { ascending: false })
-          .limit(2);
+          .limit(10); // 10개로 변경
 
         if (!error && data) {
           posts[mainPath] = data;
+          allPosts = [...allPosts, ...data];
         }
       }
 
       setCategoryPosts(posts);
+      
+      // 모든 카테고리 게시물에서 최신글 5개 추출
+      const recent = [...allPosts]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5);
+      setRecentPosts(recent);
+      
+      // 모든 카테고리 게시물에서 조회수 높은 글 5개 추출
+      const popular = [...allPosts];
+      // 랜덤으로 섞기
+      for (let i = popular.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [popular[i], popular[j]] = [popular[j], popular[i]];
+      }
+      setPopularPosts(popular.slice(0, 5));
     };
 
     fetchCategoryPosts();
@@ -67,82 +88,17 @@ export default function Home() {
       <section className="mb-12">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Main Content */}
-          <div className="w-full lg:w-2/3">
-            {mainCategories.map((mainCat) => {
-              const mainPath = mainCat.href
-                ? mainCat.href.replace(/^\//, "")
-                : mainCat.base
-                ? mainCat.base.replace(/^\//, "")
-                : mainCat.title.toLowerCase().replace(/\s+/g, "-");
+          <ArticlesSection
+            mainCategories={mainCategories}
+            categoryPosts={categoryPosts}
+          />
 
-              return (
-                <div key={mainCat.title} className="mb-12">
-                  <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-2xl md:text-3xl font-bold">
-                      {mainCat.title}
-                    </h2>
-                    <Button variant="outline" asChild>
-                      <Link href={`/${mainPath}`}>
-                        View All{" "}
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    {categoryPosts[mainPath]?.map((post) => (
-                      <Link key={post.id} href={`/article/${post.id}`}>
-                        <Card className="flex flex-col bg-white border-transparent shadow-lg hover:shadow-xl transition-shadow">
-                          {post.image_url && (
-                            <div className="relative h-48 w-full overflow-hidden">
-                              <img
-                                src={post.image_url}
-                                alt={post.title}
-                                className="object-cover w-full h-full"
-                              />
-                            </div>
-                          )}
-                          <CardHeader>
-                            <CardTitle className="line-clamp-2 text-lg md:text-xl">
-                              {post.title}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="flex-grow">
-                            <div
-                              className="text-muted-foreground line-clamp-3 prose prose-sm max-w-none"
-                              dangerouslySetInnerHTML={{
-                                __html: post.content.replace(/<img\b[^>]*>/gi, ""),
-                              }}
-                            />
-                          </CardContent>
-                          <CardFooter className="flex items-center text-sm text-muted-foreground">
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {new Date(
-                              post.updated_at || post.created_at
-                            ).toLocaleDateString()}
-                          </CardFooter>
-                        </Card>
-                      </Link>
-                    ))}
-                    {categoryPosts[mainPath] === undefined && (
-                      <div className="col-span-2 py-8 text-center text-muted-foreground">
-                        Loading articles...
-                      </div>
-                    )}
-                    {categoryPosts[mainPath] &&
-                      categoryPosts[mainPath].length === 0 && (
-                        <div className="col-span-2 py-8 text-center text-muted-foreground">
-                          No articles available in this category yet.
-                        </div>
-                      )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Sidebar */}
+          {/* Sidebar - 최신글 및 인기글 전달 */}
           <div className="w-full lg:w-1/3">
-            <Sidebar />
+            <Sidebar 
+              recentPosts={recentPosts} 
+              popularPosts={popularPosts}
+            />
           </div>
         </div>
       </section>

@@ -1,6 +1,8 @@
 export interface CategoryItem {
   title: string;
-  slug: string;
+  slug?: string;
+  base?: string;
+  items?: CategoryItem[];
 }
 
 export interface CategoryOption {
@@ -17,21 +19,43 @@ export interface CategoryOption {
  */
 export const categoryOptions = new Map<string, CategoryOption>([
   [
-    "Report",
-    { title: "Report", href: "/report", items: [] },
+    "리포트",
+    { title: "리포트", href: "/report", items: [] },
   ],
   [
     "경제 동향",
     {
       title: "경제 동향",
-      base: "/economic-trends",
+      base: "경제 동향",
       items: [
-        { title: "의료", slug: "medical" },
-        { title: "제약", slug: "pharmaceutical" },
-        { title: "의료기기", slug: "medical-devices" },
-        { title: "화장품", slug: "cosmetics" },
-        { title: "건강기능식품", slug: "health-supplements" },
-        { title: "디지털헬스케어", slug: "digital-healthcare" },
+        { title: "민간소비", slug: "private-consumption" },
+        {
+          title: "정부지출",
+          base: "정부지출",
+          slug: "government-spending",
+          items: [
+            { title: "시설투자", slug: "infrastructure-investment" },
+            { title: "재고투자", slug: "inventory-investment" },
+          ],
+        },
+        { title: "기업투자", slug: "corporate-investment" },
+        { title: "수출입", slug: "trade" }
+      ],
+    },
+  ],
+  [
+    "금융 동향",
+    {
+      title: "금융 동향",
+      base: "금융 동향",
+      items: [
+        { title: "금리", slug: "interest-rate" },
+        { title: "환율", slug: "exchange-rate" },
+        { title: "은행", slug: "bank" },
+        { title: "금융투자회사", slug: "financial-investment-company" },
+        { title: "보험회사", slug: "insurance-company" },
+        { title: "PE", slug: "private-equity" },
+        { title: "VC", slug: "venture-capital" },
       ],
     },
   ],
@@ -39,14 +63,14 @@ export const categoryOptions = new Map<string, CategoryOption>([
     "산업 동향",
     {
       title: "산업 동향",
-      base: "/industry",
+      base: "산업 동향",
       items: [
-        { title: "의료", slug: "medical" },
-        { title: "제약", slug: "pharmaceutical" },
-        { title: "의료기기", slug: "medical-devices" },
-        { title: "화장품", slug: "cosmetics" },
-        { title: "건강기능식품", slug: "health-supplements" },
-        { title: "디지털헬스케어", slug: "digital-healthcare" },
+        { title: "의료", slug: "industry-medical" },
+        { title: "제약", slug: "industry-pharmaceutical" },
+        { title: "의료기기", slug: "industry-medical-devices" },
+        { title: "화장품", slug: "industry-cosmetics" },
+        { title: "건강기능식품", slug: "industry-health-supplements" },
+        { title: "디지털헬스케어", slug: "industry-digital-healthcare" },
       ],
     },
   ],
@@ -54,14 +78,14 @@ export const categoryOptions = new Map<string, CategoryOption>([
     "기업 동향",
     {
       title: "기업 동향",
-      base: "/company",
+      base: "기업 동향",
       items: [
-        { title: "의료", slug: "medical" },
-        { title: "제약", slug: "pharmaceutical" },
-        { title: "의료기기", slug: "medical-devices" },
-        { title: "화장품", slug: "cosmetics" },
-        { title: "건강기능식품", slug: "health-supplements" },
-        { title: "디지털헬스케어", slug: "digital-healthcare" },
+        { title: "의료", slug: "company-medical" },
+        { title: "제약", slug: "company-pharmaceutical" },
+        { title: "의료기기", slug: "company-medical-devices" },
+        { title: "화장품", slug: "company-cosmetics" },
+        { title: "건강기능식품", slug: "company-health-supplements" },
+        { title: "디지털헬스케어", slug: "company-digital-healthcare" },
       ],
     },
   ],
@@ -69,14 +93,14 @@ export const categoryOptions = new Map<string, CategoryOption>([
     "정책 동향",
     {
       title: "정책 동향",
-      base: "/policy",
+      base: "정책 동향",
       items: [
-        { title: "의료", slug: "medical" },
-        { title: "제약", slug: "pharmaceutical" },
-        { title: "의료기기", slug: "medical-devices" },
-        { title: "화장품", slug: "cosmetics" },
-        { title: "건강기능식품", slug: "health-supplements" },
-        { title: "디지털헬스케어", slug: "digital-healthcare" },
+        { title: "의료", slug: "policy-medical" },
+        { title: "제약", slug: "policy-pharmaceutical" },
+        { title: "의료기기", slug: "policy-medical-devices" },
+        { title: "화장품", slug: "policy-cosmetics" },
+        { title: "건강기능식품", slug: "policy-health-supplements" },
+        { title: "디지털헬스케어", slug: "policy-digital-healthcare" },
       ],
     },
   ],
@@ -84,26 +108,46 @@ export const categoryOptions = new Map<string, CategoryOption>([
     "언론 동향",
     {
       title: "언론 동향",
-      base: "/media",
+      base: "언론 동향",
       items: [
-        { title: "의료", slug: "medical" },
-        { title: "제약", slug: "pharmaceutical" },
-        { title: "의료기기", slug: "medical-devices" },
-        { title: "화장품", slug: "cosmetics" },
-        { title: "건강기능식품", slug: "health-supplements" },
-        { title: "디지털헬스케어", slug: "digital-healthcare" },
+        { title: "의료", slug: "media-medical" },
+        { title: "제약", slug: "media-pharmaceutical" },
+        { title: "의료기기", slug: "media-medical-devices" },
+        { title: "화장품", slug: "media-cosmetics" },
+        { title: "건강기능식품", slug: "media-health-supplements" },
+        { title: "디지털헬스케어", slug: "media-digital-healthcare" },
       ],
     },
   ],
   [
-    "인물",
-    { title: "인물", href: "/people", items: [] },
+    "마케팅 동향",
+    {
+      title: "마케팅 동향",
+      base: "마케팅 동향",
+      items: [
+        { title: "ATL", slug: "atl" },
+        {
+          title: "BTL",
+          base: "마케팅 동향/btl",
+          items: [
+            { title: "퍼포먼스 마케팅", slug: "performance-marketing" },
+            { title: "인플루언서 마케팅", slug: "influencer-marketing" },
+          ],
+        },
+        { title: "광고대행사", slug: "advertising-agency" },
+        { title: "광고매체", slug: "advertising-media" }
+      ]
+    }
+  ],
+  [
+    "인물과 동향",
+    { title: "인물과 동향", href: "/people", items: [] },
   ],
   [
     "미디어 리뷰",
     {
       title: "미디어 리뷰",
-      base: "/media-review",
+      base: "미디어 리뷰",
       items: [
         { title: "뉴스", slug: "news" },
         { title: "매거진", slug: "magazine" },
@@ -112,3 +156,46 @@ export const categoryOptions = new Map<string, CategoryOption>([
     },
   ],
 ]);
+
+export async function generateStaticParams() {
+  const paramsArray: { mainCategory: string; subcategory: string }[] = [];
+
+  // 재귀적으로 카테고리 항목을 처리하는 함수
+  function processCategoryItem(
+    mainCategory: string,
+    item: CategoryItem,
+    paramsArray: { mainCategory: string; subcategory: string }[]
+  ) {
+    // slug가 있을 때만 경로 파라미터에 추가
+    if (item.slug) {
+      paramsArray.push({
+        mainCategory: mainCategory,
+        subcategory: item.slug,
+      });
+    }
+    
+    // item.items가 있으면 재귀적으로 처리
+    if (item.items) {
+      for (const subItem of item.items) {
+        processCategoryItem(mainCategory, subItem, paramsArray);
+      }
+    }
+  }
+
+  // 메인 카테고리 처리
+  for (const cat of categoryOptions.values()) {
+    const mainPath = cat.href
+      ? cat.href.replace(/^\//, "")
+      : cat.base
+      ? cat.base.replace(/^\//, "")
+      : cat.title.toLowerCase().replace(/[\s]+/g, "-");
+
+    if (cat.items && cat.items.length > 0) {
+      for (const subCat of cat.items) {
+        processCategoryItem(mainPath, subCat, paramsArray);
+      }
+    }
+  }
+
+  return paramsArray;
+}
