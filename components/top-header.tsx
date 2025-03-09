@@ -57,24 +57,30 @@ export function TopHeader() {
   return (
     <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 bg-black border-b border-gray-200">
       <div className="flex justify-between py-2 text-sm">
-        {/* 왼쪽 영역: Home, Contact */}
-        <div className="flex items-center space-x-4">
+        {/* 왼쪽 영역: Home, About, Contact */}
+        <div className="flex items-center space-x-4 select-none">
           <Link
             href="/"
-            className="text-white font-bold hover:text-gray-300 inline-flex items-center"
+            className="text-white font-bold hover:text-gray-300 inline-flex items-center select-none"
           >
             Home
           </Link>
+          <Link
+            href="/about"
+            className="text-white font-bold hover:text-gray-300 inline-flex items-center select-none"
+          >
+            About Me
+          </Link>
           <a
             href="mailto:wjshin2450@gmail.com"
-            className="text-white font-bold hover:text-gray-300 inline-flex items-center"
+            className="text-white font-bold hover:text-gray-300 inline-flex items-center select-none"
           >
             Contact
           </a>
         </div>
 
         {/* 오른쪽 영역: 회원가입, 로그인, 날짜 */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 select-none">
           {!isLoggedIn ? (
             <>
               <Link

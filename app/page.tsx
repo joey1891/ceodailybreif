@@ -65,13 +65,10 @@ export default function Home() {
       setRecentPosts(recent);
       
       // 모든 카테고리 게시물에서 조회수 높은 글 5개 추출
-      const popular = [...allPosts];
-      // 랜덤으로 섞기
-      for (let i = popular.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [popular[i], popular[j]] = [popular[j], popular[i]];
-      }
-      setPopularPosts(popular.slice(0, 5));
+      const popular = [...allPosts]
+        .sort((a, b) => (b.viewcnt || 0) - (a.viewcnt || 0)) // 조회수 내림차순 정렬
+        .slice(0, 5);
+      setPopularPosts(popular);
     };
 
     fetchCategoryPosts();

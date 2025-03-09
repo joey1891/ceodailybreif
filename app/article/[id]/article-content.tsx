@@ -7,6 +7,15 @@ import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
+import { format } from "date-fns";
+
+function extractImageUrl(html: string | undefined): string | null {
+  if (!html) return null;
+  const imgTag = html.match(/<img[^>]+src="?([^">]+)"?/);
+  return imgTag ? imgTag[1] : null;
+}
+
+export { extractImageUrl };
 
 export function ArticleContent({ params }: { params: { id: string } }) {
   const [post, setPost] = useState<Post | null>(null);
@@ -30,6 +39,29 @@ export function ArticleContent({ params }: { params: { id: string } }) {
 
     fetchPost();
   }, [params.id]);
+
+  useEffect(() => {
+    const 게시글조회수증가 = async () => {
+      if (!post || !post.id) return;
+      
+      try {
+        const { error } = await supabase
+          .from('posts')
+          .update({ viewcnt: (post.viewcnt || 0) + 1 })
+          .eq('id', post.id);
+          
+        if (error) {
+          console.error('게시글 조회수 증가 실패:', error);
+        }
+      } catch (err) {
+        console.error('게시글 조회수 증가 처리 중 오류:', err);
+      }
+    };
+    
+    if (post && !loading) {
+      게시글조회수증가();
+    }
+  }, [post, loading]);
 
   const handleShare = (platform: string) => {
     const url = window.location.href;
@@ -61,7 +93,7 @@ export function ArticleContent({ params }: { params: { id: string } }) {
             </div>
           </div>
           <div className="w-full lg:w-1/3">
-            <Sidebar recentPosts={[]} />
+          <Sidebar recentPosts={[]} popularPosts={[]} />
           </div>
         </div>
       </div>
@@ -98,22 +130,10 @@ export function ArticleContent({ params }: { params: { id: string } }) {
 
           {/* Article Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-4">{post.title}</h1>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <div className="flex items-center">
-                <Calendar className="mr-2 h-4 w-4" />
-                {new Date(post.date || post.created_at).toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </div>
-              {post.author_id && (
-                <div className="flex items-center">
-                  <User className="mr-2 h-4 w-4" />
-                  작성자
-                </div>
-              )}
+            <h1 className="text-3xl font-bold mb-4 select-none">{post.title}</h1>
+            <div className="flex items-center gap-4 text-sm text-gray-500 mb-8 select-none">
+              <time>{format(new Date(post.created_at), 'yyyy년 MM월 dd일')}</time>
+              <div>조회수: {post.viewcnt || 0}</div>
             </div>
           </div>
 
@@ -130,11 +150,14 @@ export function ArticleContent({ params }: { params: { id: string } }) {
 
           {/* Article Content */}
           <div className="prose prose-lg max-w-none mb-8">
-            <div dangerouslySetInnerHTML={{ __html: post.content }} />
+            <div 
+              className="mt-6 select-none" 
+              dangerouslySetInnerHTML={{ __html: post.content }}
+            />
           </div>
 
           {/* Share Buttons */}
-          <div className="mt-8 pt-8 border-t">
+          <div className="mt-8 pt-8 border-t select-none">
             <div className="flex items-center gap-2 mb-4">
               <Share2 className="h-4 w-4" />
               <span className="font-medium">이 기사 공유하기</span>
@@ -155,7 +178,7 @@ export function ArticleContent({ params }: { params: { id: string } }) {
 
         {/* Sidebar */}
         <div className="w-full lg:w-1/3">
-          <Sidebar recentPosts={[]} />
+          <Sidebar recentPosts={[]} popularPosts={[]} />
         </div>
       </div>
     </div>

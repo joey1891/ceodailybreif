@@ -1,6 +1,7 @@
 // app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MainNav } from "@/components/main-nav";
 import { Footer } from "@/components/footer";
@@ -34,9 +35,14 @@ export default function RootLayout({
                 <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 flex items-center justify-between">
                   <div>
                     <div className="py-4">
-                      <h1 className="text-2xl font-bold text-gray-900">
-                        CEO Daily Brief
-                      </h1>
+                      <Link href="/">
+                        <img
+                          src="https://wiziqvkwkwjpvretcisz.supabase.co/storage/v1/object/public/images/Logo/Logo.png"
+                          alt="CEO Daily Brief"
+                          width="96"
+                          height="69"
+                        />
+                      </Link>
                     </div>
                     <MainNav />
                   </div>

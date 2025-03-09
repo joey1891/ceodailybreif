@@ -183,7 +183,7 @@ export function MainNav() {
 
             return (
               <NavigationMenuItem key={category.title} className="relative">
-                <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md">
+                <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md select-none">
                   {category.title}
                 </NavigationMenuTrigger>
                 <NavigationMenuContent className="relative bg-white rounded-md shadow-lg border border-gray-100">
@@ -191,7 +191,7 @@ export function MainNav() {
                     {category.items.map((item) => {
                       const href = `${category.base}/${item.slug}`;
                       return (
-                        <ListItem key={href} href={href} title={item.title} />
+                        <ListItem key={href} href={href} title={item.title} className="select-none" />
                       );
                     })}
                   </ul>
@@ -201,13 +201,13 @@ export function MainNav() {
           })}
 
           <NavigationMenuItem className="relative">
-            <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md">
+            <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md select-none">
               주요일정
             </NavigationMenuTrigger>
             <NavigationMenuContent className="relative bg-white rounded-md shadow-lg border border-gray-100">
               <ul className="grid gap-2 p-3 md:p-4 w-auto min-w-[220px] sm:min-w-[320px] md:min-w-[400px] sm:grid-cols-2">
                 {keyScheduleItems.map((item) => (
-                  <ListItem key={item.href} href={item.href} title={item.title} />
+                  <ListItem key={item.href} href={item.href} title={item.title} className="select-none" />
                 ))}
               </ul>
             </NavigationMenuContent>

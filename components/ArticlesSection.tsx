@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowRight, Calendar } from "lucide-react";
+import { extractImageUrl } from "@/app/article/[id]/article-content";
 
 type CategoryOption = {
   title: string;
@@ -41,7 +42,7 @@ export function ArticlesSection({
         return (
           <div key={mainCat.title} className="mb-12 max-w-full overflow-x-hidden">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold">
+              <h2 className="text-2xl md:text-3xl font-bold select-none">
                 {mainCat.title}
               </h2>
               <Button variant="outline" asChild>
@@ -55,10 +56,10 @@ export function ArticlesSection({
             {latestPost && (
               <Link href={`/article/${latestPost.id}`} className="mb-6 block max-w-full">
                 <Card className="flex flex-col sm:flex-row items-center bg-white border-transparent shadow-lg hover:shadow-xl transition-shadow max-w-full">
-                  {latestPost.image_url && (
+                  {latestPost.content && (
                     <div className="relative h-36 w-full sm:h-56 sm:w-[49%] overflow-hidden rounded-md">
                       <img
-                        src={latestPost.image_url}
+                        src={extractImageUrl(latestPost.content) || ""}
                         alt={latestPost.title}
                         className="object-cover w-full h-full object-center"
                       />
@@ -71,12 +72,12 @@ export function ArticlesSection({
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-grow p-0 max-w-full">
-                      <div className="text-xs text-muted-foreground mt-1">
+                      <div className="text-xs text-muted-foreground mt-1 select-none">
                         {new Date(
                           latestPost.updated_at || latestPost.created_at
                         ).toLocaleDateString()}
                       </div>
-                      <div className="text-muted-foreground line-clamp-3 prose prose-sm max-w-full mt-2 break-words">
+                      <div className="text-muted-foreground line-clamp-3 prose prose-sm max-w-full mt-2 break-words select-none">
                         {latestPost.content.replace(/<[^>]*>/gi, "").substring(0, 150) + "..."}
                       </div>
                     </CardContent>
@@ -90,10 +91,10 @@ export function ArticlesSection({
               {remainingPosts.map((post) => (
                 <Link key={post.id} href={`/article/${post.id}`}>
                   <Card className="flex flex-row items-center bg-white border-transparent shadow-lg hover:shadow-xl transition-shadow">
-                    {post.image_url && (
+                    {post.content && (
                       <div className="relative h-20 w-1/3 sm:h-32 sm:w-1/3 overflow-hidden rounded-md">
                         <img
-                          src={post.image_url}
+                          src={extractImageUrl(post.content) || ""}
                           alt={post.title}
                           className="object-cover w-full h-full"
                         />
@@ -106,13 +107,13 @@ export function ArticlesSection({
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="flex-grow p-0">
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className="text-xs text-muted-foreground mt-1 select-none">
                           {new Date(
                             post.updated_at || post.created_at
                           ).toLocaleDateString()}
                         </div>
                         <div
-                          className="text-muted-foreground line-clamp-2 sm:line-clamp-3 prose prose-sm max-w-full mt-1 sm:mt-2 break-words"
+                          className="text-muted-foreground line-clamp-2 sm:line-clamp-3 prose prose-sm max-w-full mt-1 sm:mt-2 break-words select-none"
                           dangerouslySetInnerHTML={{
                             __html: post.content.replace(/<[^>]*>/gi, "").substring(0, 100) + "...",
                           }}
@@ -123,12 +124,12 @@ export function ArticlesSection({
                 </Link>
               ))}
               {posts === undefined && (
-                <div className="col-span-2 py-8 text-center text-muted-foreground">
+                <div className="col-span-2 py-8 text-center text-muted-foreground select-none">
                   Loading articles...
                 </div>
               )}
               {posts && posts.length === 0 && (
-                <div className="col-span-2 py-8 text-center text-muted-foreground">
+                <div className="col-span-2 py-8 text-center text-muted-foreground select-none">
                   No articles available in this category yet.
                 </div>
               )}

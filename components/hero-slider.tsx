@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Carousel,
   CarouselContent,
@@ -13,6 +13,7 @@ import { ArrowRight } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
+import type { CarouselApi } from "@/components/ui/carousel";
 
 // 타입 정의로 코드 안정성 향상
 type SlideArticle = {
@@ -27,6 +28,8 @@ export function HeroSlider() {
   const [slideArticles, setSlideArticles] = useState<SlideArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [api, setApi] = useState<CarouselApi | null>(null);
 
   useEffect(() => {
     const fetchSlideArticles = async () => {
@@ -56,13 +59,34 @@ export function HeroSlider() {
         //   return;
         // }
 
-        // 설명 생성 및 데이터 정제
-        const articlesWithDescription = data.map(article => ({
-          ...article,
-          description: article.content 
-            ? article.content.replace(/<[^>]+>/g, "").substring(0, 150) + "..."
-            : "Read more about this article"
-        }));
+        // 설명 생성 및 데이터 정제 - 텍스트 클리닝 개선
+        const articlesWithDescription = data.map(article => {
+          // 콘텐츠가 없는 경우 처리
+          if (!article.content) {
+            return {
+              ...article,
+              description: "Read more about this article"
+            };
+          }
+          
+          // HTML 태그 제거 및 텍스트 정리
+          let cleanText = article.content
+            .replace(/<[^>]+>/g, " ") // HTML 태그 제거
+            .replace(/&nbsp;/g, " ")  // &nbsp; 처리
+            .replace(/\s+/g, " ")     // 연속된 공백 제거
+            .trim();                  // 앞뒤 공백 제거
+          
+          // 적절한 길이로 자르기
+          const maxLength = 150;
+          const description = cleanText.length > maxLength
+            ? cleanText.substring(0, maxLength) + "..."
+            : cleanText;
+            
+          return {
+            ...article,
+            description
+          };
+        });
         
         setSlideArticles(articlesWithDescription);
       } catch (error) {
@@ -75,6 +99,19 @@ export function HeroSlider() {
 
     fetchSlideArticles();
   }, []);
+
+  useEffect(() => {
+    if (!api) return;
+    
+    const onSelect = () => {
+      setCurrentSlide(api.selectedScrollSnap());
+    };
+    
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api]);
 
   // 로딩 상태 표시
   if (isLoading) {
@@ -109,7 +146,13 @@ export function HeroSlider() {
   return (
     <div className="w-full overflow-hidden max-w-full">
       <div className="w-full max-w-full relative overflow-hidden">
-        <Carousel className="w-full max-w-full overflow-hidden">
+        <Carousel 
+          className="w-full max-w-full overflow-hidden"
+          opts={{
+            loop: true,
+          }}
+          setApi={setApi}
+        >
           <CarouselContent>
             {slideArticles.map((article) => (
               <CarouselItem key={article.id} className="max-w-full">
@@ -125,17 +168,6 @@ export function HeroSlider() {
                   >
                     <div className="absolute inset-0 bg-black/50" />
                   </div>
-
-                  {/* 슬라이드 내부 텍스트 제약 추가 */}
-                  <div className="relative h-full flex flex-col justify-center px-6 md:px-12 text-white max-w-full">
-                    <h2 className="text-2xl md:text-4xl font-bold mb-4 break-words">{article.title}</h2>
-                    <p className="text-lg md:text-xl mb-8 text-gray-300 break-words">{article.description}</p>
-                    <Button asChild className="w-fit" variant="outline">
-                      <Link href={`/article/${article.id}`}>
-                        자세히 보기 <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
                 </div>
               </CarouselItem>
             ))}
@@ -147,6 +179,18 @@ export function HeroSlider() {
             </>
           )}
         </Carousel>
+        {slideArticles.length > 0 && (
+          <Link href={`/article/${slideArticles[currentSlide]?.id}`}>
+            <div className="absolute bottom-0 left-0 p-6 md:p-10 z-10 w-full bg-gradient-to-t from-black/80 to-transparent cursor-pointer hover:bg-black/70 transition-colors">
+              <h2 className="text-xl md:text-3xl font-bold text-white mb-2">
+                {slideArticles[currentSlide]?.title}
+              </h2>
+              <p className="text-sm md:text-base text-white/80 line-clamp-2">
+                {slideArticles[currentSlide]?.description}
+              </p>
+            </div>
+          </Link>
+        )}
       </div>
     </div>
   );

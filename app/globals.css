@@ -80,6 +80,10 @@
     --chart-5: 217.2 32.6% 17.5%;
   }
 
+  a:focus {
+    outline: none;
+  }
+
   html, body {
     overflow-x: hidden;
     width: 100%;
