@@ -10,6 +10,7 @@ export type Post = {
   image_url?: string;
   date?: string;
   viewcnt?: number;
+  is_slide?: boolean;
 };
 
 export type Profile = {

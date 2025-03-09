@@ -106,23 +106,23 @@ export default function AdminArticlesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this article?")) {
-      return;
-    }
-    const { error } = await supabase.from("posts").delete().eq("id", id);
-    if (error) {
-      console.error("Error deleting post:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete article",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Article deleted successfully",
-      });
-      fetchPosts();
+    const confirmDelete = confirm("Are you sure to delete this article?");
+    if (confirmDelete) {
+      const { error } = await supabase.from("posts").delete().eq("id", id);
+      if (error) {
+        console.error("Error deleting post:", error);
+        toast({
+          title: "Error",
+          description: "Failed to delete article",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Article deleted successfully",
+        });
+        fetchPosts();
+      }
     }
   };
 
@@ -167,10 +167,12 @@ export default function AdminArticlesPage() {
       return slug === filterMainCategory;
     });
     if (category) {
-      subCategoryOptions = category.items.map((item) => ({
-        title: item.title,
-        slug: item.slug,
-      }));
+      subCategoryOptions = category.items
+        .filter((item) => item.slug !== undefined)
+        .map((item) => ({
+          title: item.title,
+          slug: item.slug!,
+        }));
     }
   }
 

@@ -321,7 +321,9 @@ export default function CalendarManagement() {
           tileContent={tileContent}
           onActiveStartDateChange={({ activeStartDate }) => {
             // activeStartDate는 해당 달의 첫날을 나타냅니다.
-            setSelectedDate(activeStartDate);
+            if (activeStartDate) {
+              setSelectedDate(activeStartDate!);
+            }
           }}
           className="w-full h-full text-base p-4"
           showFixedNumberOfWeeks={false}

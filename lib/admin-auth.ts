@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 import { useEffect, useState } from "react";
-import type { User } from "supabase";
+import type { User } from "@supabase/supabase-js";
 
 // ✅ 관리자 로그인 여부 확인 및 세션 유지
 export async function getAdminUser(): Promise<User | null> {

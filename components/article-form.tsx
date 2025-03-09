@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminSession } from "@/lib/admin-auth";
 import { categoryOptions } from "@/lib/category-options";
 import dynamic from "next/dynamic";
+import { categoryMappings } from '@/lib/category-mappings';
 
 const EditorWithUploader = dynamic(
   () => import("@/components/editorWith-uploader"),
@@ -16,8 +17,14 @@ const EditorWithUploader = dynamic(
   }
 );
 
-export default function ArticleForm() {
-  const { id } = useParams();
+interface ArticleFormProps {
+  id?: string;
+}
+
+// 한글 카테고리를 영문으로 변환하는 매핑 추가
+// const categoryMappings = { ... }; 부분 삭제
+
+export default function ArticleForm({ id }: ArticleFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { adminUser, loading: adminLoading } = useAdminSession();
@@ -32,6 +39,7 @@ export default function ArticleForm() {
   const [title, setTitle] = useState("");
   const [mainCategory, setMainCategory] = useState(defaultMainCategory);
   const [subCategory, setSubCategory] = useState(defaultSubCategory);
+  const [subSubCategory, setSubSubCategory] = useState("");
   const [content, setContent] = useState("");
   const [imgUrl, setImgUrl] = useState("");
   const [description, setDescription] = useState("");
@@ -67,6 +75,7 @@ export default function ArticleForm() {
       // Main Category는 posts.category, Sub Category는 posts.subcategory
       if (data.category) setMainCategory(data.category);
       if (data.subcategory) setSubCategory(data.subcategory);
+      if (data.subsubcategory) setSubSubCategory(data.subsubcategory);
       if (data.category === "Report" || data.category === "report") {
         setImgUrl(data.image_url || "");
         setDescription(data.description || "");
@@ -88,6 +97,12 @@ export default function ArticleForm() {
     }
   };
 
+  const handleSubCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newSub = e.target.value;
+    setSubCategory(newSub);
+    setSubSubCategory("");
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -102,29 +117,52 @@ export default function ArticleForm() {
         return;
       }
 
-      // 선택된 메인 카테고리 객체
+      // 한글 카테고리명을 영문으로 변환
+      const mainCategoryEnglish = categoryMappings[mainCategory] || mainCategory.toLowerCase().replace(/\s+/g, "-");
+      
+      // 메인 카테고리 객체
       const selectedMainCategory = categoryOptions.get(mainCategory);
-      // 메인 카테고리의 slug를 결정
-      // 만약 mainCategory 객체에 base가 있다면, base의 앞쪽 '/'를 제거한 값을 slug로 사용
-      // 그렇지 않다면, 간단하게 소문자 및 하이픈 변환
-      const mainCategorySlug = selectedMainCategory?.base
-        ? selectedMainCategory.base.replace(/^\//, "")
-        : mainCategory.toLowerCase().replace(/\s+/g, "-");
-
-      // 선택된 서브 카테고리 객체에서 slug 값을 가져옴
+      
+      // 메인 카테고리 슬러그 결정
+      const mainCategorySlug = mainCategoryEnglish;
+      
+      // 서브 카테고리 찾기
       const selectedSubCategory = selectedMainCategory?.items.find(
         (item) => item.title === subCategory
       );
+      
+      // 서브 카테고리 슬러그
       const subCategorySlug = selectedSubCategory?.slug || "";
+      
+      // 서브서브 카테고리 처리
+      let subSubCategorySlug = "";
+      if (selectedSubCategory && "items" in selectedSubCategory && selectedSubCategory.items) {
+        const selectedSubSubCategory = selectedSubCategory.items.find(
+          (item) => item.title === subSubCategory
+        );
+        subSubCategorySlug = selectedSubSubCategory?.slug || "";
+      }
+      
+      // 계층 구조 검증: 서브서브카테고리가 있으면 반드시 서브카테고리도 있어야 함
+      if (subSubCategorySlug && !subCategorySlug) {
+        toast({
+          title: "Warning",
+          description: "Cannot select a sub-sub category without a sub category",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       const articleData: any = {
         title,
-        // DB에 저장할 때는 title 대신 slug 값을 저장
-        category: mainCategorySlug,      // 예: "report", "industry", etc.
-        subcategory: subCategorySlug,      // 예: "news", "medical", etc.
+        // 영문 카테고리명 사용
+        category: mainCategorySlug,
+        subcategory: subCategorySlug,
+        subsubcategory: subSubCategorySlug,
         content,
         date: new Date().toISOString().split("T")[0],
-        is_slide: mainCategory === "Report" || mainCategorySlug === "report",
+        is_slide: mainCategorySlug === "report",
       };
       if (mainCategory === "Report" || mainCategorySlug === "report") {
         articleData.description = description;
@@ -136,7 +174,7 @@ export default function ArticleForm() {
       if (id) {
         const { error: updateError, count } = await supabase
           .from("posts")
-          .update(articleData, { returning: "representation" })
+          .update(articleData)
           .eq("id", id)
           //.eq("user_id", adminUser.id);
         if (updateError) error = updateError;
@@ -150,9 +188,10 @@ export default function ArticleForm() {
           return;
         }
       } else {
-        const { error: insertError } = await supabase
+       const { error: insertError, data: newArticle } = await supabase
           .from("posts")
-          .insert([{ ...articleData, user_id: adminUser.id }]);
+          .insert([{ ...articleData, user_id: adminUser.id }])
+          .select();
         if (insertError) error = insertError;
       }
       if (error) {
@@ -186,6 +225,11 @@ export default function ArticleForm() {
 
   // 현재 선택된 메인 카테고리의 옵션 객체
   const currentCategory = categoryOptions.get(mainCategory);
+  const currentSubCategory = currentCategory?.items.find(item => item.title === subCategory);
+  
+  // 현재 서브 카테고리에 하위 항목이 있는지 확인
+  const hasSubSubCategories = currentSubCategory && 'items' in currentSubCategory && 
+    currentSubCategory.items && currentSubCategory.items.length > 0;
 
   return (
     <div className="w-full min-h-screen flex flex-col items-center justify-start bg-white px-4 py-4">
@@ -243,12 +287,35 @@ export default function ArticleForm() {
               <select
                 id="subCategory"
                 value={subCategory}
-                onChange={(e) => setSubCategory(e.target.value)}
+                onChange={handleSubCategoryChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md p-2"
               >
                 {currentCategory.items.map((sub) => (
                   <option key={sub.title} value={sub.title}>
                     {sub.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {hasSubSubCategories && (
+            <div className="flex-1">
+              <label
+                htmlFor="subSubCategory"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Sub-Sub Category
+              </label>
+              <select
+                id="subSubCategory"
+                value={subSubCategory}
+                onChange={(e) => setSubSubCategory(e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+              >
+                <option value="">Select...</option>
+                {currentSubCategory.items.map((subSub) => (
+                  <option key={subSub.title} value={subSub.title}>
+                    {subSub.title}
                   </option>
                 ))}
               </select>

@@ -1,17 +1,15 @@
 // app/search/page.tsx
-import { headers } from "next/headers";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from 'next/headers'
 import { redirect } from "next/navigation";
 
-export default async function SearchPage({
-  searchParams,
-}: {
-  searchParams: { q?: string };
-}) {
+export const dynamic = 'force-dynamic';
+
+export default async function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
   const query = searchParams.q || "";
 
   // 서버 컴포넌트용 Supabase 클라이언트 생성 (쿠키 기반 인증 등 필요 시)
-  const supabase = createServerComponentClient({ headers });
+  const supabase = createServerComponentClient({ cookies });
 
   // 검색어가 없는 경우, 빈 화면이나 안내 메시지 표시
   if (!query.trim()) {
@@ -22,7 +20,6 @@ export default async function SearchPage({
       </div>
     );
   }
-
   // Supabase 쿼리: title, description, content에서 검색 (ilike는 대소문자 무시)
   const { data, error } = await supabase
     .from("posts")

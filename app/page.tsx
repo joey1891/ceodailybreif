@@ -12,13 +12,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { HeroSlider } from "@/components/hero-slider";
-import { supabase } from "@/lib/supabase";
-import { Post } from "@/types/supabase";
-import { FinanceInfo } from "@/components/finance-info";
-import { CalendarSection } from "@/components/calendar-section";
-import { Sidebar } from "@/components/sidebar";
-import { categoryOptions } from "@/lib/category-options";
 import { ArticlesSection } from "@/components/ArticlesSection";
+import { FinanceInfo } from "@/components/finance-info";
+import { Sidebar } from "@/components/sidebar";
+import { CalendarSection } from "@/components/calendar-section";
+import { categoryOptions } from "@/lib/category-options";
+import { Post } from "@/types/supabase";
+import { supabase } from "@/lib/supabase";
 
 export default function Home() {
   // mainCategories를 컴포넌트가 마운트될 때 한 번만 생성
