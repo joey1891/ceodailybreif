@@ -16,7 +16,7 @@ import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import { FinanceInfo } from "@/components/finance-info";
 import { CalendarSection } from "@/components/calendar-section";
-import { Sidebar } from "@/components/Sidebar";
+import { Sidebar } from "@/components/sidebar";
 import { categoryOptions } from "@/lib/category-options";
 import { ArticlesSection } from "@/components/ArticlesSection";
 
