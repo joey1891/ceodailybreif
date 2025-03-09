@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Building2, Mail, Phone } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export function Footer() {
   return (
@@ -46,16 +48,49 @@ export function Footer() {
             <p className="text-sm text-muted-foreground">
               Subscribe to our newsletter for the latest healthcare industry updates.
             </p>
-            <div className="flex gap-2">
+            <form 
+              className="flex gap-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.currentTarget;
+                const email = new FormData(form).get("email") as string;
+                
+                if (!email || !email.includes("@")) {
+                  toast.error("Please enter a valid email address");
+                  return;
+                }
+                
+                try {
+                  const response = await fetch("/api/subscribe", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email }),
+                  });
+                  
+                  if (!response.ok) throw new Error("Failed to subscribe");
+                  
+                  toast.success("Successfully subscribed to the newsletter!");
+                  form.reset();
+                } catch (error) {
+                  console.error("Subscribe error:", error);
+                  toast.error("Failed to subscribe. Please try again later.");
+                }
+              }}
+            >
               <input
                 type="email"
+                name="email"
                 placeholder="Enter your email"
                 className="flex-1 px-3 py-2 text-sm rounded-md border"
+                required
               />
-              <button className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90">
+              <button 
+                type="submit"
+                className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              >
                 Subscribe
               </button>
-            </div>
+            </form>
           </div>
         </div>
 

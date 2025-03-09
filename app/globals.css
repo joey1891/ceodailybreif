@@ -79,15 +79,72 @@
     --chart-4: 217.2 91.2% 59.8%;
     --chart-5: 217.2 32.6% 17.5%;
   }
+
+  html, body {
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+    max-width: 100vw;
+  }
+  
+  .overflow-guard {
+    max-width: 100%;
+    overflow-x: clip;
+    position: relative;
+  }
+
+  html {
+    font-size: 16px;
+  }
+  
+  body {
+    font-size: 13px;
+    @apply bg-white text-foreground;
+    font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  }
+  
+  h1 {
+    font-size: 1.833em; /* 약 23.8px */
+    @apply text-primary font-bold;
+  }
+  
+  h2 {
+    font-size: 1.667em; /* 약 21.7px */
+    @apply text-primary font-bold;
+  }
+  
+  h3 {
+    font-size: 1.5em; /* 약 19.5px */
+    @apply text-primary font-bold;
+  }
+  
+  h4 {
+    font-size: 1.333em; /* 약 17.3px */
+    @apply text-primary font-bold;
+  }
+  
+  h5 {
+    font-size: 1.25em; /* 약 16.3px */
+    @apply text-primary font-bold;
+  }
+  
+  h6 {
+    font-size: 1.083em; /* 약 14.1px */
+    @apply text-primary font-bold;
+  }
+  
+  p {
+    @apply text-muted-foreground;
+  }
+  
+  .content-title h1 {
+    font-size: 25px;
+  }
 }
  
 @layer base {
   * {
     @apply border-border;
-  }
-  body {
-    @apply bg-white text-foreground;
-    font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply text-primary font-bold;
@@ -121,5 +178,23 @@
   [data-radix-collection-item] svg.lucide-chevron-down,
   [data-state] svg.lucide-chevron-down {
     display: none !important;
+  }
+}
+
+/* 모바일 최적화를 위한 컨테이너 스타일 */
+@layer components {
+  .container-mobile {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    overflow-x: hidden;
+  }
+  
+  @media (min-width: 640px) {
+    .container-mobile {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
   }
 }

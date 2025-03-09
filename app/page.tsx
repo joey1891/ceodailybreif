@@ -78,22 +78,22 @@ export default function Home() {
   }, [mainCategories]);
 
   return (
-    <main className="min-h-screen bg-white">
-      {/* Hero Slider */}
-      <section className="mb-12 -mx-4 lg:-mx-8">
+    <main className="min-h-screen bg-white overflow-x-hidden max-w-full overflow-guard">
+      {/* Hero Slider - 추가 제약 적용 */}
+      <section className="mb-12 w-full max-w-full overflow-x-hidden">
         <HeroSlider />
       </section>
-
-      {/* Articles Section with Sidebar */}
-      <section className="mb-12">
-        <div className="flex flex-col lg:flex-row gap-8">
+      
+      {/* 나머지 섹션들에 max-width 제약 추가 */}
+      <section className="mb-12 container-mobile max-w-full">
+        <div className="flex flex-col lg:flex-row gap-6 md:gap-8 max-w-full">
           {/* Main Content */}
           <ArticlesSection
             mainCategories={mainCategories}
             categoryPosts={categoryPosts}
           />
 
-          {/* Sidebar - 최신글 및 인기글 전달 */}
+          {/* Sidebar */}
           <div className="w-full lg:w-1/3">
             <Sidebar 
               recentPosts={recentPosts} 
@@ -103,13 +103,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Finance Info Section */}
-      <section className="mb-12">
+      {/* Finance & Calendar 섹션도 동일하게 제약 추가 */}
+      <section className="mb-12 container-mobile max-w-full">
         <FinanceInfo />
       </section>
 
-      {/* Calendar Section */}
-      <section>
+      <section className="container-mobile max-w-full">
         <CalendarSection />
       </section>
     </main>

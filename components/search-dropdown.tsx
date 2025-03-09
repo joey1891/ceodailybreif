@@ -139,7 +139,7 @@ export default function SearchDropdown() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <form onSubmit={handleSubmit} className="flex items-center space-x-2">
+      {/* <form onSubmit={handleSubmit} className="flex items-center space-x-2">
         <input
           type="text"
           placeholder="Search..."
@@ -152,7 +152,7 @@ export default function SearchDropdown() {
         <button type="submit" className="p-1">
           <Search className="h-5 w-5" />
         </button>
-      </form>
+      </form> */}
       {showDropdown && results.length > 0 && (
         <div className="absolute bg-white border mt-1 w-full rounded shadow-lg z-10">
           <ul>

@@ -107,43 +107,47 @@ export function HeroSlider() {
   }
 
   return (
-    <Carousel className="w-full">
-      <CarouselContent>
-        {slideArticles.map((article) => (
-          <CarouselItem key={article.id}>
-            <div className="relative h-[500px] w-full overflow-hidden rounded-lg">
-              {/* 배경 이미지 영역 - 이미지가 없는 경우 대체 처리 */}
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ 
-                  backgroundImage: article.image_url 
-                    ? `url(${article.image_url})` 
-                    : 'linear-gradient(to right, #4f46e5, #818cf8)' 
-                }}
-              >
-                <div className="absolute inset-0 bg-black/50" />
-              </div>
+    <div className="w-full overflow-hidden max-w-full">
+      <div className="w-full max-w-full relative overflow-hidden">
+        <Carousel className="w-full max-w-full overflow-hidden">
+          <CarouselContent>
+            {slideArticles.map((article) => (
+              <CarouselItem key={article.id} className="max-w-full">
+                <div className="relative h-[500px] w-full overflow-hidden rounded-lg max-w-full">
+                  {/* 배경 이미지 영역 */}
+                  <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{ 
+                      backgroundImage: article.image_url 
+                        ? `url(${article.image_url})` 
+                        : 'linear-gradient(to right, #4f46e5, #818cf8)' 
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-black/50" />
+                  </div>
 
-              {/* 슬라이드 내부 텍스트 및 버튼 영역 */}
-              <div className="relative h-full flex flex-col justify-center px-6 md:px-12 text-white">
-                <h2 className="text-2xl md:text-4xl font-bold mb-4">{article.title}</h2>
-                <p className="text-lg md:text-xl mb-8 text-gray-300">{article.description}</p>
-                <Button asChild className="w-fit" variant="outline">
-                  <Link href={`/article/${article.id}`}>
-                    자세히 보기 <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-      {slideArticles.length > 1 && (
-        <>
-          <CarouselPrevious className="left-4" />
-          <CarouselNext className="right-4" />
-        </>
-      )}
-    </Carousel>
+                  {/* 슬라이드 내부 텍스트 제약 추가 */}
+                  <div className="relative h-full flex flex-col justify-center px-6 md:px-12 text-white max-w-full">
+                    <h2 className="text-2xl md:text-4xl font-bold mb-4 break-words">{article.title}</h2>
+                    <p className="text-lg md:text-xl mb-8 text-gray-300 break-words">{article.description}</p>
+                    <Button asChild className="w-fit" variant="outline">
+                      <Link href={`/article/${article.id}`}>
+                        자세히 보기 <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          {slideArticles.length > 1 && (
+            <>
+              <CarouselPrevious className="left-4" />
+              <CarouselNext className="right-4" />
+            </>
+          )}
+        </Carousel>
+      </div>
+    </div>
   );
 }
