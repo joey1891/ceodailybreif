@@ -6,7 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import { Button } from "@/components/ui/button";
-import { Sidebar } from "@/components/Sidebar";
+import { Sidebar } from "@/components/sidebar";
 import { format } from "date-fns";
 
 function extractImageUrl(html: string | undefined): string | null {
