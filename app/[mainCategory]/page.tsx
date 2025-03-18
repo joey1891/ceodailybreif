@@ -4,14 +4,16 @@ import { CalendarSection } from "@/components/calendar-section";
 import { Sidebar } from "@/components/sidebar";
 import SubCategoryPreview from "@/components/subCategory-preview";
 import Link from "next/link";
+import { redirect } from 'next/navigation';
+import { categoryMappings } from '@/lib/category-mappings';
 
 // 정적 내보내기를 위한 모든 메인 카테고리 경로 생성
 export async function generateStaticParams() {
   return Array.from(categoryOptions.values()).map((cat) => {
-    const mainPath = cat.href
+    const mainPath = cat.base
+      ? cat.base.replace(/^\//, "") // base가 있으면 base를 우선 사용
+      : cat.href
       ? cat.href.replace(/^\//, "")
-      : cat.base
-      ? cat.base.replace(/^\//, "")
       : cat.title.toLowerCase().replace(/[\s]+/g, "-");
     return { mainCategory: mainPath };
   });
@@ -22,6 +24,14 @@ export default function CategoryPage({
 }: {
   params: { mainCategory: string };
 }) {
+  const { mainCategory } = params;
+  
+  // URL이 한글인 경우 영문으로 리다이렉트
+  if (categoryMappings[decodeURIComponent(mainCategory)]) {
+    const englishCategory = categoryMappings[decodeURIComponent(mainCategory)];
+    redirect(`/${englishCategory}`);
+  }
+
   // 모든 메인 카테고리를 배열로 추출
   const mainCategories = Array.from(categoryOptions.values());
 

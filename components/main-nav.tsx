@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { categoryOptions } from "@/lib/category-options";
 import { Menu, X } from "lucide-react";
+import { getCategoryUrl } from '@/lib/routes';
 
 const keyScheduleItems = [
   { title: "연간일정", href: "/schedule/annual" },
@@ -96,10 +97,7 @@ export function MainNav() {
             <div key={category.title} className="space-y-2">
               {!category.items.length ? (
                 <Link
-                  href={
-                    category.href ||
-                    `/${category.title.toLowerCase().replace(/\s/g, "-")}`
-                  }
+                  href={category.href || "/"}
                   className="block text-base font-semibold text-primary py-3 px-1 hover:bg-gray-50 rounded-md transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -161,7 +159,7 @@ export function MainNav() {
       </div>
       
       {renderMobileMenu()}
-      
+
       <NavigationMenu className="hidden md:flex justify-center py-2">
         <NavigationMenuList className="space-x-1">
           {Array.from(categoryOptions.values()).map((category) => {
@@ -169,10 +167,7 @@ export function MainNav() {
               return (
                 <NavigationMenuItem key={category.title}>
                   <Link
-                    href={
-                      category.href ||
-                      `/${category.title.toLowerCase().replace(/\s/g, "-")}`
-                    }
+                    href={category.href || "/"}
                     className="text-sm font-medium text-primary hover:text-primary/80 px-3 md:px-4 py-3 block transition-colors rounded-md hover:bg-gray-50"
                   >
                     {category.title}
@@ -183,9 +178,12 @@ export function MainNav() {
 
             return (
               <NavigationMenuItem key={category.title} className="relative">
-                <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md select-none">
-                  {category.title}
-                </NavigationMenuTrigger>
+                {/* NavigationMenuTrigger를 Link로 감싸고, href 속성 추가 */}
+                <Link href={category.href || "#"}>
+                  <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md select-none">
+                    {category.title}
+                  </NavigationMenuTrigger>
+                </Link>
                 <NavigationMenuContent className="relative bg-white rounded-md shadow-lg border border-gray-100">
                   <ul className="grid gap-2 p-3 md:p-4 w-auto min-w-[220px] sm:min-w-[320px] md:min-w-[400px] sm:grid-cols-2">
                     {category.items.map((item) => {
@@ -201,9 +199,12 @@ export function MainNav() {
           })}
 
           <NavigationMenuItem className="relative">
-            <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md select-none">
-              주요일정
-            </NavigationMenuTrigger>
+            {/* NavigationMenuTrigger를 Link로 감싸고, href 속성 추가 */}
+            <Link href="/schedule">
+              <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md select-none">
+                주요일정
+              </NavigationMenuTrigger>
+            </Link>
             <NavigationMenuContent className="relative bg-white rounded-md shadow-lg border border-gray-100">
               <ul className="grid gap-2 p-3 md:p-4 w-auto min-w-[220px] sm:min-w-[320px] md:min-w-[400px] sm:grid-cols-2">
                 {keyScheduleItems.map((item) => (

@@ -3,14 +3,25 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
+import { getCategoryUrl } from '@/lib/routes';
 
 interface ArticleLinkProps {
-  postId: string;
+  postId?: string;
+  category?: string;
+  subcategory?: string;
+  subsubcategory?: string;
   children: ReactNode;
   className?: string;
 }
 
-export const ArticleLink = ({ postId, children, className = "" }: ArticleLinkProps) => {
+export const ArticleLink = ({ 
+  postId, 
+  category, 
+  subcategory, 
+  subsubcategory,
+  children, 
+  className = "" 
+}: ArticleLinkProps) => {
   // Define the function outside the onClick handler
   const handleClick = () => {
     console.log("ArticleLink clicked for post:", postId);
@@ -57,9 +68,16 @@ export const ArticleLink = ({ postId, children, className = "" }: ArticleLinkPro
     }
   };
 
+  // 절대 경로 사용
+  const href = postId 
+    ? `/article/${postId}` 
+    : category 
+      ? getCategoryUrl(category, subcategory, subsubcategory)
+      : "/";
+
   return (
     <Link 
-      href={`/article/${postId}`} 
+      href={href} 
       onClick={handleClick}
       className={className}
     >

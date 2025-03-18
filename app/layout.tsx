@@ -1,6 +1,6 @@
 // app/layout.tsx
-import "./globals.css";
-import type { Metadata } from "next";
+import './globals.css';
+import React from 'react';
 import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MainNav } from "@/components/main-nav";
@@ -8,16 +8,16 @@ import { Footer } from "@/components/footer";
 import { TopHeader } from "@/components/top-header";
 import SearchDropdown from "@/components/search-dropdown";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "CEO Daily Brief",
-  description: "Comprehensive coverage of healthcare industry trends and news",
+  description: "Comprehensive coverage of healthcare industry trends and news"
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export type RootLayoutProps = {
+  children: React.ReactNode
+};
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="overflow-x-hidden max-w-full">

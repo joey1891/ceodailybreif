@@ -54,6 +54,7 @@ export default function SubCategoryPage({
         <SubCategoryList
           category={params.mainCategory}
           subcategory={params.subcategory}
+          subcategories={[{ slug: params.subcategory, title: params.subcategory }]}
         />
       </div>
     </div>

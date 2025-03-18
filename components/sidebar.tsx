@@ -9,6 +9,7 @@ import { ExternalLink, Search, BookOpen, Youtube } from 'lucide-react';
 import { Post } from "@/types/supabase";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { getCategoryUrl } from '@/lib/routes';
 
 interface SidebarProps {
   recentPosts: Post[];

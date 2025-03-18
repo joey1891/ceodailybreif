@@ -1,20 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { isAdmin } from '@/lib/admin-auth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const router = useRouter();
+
+  // Load saved email from localStorage on component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('adminEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const handleLogin = async () => {
     setError('');
     try {
+      // Save or remove email based on checkbox
+      if (rememberMe) {
+        localStorage.setItem('adminEmail', email);
+      } else {
+        localStorage.removeItem('adminEmail');
+      }
 
       const isUserAdmin = await isAdmin(email, password);
       console.log("Admin login result:", isUserAdmin); // ✅ 로그인 결과 로그 출력
@@ -50,6 +67,19 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           className="mb-3"
         />
+        <div className="flex items-center space-x-2 mb-4">
+          <Checkbox 
+            id="remember-me" 
+            checked={rememberMe} 
+            onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+          />
+          <label 
+            htmlFor="remember-me" 
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            아이디 저장
+          </label>
+        </div>
         <Button onClick={handleLogin} className="w-full">Login</Button>
       </div>
     </div>

@@ -313,7 +313,7 @@ export default function ArticleForm({ id }: ArticleFormProps) {
                 className="mt-1 block w-full border border-gray-300 rounded-md p-2"
               >
                 <option value="">Select...</option>
-                {currentSubCategory.items.map((subSub) => (
+                {currentSubCategory?.items && currentSubCategory.items.map((subSub) => (
                   <option key={subSub.title} value={subSub.title}>
                     {subSub.title}
                   </option>

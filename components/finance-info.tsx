@@ -34,6 +34,8 @@ export function FinanceInfo() {
     { name: "S&P500", value: 4783, change: 0.15 },
     { name: "다우존스", value: 37562, change: -0.15 }
   ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [rates, setRates] = useState<ExchangeRate[]>([
     { currency: "USD", rate: 1324.5, trend: "up" },
@@ -73,15 +75,63 @@ export function FinanceInfo() {
   }, []);
 
   useEffect(() => {
-    const dataInterval = setInterval(() => {
-      setIndices(prev =>
-        prev.map(index => ({
-          ...index,
-          value: index.value + (Math.random() - 0.5) * (index.value * 0.001),
-          change: (Math.random() - 0.5) * 0.5
-        }))
-      );
+    // Fetch real market data from Finnhub API
+    const fetchMarketData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      const apiKey = 'cvcan11r01qhnuvrq4egcvcan11r01qhnuvrq4f0';
+      const indexMapping = {
+        "코스피": "^KS11",
+        "코스닥": "^KQ11",
+        "나스닥": "^IXIC",
+        "S&P500": "^GSPC", 
+        "다우존스": "^DJI"
+      };
+      
+      try {
+        const updatedIndices = await Promise.all(
+          indices.map(async (index) => {
+            const symbol = indexMapping[index.name];
+            if (!symbol) return index;
+            
+            const response = await fetch(
+              `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`
+            );
+            
+            if (!response.ok) {
+              throw new Error(`API request failed for ${index.name}`);
+            }
+            
+            const data = await response.json();
+            return {
+              name: index.name,
+              value: data.c || index.value, // Current price
+              change: data.dp || index.change // Percent change
+            };
+          })
+        );
+        
+        setIndices(updatedIndices);
+      } catch (error) {
+        console.error("Failed to fetch market data:", error);
+        setError("Failed to load market data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
+    // Initial fetch
+    fetchMarketData();
+    
+    // Set up refresh interval (every 30 seconds)
+    const refreshInterval = setInterval(fetchMarketData, 30000);
+    return () => clearInterval(refreshInterval);
+  }, []);
+
+  useEffect(() => {
+    const dataInterval = setInterval(() => {
+      // Keep updating rates, but remove the indices update
       setRates(prev =>
         prev.map(rate => ({
           ...rate,
@@ -115,7 +165,7 @@ export function FinanceInfo() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4">
+    <div className="grid grid-cols-1 gap-4 pt-3">
       {/* 주요 지수 현황 박스 */}
       <div className="relative h-[140px] border-2 border-primary/50 rounded-lg p-4">
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
@@ -125,20 +175,26 @@ export function FinanceInfo() {
           </div>
         </div>
         <div className="mt-4 grid grid-cols-5 gap-4">
-          {indices.map((index) => (
-            <div key={index.name} className="text-center">
-              <div className="text-sm text-gray-500 mb-1">{index.name}</div>
-              <div className="text-base font-bold text-gray-700">
-                {index.value.toLocaleString(undefined, {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 2
-                })}
+          {isLoading ? (
+            <div className="col-span-5 text-center">Loading market data...</div>
+          ) : error ? (
+            <div className="col-span-5 text-center text-red-500">{error}</div>
+          ) : (
+            indices.map((index) => (
+              <div key={index.name} className="text-center">
+                <div className="text-sm text-gray-500 mb-1">{index.name}</div>
+                <div className="text-base font-bold text-gray-700">
+                  {index.value.toLocaleString(undefined, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2
+                  })}
+                </div>
+                <div className={`text-sm ${index.change > 0 ? "text-green-500" : "text-red-500"}`}>
+                  {index.change > 0 ? "▲" : "▼"} {Math.abs(index.change).toFixed(2)}%
+                </div>
               </div>
-              <div className={`text-sm ${index.change > 0 ? "text-green-500" : "text-red-500"}`}>
-                {index.change > 0 ? "▲" : "▼"}
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

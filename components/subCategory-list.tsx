@@ -1,31 +1,33 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Calendar } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import Link from "next/link";
+import { getCategoryUrl } from '@/lib/routes';
 
 interface SubCategoryListProps {
   category: string;
-  subcategory: string;
+  subcategories: { slug: string; title: string }[];
+  subcategory?: string;
 }
 
-export default function SubCategoryList({ category, subcategory }: SubCategoryListProps) {
+export default function SubCategoryList({ category, subcategories, subcategory }: SubCategoryListProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchPosts = async () => {
-      if (!category || !subcategory) return;
+      if (!category || !subcategories) return;
 
       setLoading(true);
       const { data, error } = await supabase
         .from("posts")
         .select("*")
         .eq("category", category)
-        .eq("subcategory", subcategory)
+        .in("subcategory", subcategories.map(sub => sub.slug))
         .order("updated_at", { ascending: false });
 
       if (!error && data) {
@@ -35,12 +37,23 @@ export default function SubCategoryList({ category, subcategory }: SubCategoryLi
     };
 
     fetchPosts();
-  }, [category, subcategory]);
+  }, [category, subcategories]);
+
+  if (!subcategories || !Array.isArray(subcategories)) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-4xl font-bold mb-8">
+          {category || "카테고리"}
+        </h1>
+        <p>서브 카테고리를 찾을 수 없습니다.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold mb-8">
-        {subcategory} in {category}
+        {subcategories.map(sub => sub.title).join(" in ")}
       </h1>
       {loading ? (
         <p>Loading reports...</p>
