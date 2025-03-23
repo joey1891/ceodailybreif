@@ -1,0 +1,31 @@
+{
+  "functions": {
+    "Home": {
+      "description": "The home page of the application.",
+      "usages": [
+        {
+          "file": "app\\page.tsx",
+          "line": 23
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "lucide-react",
+    "next/link",
+    "@/components/ui/button",
+    "@/components/hero-slider",
+    "@/components/ArticlesSection",
+    "@/components/finance-info",
+    "@/components/sidebar",
+    "@/components/calendar-section",
+    "@/lib/category-options",
+    "@/types/supabase",
+    "@/lib/supabase"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.398277"
+}

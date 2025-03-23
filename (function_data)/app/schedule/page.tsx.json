@@ -1,0 +1,22 @@
+{
+  "functions": {
+    "SchedulePage": {
+      "description": "Key Schedule 페이지",
+      "usages": [
+        {
+          "file": "app\\schedule\\page.tsx",
+          "line": 22
+        }
+      ]
+    }
+  },
+  "imports": [
+    "@/components/ui/card",
+    "lucide-react",
+    "next/link"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.967375"
+}

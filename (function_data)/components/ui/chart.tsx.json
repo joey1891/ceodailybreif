@@ -1,0 +1,61 @@
+{
+  "functions": {
+    "useChart": {
+      "description": "Recharts 라이브러리를 사용하여 차트를 렌더링하기 위한 컴포넌트들을 제공합니다. ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartStyle 컴포넌트를 포함하며, useChart 훅을 사용하여 차트 설정을 관리합니다.",
+      "usages": [
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 27
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 134
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 273
+        }
+      ]
+    },
+    "getPayloadConfigFromPayload": {
+      "description": "페이로드에서 차트 설정(label, icon 등)을 가져오는 함수",
+      "usages": [
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 143
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 190
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 290
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 320
+        }
+      ]
+    },
+    "ChartStyle": {
+      "description": "차트 스타일을 정의하는 컴포넌트",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "recharts",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "ChartContainer",
+    "ChartTooltip",
+    "ChartTooltipContent",
+    "ChartLegend",
+    "ChartLegendContent",
+    "ChartStyle",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:19.973689"
+}

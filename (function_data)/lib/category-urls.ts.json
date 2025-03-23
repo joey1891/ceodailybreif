@@ -1,0 +1,20 @@
+{
+  "functions": {
+    "validateCategoryUrls": {
+      "description": "카테고리 URL을 검증하는 함수",
+      "usages": [
+        {
+          "file": "lib\\category-urls.ts",
+          "line": 148
+        },
+        {
+          "file": "lib\\category-urls.ts",
+          "line": 178
+        }
+      ]
+    }
+  },
+  "imports": [],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.342923"
+}

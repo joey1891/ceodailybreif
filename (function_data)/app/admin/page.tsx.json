@@ -1,0 +1,24 @@
+{
+  "functions": {
+    "AdminDashboard": {
+      "description": "The admin dashboard page.",
+      "usages": [
+        {
+          "file": "app\\admin\\page.tsx",
+          "line": 9
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "next/navigation",
+    "@/lib/admin-auth",
+    "@/app/admin/articles/page",
+    "@/app/admin/calendar/page"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.469794"
+}

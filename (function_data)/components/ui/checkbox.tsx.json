@@ -1,0 +1,13 @@
+{
+  "functions": {},
+  "imports": [
+    "react",
+    "@radix-ui/react-checkbox",
+    "lucide-react",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Checkbox"
+  ],
+  "last_updated": "2025-03-22T20:05:18.251278"
+}

@@ -1,0 +1,92 @@
+{
+  "functions": {
+    "getAdminUser": {
+      "description": "관리자 사용자를 가져옵니다. 세션을 확인하고, 사용자가 'admin' 역할을 가지고 있는지 확인합니다.",
+      "usages": [
+        {
+          "file": "lib\\admin-auth.ts",
+          "line": 6
+        },
+        {
+          "file": "lib\\admin-auth.ts",
+          "line": 80
+        },
+        {
+          "file": "lib\\admin-auth.ts",
+          "line": 90
+        },
+        {
+          "file": "components\\top-header.tsx",
+          "line": 22
+        }
+      ]
+    },
+    "isAdmin": {
+      "description": "제공된 이메일과 비밀번호로 관리자 권한을 가진 사용자인지 확인합니다.",
+      "usages": [
+        {
+          "file": "app\\login\\page.tsx",
+          "line": 36
+        },
+        {
+          "file": "lib\\admin-auth.ts",
+          "line": 42
+        }
+      ]
+    },
+    "signOutAdmin": {
+      "description": "현재 관리자 세션을 로그아웃합니다.",
+      "usages": [
+        {
+          "file": "lib\\admin-auth.ts",
+          "line": 69
+        },
+        {
+          "file": "components\\top-header.tsx",
+          "line": 52
+        }
+      ]
+    },
+    "useAdminSession": {
+      "description": "React Hook으로 관리자 세션을 유지하고 로그인 상태를 감지합니다.",
+      "usages": [
+        {
+          "file": "app\\admin\\page.tsx",
+          "line": 11
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 34
+        },
+        {
+          "file": "lib\\admin-auth.ts",
+          "line": 74
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 30
+        }
+      ]
+    },
+    "checkAdminSession": {
+      "description": "관리자 세션을 확인합니다.",
+      "usages": [
+        {
+          "file": "lib\\admin-auth.ts",
+          "line": 79
+        },
+        {
+          "file": "lib\\admin-auth.ts",
+          "line": 85
+        }
+      ]
+    }
+  },
+  "imports": [
+    "./supabase",
+    "react",
+    "@supabase/supabase-js"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.279924"
+}

@@ -1,0 +1,27 @@
+{
+  "functions": {
+    "Alert": {
+      "description": "A component that renders an alert message.",
+      "usages": []
+    },
+    "AlertTitle": {
+      "description": "A component that renders the title of an alert message.",
+      "usages": []
+    },
+    "AlertDescription": {
+      "description": "A component that renders the description of an alert message.",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "class-variance-authority",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Alert",
+    "AlertTitle",
+    "AlertDescription"
+  ],
+  "last_updated": "2025-03-22T20:05:18.232278"
+}

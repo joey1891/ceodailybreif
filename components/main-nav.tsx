@@ -2,219 +2,135 @@
 
 import * as React from "react";
 import Link from "next/link";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 import { categoryOptions } from "@/lib/category-options";
 import { Menu, X } from "lucide-react";
 import { getCategoryUrl } from '@/lib/routes';
 
-const keyScheduleItems = [
-  { title: "연간일정", href: "/schedule/annual" },
-  { title: "월간일정", href: "/schedule/monthly" },
-];
-
-const ListItem = React.forwardRef<
-  React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a"> & { title: string }
->(({ className, title, children, ...props }, ref) => {
-  return (
-    <li>
-      <NavigationMenuLink asChild>
-        <a
-          ref={ref}
-          className={cn(
-            "block select-none rounded-md p-3 md:p-4 leading-none no-underline outline-none transition-colors hover:bg-primary/10 text-primary",
-            className
-          )}
-          {...props}
-        >
-          <div className="text-sm font-medium leading-none">{title}</div>
-          {children && (
-            <p className="line-clamp-2 text-sm leading-snug text-primary/80 mt-1">
-              {children}
-            </p>
-          )}
-        </a>
-      </NavigationMenuLink>
-    </li>
-  );
-});
-ListItem.displayName = "ListItem";
-
 export function MainNav() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
   
+  // 모든 카테고리 가져오기 (주요일정은 이미 categoryOptions에 있음)
+  const allCategories = React.useMemo(() => {
+    return Array.from(categoryOptions.values());
+  }, []);
+  
+  // 카테고리 수에 따른 동적 스타일 계산
+  const categoryCount = allCategories.length;
+  
+  // 메뉴 바깥 클릭 시 닫기
   React.useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setIsMobileMenuOpen(false);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isMenuOpen && 
+        menuRef.current && 
+        buttonRef.current && 
+        !menuRef.current.contains(event.target as Node) && 
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsMenuOpen(false);
       }
     };
     
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    
-    window.addEventListener('resize', handleResize);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      window.removeEventListener('resize', handleResize);
-      document.body.style.overflow = '';
+      document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isMobileMenuOpen]);
-
-  const renderMobileMenu = () => {
-    return (
-      <div
-        className={`
-          fixed inset-0 z-50 md:hidden
-          ${isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
-          transition-opacity duration-200
-        `}
-      >
-        <div className="absolute inset-0 bg-black/25" onClick={() => setIsMobileMenuOpen(false)} />
-        
-        <div className="absolute left-0 top-0 h-full w-3/4 max-w-sm bg-white p-3 space-y-5 overflow-y-auto">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-base font-semibold">메뉴</h2>
-            <button
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+  }, [isMenuOpen]);
+  
+  return (
+    <div className="relative w-full max-w-[1400px] ml-0 mr-auto">
+      <div className="flex justify-start py-3 pl-0 pr-3 mx-0">
+        <button 
+          ref={buttonRef}
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+          aria-label={isMenuOpen ? "메뉴 닫기" : "메뉴 열기"}
+        >
+          {isMenuOpen ? (
+            <X className="h-6 w-6 text-primary" />
+          ) : (
+            <Menu className="h-6 w-6 text-primary" />
+          )}
+        </button>
+      </div>
+      
+      {isMenuOpen && (
+        <div 
+          ref={menuRef}
+          style={{ width: "1400px", position: "absolute", left: 0, top: "64px" }} 
+          className="bg-white shadow-lg border-y border-gray-200 z-50 max-h-[calc(100vh-5rem)] overflow-y-auto"
+        >
+          <div className="py-4 w-full">
+            {/* 메인 카테고리 가로 정렬 - 동적 너비 계산 */}
+            <div 
+              className="grid gap-4 pb-4 mb-4 border-b border-gray-200"
+              style={{ 
+                gridTemplateColumns: `repeat(${categoryCount}, minmax(0, 1fr))` 
+              }}
             >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          
-          {Array.from(categoryOptions.values()).map((category) => (
-            <div key={category.title} className="space-y-2">
-              {!category.items.length ? (
-                <Link
-                  href={category.href || "/"}
-                  className="block text-base font-semibold text-primary py-3 px-1 hover:bg-gray-50 rounded-md transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {category.title}
-                </Link>
-              ) : (
-                <>
-                  <h3 className="text-base font-semibold text-primary">{category.title}</h3>
-                  <div className="pl-3 space-y-2 border-l border-primary/20">
-                    {category.items.map((item) => {
-                      const href = `${category.base}/${item.slug}`;
-                      return (
-                        <Link
-                          key={href}
-                          href={href}
-                          className="block py-3 px-1 text-sm font-medium text-primary/80 hover:text-primary hover:bg-gray-50 rounded-md transition-colors"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                          {item.title}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+              {allCategories.map((category, idx) => (
+                <div key={idx}>
+                  <Link
+                    href={category.href || "#"}
+                    className="block px-3 py-2 bg-primary/10 rounded-md text-sm font-bold text-primary hover:bg-primary/20 transition-colors text-center"
+                  >
+                    {category.title}
+                  </Link>
+                </div>
+              ))}
             </div>
-          ))}
-          
-          <div className="space-y-2">
-            <h3 className="text-base font-semibold text-primary">주요일정</h3>
-            <div className="pl-3 space-y-2 border-l border-primary/20">
-              {keyScheduleItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="block py-3 px-1 text-sm font-medium text-primary/80 hover:text-primary hover:bg-gray-50 rounded-md transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.title}
-                </Link>
+            
+            {/* 하위 카테고리 가로 정렬 */}
+            <div 
+              className="grid gap-4"
+              style={{ 
+                gridTemplateColumns: `repeat(${categoryCount}, minmax(0, 1fr))` 
+              }}
+            >
+              {Array.from(categoryOptions.values()).map((category) => (
+                <div key={category.title} className="space-y-1">
+                  <div className="flex flex-col space-y-1">
+                    {/* 주요일정인 경우 하드코딩된 항목 대신 동적으로 처리 */}
+                    {category.title === "주요일정" ? (
+                      <>
+                        <Link
+                          href="/schedule/annual"
+                          className="px-3 py-2 text-sm text-primary/80 hover:bg-gray-100 rounded-md transition-colors"
+                        >
+                          연간일정
+                        </Link>
+                        <Link
+                          href="/schedule/monthly"
+                          className="px-3 py-2 text-sm text-primary/80 hover:bg-gray-100 rounded-md transition-colors"
+                        >
+                          월간일정
+                        </Link>
+                      </>
+                    ) : (
+                      // 다른 카테고리는 기존 방식대로 처리
+                      category.items.map((item) => {
+                        const href = getCategoryUrl(category, item.slug);
+                        return (
+                          <Link
+                            key={href}
+                            href={href}
+                            className="px-3 py-2 text-sm text-primary/80 hover:bg-gray-100 rounded-md transition-colors"
+                          >
+                            {item.title}
+                          </Link>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
         </div>
-      </div>
-    );
-  };
-
-  return (
-    <>
-      <div className="md:hidden flex justify-start p-3">
-        <button 
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-          aria-label="메뉴 열기"
-        >
-          <Menu className="h-6 w-6 text-primary" />
-        </button>
-      </div>
-      
-      {renderMobileMenu()}
-
-      <NavigationMenu className="hidden md:flex justify-center py-2">
-        <NavigationMenuList className="space-x-1">
-          {Array.from(categoryOptions.values()).map((category) => {
-            if (!category.items.length) {
-              return (
-                <NavigationMenuItem key={category.title}>
-                  <Link
-                    href={category.href || "/"}
-                    className="text-sm font-medium text-primary hover:text-primary/80 px-3 md:px-4 py-3 block transition-colors rounded-md hover:bg-gray-50"
-                  >
-                    {category.title}
-                  </Link>
-                </NavigationMenuItem>
-              );
-            }
-
-            return (
-              <NavigationMenuItem key={category.title} className="relative">
-                {/* NavigationMenuTrigger를 Link로 감싸고, href 속성 추가 */}
-                <Link href={category.href || "#"}>
-                  <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md select-none">
-                    {category.title}
-                  </NavigationMenuTrigger>
-                </Link>
-                <NavigationMenuContent className="relative bg-white rounded-md shadow-lg border border-gray-100">
-                  <ul className="grid gap-2 p-3 md:p-4 w-auto min-w-[220px] sm:min-w-[320px] md:min-w-[400px] sm:grid-cols-2">
-                    {category.items.map((item) => {
-                      const href = `${category.base}/${item.slug}`;
-                      return (
-                        <ListItem key={href} href={href} title={item.title} className="select-none" />
-                      );
-                    })}
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            );
-          })}
-
-          <NavigationMenuItem className="relative">
-            {/* NavigationMenuTrigger를 Link로 감싸고, href 속성 추가 */}
-            <Link href="/schedule">
-              <NavigationMenuTrigger className="text-sm font-medium text-primary hover:text-primary/80 bg-transparent hover:bg-gray-50 px-3 md:px-4 py-3 rounded-md select-none">
-                주요일정
-              </NavigationMenuTrigger>
-            </Link>
-            <NavigationMenuContent className="relative bg-white rounded-md shadow-lg border border-gray-100">
-              <ul className="grid gap-2 p-3 md:p-4 w-auto min-w-[220px] sm:min-w-[320px] md:min-w-[400px] sm:grid-cols-2">
-                {keyScheduleItems.map((item) => (
-                  <ListItem key={item.href} href={item.href} title={item.title} className="select-none" />
-                ))}
-              </ul>
-            </NavigationMenuContent>
-          </NavigationMenuItem>
-        </NavigationMenuList>
-      </NavigationMenu>
-    </>
+      )}
+    </div>
   );
 }

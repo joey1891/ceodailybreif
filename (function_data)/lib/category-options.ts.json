@@ -1,0 +1,61 @@
+{
+  "functions": {
+    "generateStaticParams": {
+      "description": "정적 매개변수를 생성하는 함수",
+      "usages": [
+        {
+          "file": "app\\admin\\articles\\edit\\[id]\\page.tsx",
+          "line": 5
+        },
+        {
+          "file": "app\\article\\[id]\\page.tsx",
+          "line": 4
+        },
+        {
+          "file": "app\\[mainCategory]\\page.tsx",
+          "line": 11
+        },
+        {
+          "file": "app\\[mainCategory]\\[subcategory]\\page.tsx",
+          "line": 4
+        },
+        {
+          "file": "lib\\category-options.ts",
+          "line": 179
+        }
+      ]
+    },
+    "processCategoryItem": {
+      "description": "카테고리 항목을 처리하는 함수",
+      "usages": [
+        {
+          "file": "app\\[mainCategory]\\[subcategory]\\page.tsx",
+          "line": 8
+        },
+        {
+          "file": "app\\[mainCategory]\\[subcategory]\\page.tsx",
+          "line": 21
+        },
+        {
+          "file": "app\\[mainCategory]\\[subcategory]\\page.tsx",
+          "line": 38
+        },
+        {
+          "file": "lib\\category-options.ts",
+          "line": 183
+        },
+        {
+          "file": "lib\\category-options.ts",
+          "line": 199
+        },
+        {
+          "file": "lib\\category-options.ts",
+          "line": 214
+        }
+      ]
+    }
+  },
+  "imports": [],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.334923"
+}

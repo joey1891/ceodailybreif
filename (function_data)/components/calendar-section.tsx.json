@@ -1,0 +1,23 @@
+{
+  "functions": {
+    "CalendarSection": {
+      "description": "This component displays the calendar section, showing monthly and weekly schedules.",
+      "usages": [
+        {
+          "file": "components\\calendar-section.tsx",
+          "line": 10
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "lucide-react",
+    "@/components/ui/card",
+    "@/lib/supabase",
+    "date-fns",
+    "date-fns"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.554639"
+}

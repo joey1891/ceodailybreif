@@ -1,0 +1,23 @@
+{
+  "functions": {
+    "TopHeader": {
+      "description": "A component that renders the top header section with navigation links, authentication options, and current date.",
+      "usages": [
+        {
+          "file": "components\\top-header.tsx",
+          "line": 10
+        }
+      ]
+    }
+  },
+  "imports": [
+    "next/link",
+    "lucide-react",
+    "react",
+    "@/lib/supabase",
+    "@/lib/admin-auth",
+    "date-fns"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.865689"
+}

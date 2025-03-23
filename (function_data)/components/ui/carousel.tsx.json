@@ -1,0 +1,45 @@
+{
+  "functions": {
+    "useCarousel": {
+      "description": "캐러셀 UI를 구현하기 위한 컴포넌트 및 관련 기능들을 제공합니다. useEmblaCarousel 훅을 사용하여 캐러셀의 동작을 관리하고, Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext 컴포넌트를 제공하여 캐러셀 UI를 구성합니다.",
+      "usages": [
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 35
+        },
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 157
+        },
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 179
+        },
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 201
+        },
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 230
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "lucide-react",
+    "@/lib/utils",
+    "@/components/ui/button"
+  ],
+  "exports": [
+    "type CarouselApi",
+    "Carousel",
+    "CarouselContent",
+    "CarouselItem",
+    "CarouselPrevious",
+    "CarouselNext",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:19.946689"
+}

@@ -1,0 +1,67 @@
+{
+  "functions": {
+    "getColorForEventId": {
+      "description": "이벤트 id 기반 색상 결정 함수",
+      "usages": [
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 28
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 99
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 304
+        }
+      ]
+    },
+    "CalendarManagement": {
+      "description": "This function renders the Calendar Management page.",
+      "usages": [
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 33
+        }
+      ]
+    },
+    "tileContent": {
+      "description": "달력 타일에 등록된 일정 간략히 표시 (일별 일정만 표시, 월간 일정은 상단 영역에서 조회)",
+      "usages": []
+    },
+    "handleTileClick": {
+      "description": "날짜 클릭 시 모달 열기 (일별 일정 등록/수정)",
+      "usages": []
+    },
+    "handleMonthlyClick": {
+      "description": "월간 일정 등록 버튼 클릭 시 모달 열기",
+      "usages": []
+    },
+    "handleChange": {
+      "description": "모달 내 폼 입력 핸들러",
+      "usages": []
+    },
+    "handleEventClick": {
+      "description": "기존 일정 클릭 시 해당 일정을 수정 모드로 전환",
+      "usages": [
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 358
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "react-calendar",
+    "react-modal",
+    "@/lib/supabase",
+    "@/hooks/use-toast",
+    "@/lib/admin-auth"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:19.722639"
+}

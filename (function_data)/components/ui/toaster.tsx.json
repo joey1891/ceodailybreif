@@ -1,0 +1,18 @@
+{
+  "functions": {
+    "Toaster": {
+      "description": "토스트 알림을 표시하는 Toaster 컴포넌트를 제공합니다. useToast 훅을 사용하여 토스트를 관리하고, ToastProvider, Toast, ToastTitle, ToastDescription, ToastClose, ToastViewport 컴포넌트를 사용하여 토스트 UI를 구성합니다.",
+      "usages": [
+        {
+          "file": "components\\ui\\toaster.tsx",
+          "line": 13
+        }
+      ]
+    }
+  },
+  "imports": [
+    "@/hooks/use-toast"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:20.179238"
+}

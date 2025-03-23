@@ -1,0 +1,10 @@
+{
+  "functions": {},
+  "imports": [
+    "@supabase/supabase-js"
+  ],
+  "exports": [
+    "supabaseAdmin"
+  ],
+  "last_updated": "2025-03-22T20:05:18.197247"
+}

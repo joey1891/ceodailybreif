@@ -1,0 +1,18 @@
+{
+  "functions": {
+    "AdminLayout": {
+      "description": "The layout for the admin pages.",
+      "usages": [
+        {
+          "file": "app\\admin\\layout.tsx",
+          "line": 1
+        }
+      ]
+    }
+  },
+  "imports": [],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.442278"
+}

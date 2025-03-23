@@ -1,0 +1,21 @@
+{
+  "functions": {
+    "Toaster": {
+      "description": "토스터 UI를 구현하기 위한 컴포넌트를 제공합니다. Toaster 컴포넌트를 포함하며, sonner 라이브러리를 사용하여 토스트 알림을 표시합니다.",
+      "usages": [
+        {
+          "file": "components\\ui\\toaster.tsx",
+          "line": 13
+        }
+      ]
+    }
+  },
+  "imports": [
+    "next-themes",
+    "sonner"
+  ],
+  "exports": [
+    "Toaster"
+  ],
+  "last_updated": "2025-03-22T20:05:20.179238"
+}

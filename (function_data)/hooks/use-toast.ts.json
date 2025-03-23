@@ -1,0 +1,196 @@
+{
+  "functions": {
+    "genId": {
+      "description": "토스트 메시지의 고유 ID를 생성하는 함수",
+      "usages": [
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 27
+        },
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 143
+        }
+      ]
+    },
+    "dispatch": {
+      "description": "토스트 상태를 업데이트하는 함수",
+      "usages": [
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 65
+        },
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 133
+        },
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 146
+        },
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 150
+        },
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 152
+        },
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 187
+        }
+      ]
+    },
+    "toast": {
+      "description": "토스트 메시지를 표시하는 함수",
+      "usages": [
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 69
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 169
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 177
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 197
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 204
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 221
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 228
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 246
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 252
+        },
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 142
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 65
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 111
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 148
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 183
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 198
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 204
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 212
+        }
+      ]
+    },
+    "useToast": {
+      "description": "토스트 관련 기능을 사용할 수 있는 훅",
+      "usages": [
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 54
+        },
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 171
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 29
+        },
+        {
+          "file": "components\\ui\\toaster.tsx",
+          "line": 14
+        }
+      ]
+    },
+    "addToRemoveQueue": {
+      "description": "토스트를 제거하기 위한 대기열에 추가하는 함수",
+      "usages": [
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 96
+        },
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 99
+        }
+      ]
+    },
+    "update": {
+      "description": "토스트 메시지를 업데이트하는 함수",
+      "usages": [
+        {
+          "file": "app\\about\\page.tsx",
+          "line": 29
+        },
+        {
+          "file": "app\\admin\\calendar\\page.tsx",
+          "line": 189
+        },
+        {
+          "file": "app\\article\\[id]\\article-content.tsx",
+          "line": 50
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 177
+        },
+        {
+          "file": "components\\ArticleLink.tsx",
+          "line": 58
+        }
+      ]
+    },
+    "dismiss": {
+      "description": "토스트 메시지를 닫는 함수",
+      "usages": [
+        {
+          "file": "hooks\\use-toast.ts",
+          "line": 159
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "@/components/ui/toast"
+  ],
+  "exports": [
+    "useToast",
+    "toast"
+  ],
+  "last_updated": "2025-03-22T20:05:19.169924"
+}

@@ -1,0 +1,20 @@
+{
+  "functions": {
+    "ExchangeRates": {
+      "description": "This component displays real-time exchange rate information.",
+      "usages": [
+        {
+          "file": "components\\exchange-rates.tsx",
+          "line": 13
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "@/components/ui/card",
+    "lucide-react"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.585638"
+}

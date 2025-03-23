@@ -1,0 +1,25 @@
+{
+  "functions": {
+    "SubCategoryPreview": {
+      "description": "특정 하위 카테고리의 게시글 미리보기를 표시하는 컴포넌트",
+      "usages": [
+        {
+          "file": "components\\subCategory-preview.tsx",
+          "line": 19
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "@/lib/supabase",
+    "@/types/supabase",
+    "@/components/ui/card",
+    "lucide-react",
+    "next/link"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:19.833173"
+}

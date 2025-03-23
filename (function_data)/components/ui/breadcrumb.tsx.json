@@ -1,0 +1,29 @@
+{
+  "functions": {
+    "BreadcrumbSeparator": {
+      "description": "A component that renders the separator between breadcrumb items.",
+      "usages": []
+    },
+    "BreadcrumbEllipsis": {
+      "description": "A component that renders an ellipsis to indicate truncated breadcrumb items.",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "@radix-ui/react-slot",
+    "lucide-react",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Breadcrumb",
+    "BreadcrumbList",
+    "BreadcrumbItem",
+    "BreadcrumbLink",
+    "BreadcrumbPage",
+    "BreadcrumbSeparator",
+    "BreadcrumbEllipsis",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:19.929688"
+}

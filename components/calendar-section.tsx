@@ -54,9 +54,9 @@ export function CalendarSection() {
   });
 
   return (
-    <div className="relative border-2 border-primary/50 rounded-lg p-4 space-y-8">
+    <div className="relative border-2 border-primary/50 rounded-lg p-4 space-y-8 mt-6 ">
       {/* Title */}
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
+      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4 ">
         <div className="flex items-center gap-2 text-gray-500 select-none">
           <Calendar className="h-4 w-4" />
           <span className="text-sm font-medium">일정</span>

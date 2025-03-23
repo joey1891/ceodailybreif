@@ -85,4 +85,4 @@ export function getArticleUrl(id: string, category?: string, subcategory?: strin
   
   const baseUrl = getCategoryUrl(category, subcategory, subsubcategory);
   return `${baseUrl}/article/${id}`;
-} 
+}

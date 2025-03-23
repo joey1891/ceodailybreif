@@ -1,0 +1,27 @@
+{
+  "functions": {
+    "MainNav": {
+      "description": "This component renders the main navigation menu.",
+      "usages": [
+        {
+          "file": "components\\main-nav.tsx",
+          "line": 10
+        }
+      ]
+    },
+    "handleClickOutside": {
+      "description": "메인 네비게이션 바를 렌더링하는 컴포넌트",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "next/link",
+    "@/lib/utils",
+    "@/lib/category-options",
+    "lucide-react",
+    "@/lib/routes"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.748640"
+}

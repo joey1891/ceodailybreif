@@ -1,0 +1,29 @@
+{
+  "functions": {
+    "ReportPage": {
+      "description": "report 카테고리의 보고서를 표시하는 페이지",
+      "usages": [
+        {
+          "file": "app\\people\\page.tsx",
+          "line": 10
+        },
+        {
+          "file": "app\\report\\page.tsx",
+          "line": 10
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "@/components/ui/card",
+    "lucide-react",
+    "@/lib/supabase",
+    "@/types/supabase",
+    "next/link"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.950860"
+}

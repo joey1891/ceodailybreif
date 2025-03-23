@@ -1,0 +1,708 @@
+{
+  "functions": {
+    "cn": {
+      "description": "tailwind-merge 와 clsx 를 사용하여 클래스 이름을 조건부로 병합하는 함수입니다.",
+      "usages": [
+        {
+          "file": "lib\\utils.ts",
+          "line": 4
+        },
+        {
+          "file": "components\\ui\\accordion.tsx",
+          "line": 17
+        },
+        {
+          "file": "components\\ui\\accordion.tsx",
+          "line": 30
+        },
+        {
+          "file": "components\\ui\\accordion.tsx",
+          "line": 52
+        },
+        {
+          "file": "components\\ui\\alert-dialog.tsx",
+          "line": 20
+        },
+        {
+          "file": "components\\ui\\alert-dialog.tsx",
+          "line": 38
+        },
+        {
+          "file": "components\\ui\\alert-dialog.tsx",
+          "line": 53
+        },
+        {
+          "file": "components\\ui\\alert-dialog.tsx",
+          "line": 67
+        },
+        {
+          "file": "components\\ui\\alert-dialog.tsx",
+          "line": 82
+        },
+        {
+          "file": "components\\ui\\alert-dialog.tsx",
+          "line": 94
+        },
+        {
+          "file": "components\\ui\\alert-dialog.tsx",
+          "line": 107
+        },
+        {
+          "file": "components\\ui\\alert-dialog.tsx",
+          "line": 119
+        },
+        {
+          "file": "components\\ui\\alert.tsx",
+          "line": 29
+        },
+        {
+          "file": "components\\ui\\alert.tsx",
+          "line": 41
+        },
+        {
+          "file": "components\\ui\\alert.tsx",
+          "line": 53
+        },
+        {
+          "file": "components\\ui\\avatar.tsx",
+          "line": 14
+        },
+        {
+          "file": "components\\ui\\avatar.tsx",
+          "line": 29
+        },
+        {
+          "file": "components\\ui\\avatar.tsx",
+          "line": 41
+        },
+        {
+          "file": "components\\ui\\badge.tsx",
+          "line": 32
+        },
+        {
+          "file": "components\\ui\\breadcrumb.tsx",
+          "line": 21
+        },
+        {
+          "file": "components\\ui\\breadcrumb.tsx",
+          "line": 36
+        },
+        {
+          "file": "components\\ui\\breadcrumb.tsx",
+          "line": 53
+        },
+        {
+          "file": "components\\ui\\breadcrumb.tsx",
+          "line": 69
+        },
+        {
+          "file": "components\\ui\\breadcrumb.tsx",
+          "line": 83
+        },
+        {
+          "file": "components\\ui\\breadcrumb.tsx",
+          "line": 98
+        },
+        {
+          "file": "components\\ui\\button.tsx",
+          "line": 47
+        },
+        {
+          "file": "components\\ui\\calendar.tsx",
+          "line": 21
+        },
+        {
+          "file": "components\\ui\\calendar.tsx",
+          "line": 28
+        },
+        {
+          "file": "components\\ui\\calendar.tsx",
+          "line": 40
+        },
+        {
+          "file": "components\\ui\\card.tsx",
+          "line": 11
+        },
+        {
+          "file": "components\\ui\\card.tsx",
+          "line": 26
+        },
+        {
+          "file": "components\\ui\\card.tsx",
+          "line": 38
+        },
+        {
+          "file": "components\\ui\\card.tsx",
+          "line": 53
+        },
+        {
+          "file": "components\\ui\\card.tsx",
+          "line": 63
+        },
+        {
+          "file": "components\\ui\\card.tsx",
+          "line": 73
+        },
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 140
+        },
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 163
+        },
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 186
+        },
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 208
+        },
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 237
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 54
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 151
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 161
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 181
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 196
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 210
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 230
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 282
+        },
+        {
+          "file": "components\\ui\\chart.tsx",
+          "line": 295
+        },
+        {
+          "file": "components\\ui\\checkbox.tsx",
+          "line": 15
+        },
+        {
+          "file": "components\\ui\\checkbox.tsx",
+          "line": 22
+        },
+        {
+          "file": "components\\ui\\command.tsx",
+          "line": 17
+        },
+        {
+          "file": "components\\ui\\command.tsx",
+          "line": 48
+        },
+        {
+          "file": "components\\ui\\command.tsx",
+          "line": 65
+        },
+        {
+          "file": "components\\ui\\command.tsx",
+          "line": 91
+        },
+        {
+          "file": "components\\ui\\command.tsx",
+          "line": 107
+        },
+        {
+          "file": "components\\ui\\command.tsx",
+          "line": 119
+        },
+        {
+          "file": "components\\ui\\command.tsx",
+          "line": 135
+        },
+        {
+          "file": "components\\ui\\context-menu.tsx",
+          "line": 29
+        },
+        {
+          "file": "components\\ui\\context-menu.tsx",
+          "line": 48
+        },
+        {
+          "file": "components\\ui\\context-menu.tsx",
+          "line": 64
+        },
+        {
+          "file": "components\\ui\\context-menu.tsx",
+          "line": 82
+        },
+        {
+          "file": "components\\ui\\context-menu.tsx",
+          "line": 98
+        },
+        {
+          "file": "components\\ui\\context-menu.tsx",
+          "line": 122
+        },
+        {
+          "file": "components\\ui\\context-menu.tsx",
+          "line": 146
+        },
+        {
+          "file": "components\\ui\\context-menu.tsx",
+          "line": 162
+        },
+        {
+          "file": "components\\ui\\context-menu.tsx",
+          "line": 174
+        },
+        {
+          "file": "components\\ui\\dialog.tsx",
+          "line": 23
+        },
+        {
+          "file": "components\\ui\\dialog.tsx",
+          "line": 40
+        },
+        {
+          "file": "components\\ui\\dialog.tsx",
+          "line": 61
+        },
+        {
+          "file": "components\\ui\\dialog.tsx",
+          "line": 75
+        },
+        {
+          "file": "components\\ui\\dialog.tsx",
+          "line": 90
+        },
+        {
+          "file": "components\\ui\\dialog.tsx",
+          "line": 105
+        },
+        {
+          "file": "components\\ui\\drawer.tsx",
+          "line": 31
+        },
+        {
+          "file": "components\\ui\\drawer.tsx",
+          "line": 45
+        },
+        {
+          "file": "components\\ui\\drawer.tsx",
+          "line": 63
+        },
+        {
+          "file": "components\\ui\\drawer.tsx",
+          "line": 74
+        },
+        {
+          "file": "components\\ui\\drawer.tsx",
+          "line": 86
+        },
+        {
+          "file": "components\\ui\\drawer.tsx",
+          "line": 101
+        },
+        {
+          "file": "components\\ui\\dropdown-menu.tsx",
+          "line": 29
+        },
+        {
+          "file": "components\\ui\\dropdown-menu.tsx",
+          "line": 49
+        },
+        {
+          "file": "components\\ui\\dropdown-menu.tsx",
+          "line": 67
+        },
+        {
+          "file": "components\\ui\\dropdown-menu.tsx",
+          "line": 85
+        },
+        {
+          "file": "components\\ui\\dropdown-menu.tsx",
+          "line": 101
+        },
+        {
+          "file": "components\\ui\\dropdown-menu.tsx",
+          "line": 125
+        },
+        {
+          "file": "components\\ui\\dropdown-menu.tsx",
+          "line": 149
+        },
+        {
+          "file": "components\\ui\\dropdown-menu.tsx",
+          "line": 165
+        },
+        {
+          "file": "components\\ui\\dropdown-menu.tsx",
+          "line": 177
+        },
+        {
+          "file": "components\\ui\\form.tsx",
+          "line": 83
+        },
+        {
+          "file": "components\\ui\\form.tsx",
+          "line": 98
+        },
+        {
+          "file": "components\\ui\\form.tsx",
+          "line": 139
+        },
+        {
+          "file": "components\\ui\\form.tsx",
+          "line": 161
+        },
+        {
+          "file": "components\\ui\\hover-card.tsx",
+          "line": 20
+        },
+        {
+          "file": "components\\ui\\input-otp.tsx",
+          "line": 15
+        },
+        {
+          "file": "components\\ui\\input-otp.tsx",
+          "line": 19
+        },
+        {
+          "file": "components\\ui\\input-otp.tsx",
+          "line": 29
+        },
+        {
+          "file": "components\\ui\\input-otp.tsx",
+          "line": 43
+        },
+        {
+          "file": "components\\ui\\input.tsx",
+          "line": 13
+        },
+        {
+          "file": "components\\ui\\label.tsx",
+          "line": 20
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 25
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 40
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 57
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 76
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 99
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 118
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 134
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 157
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 181
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 197
+        },
+        {
+          "file": "components\\ui\\menubar.tsx",
+          "line": 209
+        },
+        {
+          "file": "components\\ui\\navigation-menu.tsx",
+          "line": 14
+        },
+        {
+          "file": "components\\ui\\navigation-menu.tsx",
+          "line": 32
+        },
+        {
+          "file": "components\\ui\\navigation-menu.tsx",
+          "line": 53
+        },
+        {
+          "file": "components\\ui\\navigation-menu.tsx",
+          "line": 71
+        },
+        {
+          "file": "components\\ui\\navigation-menu.tsx",
+          "line": 86
+        },
+        {
+          "file": "components\\ui\\navigation-menu.tsx",
+          "line": 88
+        },
+        {
+          "file": "components\\ui\\navigation-menu.tsx",
+          "line": 106
+        },
+        {
+          "file": "components\\ui\\pagination.tsx",
+          "line": 11
+        },
+        {
+          "file": "components\\ui\\pagination.tsx",
+          "line": 23
+        },
+        {
+          "file": "components\\ui\\pagination.tsx",
+          "line": 33
+        },
+        {
+          "file": "components\\ui\\pagination.tsx",
+          "line": 50
+        },
+        {
+          "file": "components\\ui\\pagination.tsx",
+          "line": 69
+        },
+        {
+          "file": "components\\ui\\pagination.tsx",
+          "line": 85
+        },
+        {
+          "file": "components\\ui\\pagination.tsx",
+          "line": 100
+        },
+        {
+          "file": "components\\ui\\popover.tsx",
+          "line": 21
+        },
+        {
+          "file": "components\\ui\\progress.tsx",
+          "line": 14
+        },
+        {
+          "file": "components\\ui\\radio-group.tsx",
+          "line": 15
+        },
+        {
+          "file": "components\\ui\\radio-group.tsx",
+          "line": 30
+        },
+        {
+          "file": "components\\ui\\resizable.tsx",
+          "line": 13
+        },
+        {
+          "file": "components\\ui\\resizable.tsx",
+          "line": 31
+        },
+        {
+          "file": "components\\ui\\scroll-area.tsx",
+          "line": 14
+        },
+        {
+          "file": "components\\ui\\scroll-area.tsx",
+          "line": 33
+        },
+        {
+          "file": "components\\ui\\select.tsx",
+          "line": 21
+        },
+        {
+          "file": "components\\ui\\select.tsx",
+          "line": 41
+        },
+        {
+          "file": "components\\ui\\select.tsx",
+          "line": 58
+        },
+        {
+          "file": "components\\ui\\select.tsx",
+          "line": 77
+        },
+        {
+          "file": "components\\ui\\select.tsx",
+          "line": 88
+        },
+        {
+          "file": "components\\ui\\select.tsx",
+          "line": 108
+        },
+        {
+          "file": "components\\ui\\select.tsx",
+          "line": 120
+        },
+        {
+          "file": "components\\ui\\select.tsx",
+          "line": 143
+        },
+        {
+          "file": "components\\ui\\separator.tsx",
+          "line": 20
+        },
+        {
+          "file": "components\\ui\\sheet.tsx",
+          "line": 23
+        },
+        {
+          "file": "components\\ui\\sheet.tsx",
+          "line": 64
+        },
+        {
+          "file": "components\\ui\\sheet.tsx",
+          "line": 82
+        },
+        {
+          "file": "components\\ui\\sheet.tsx",
+          "line": 96
+        },
+        {
+          "file": "components\\ui\\sheet.tsx",
+          "line": 111
+        },
+        {
+          "file": "components\\ui\\sheet.tsx",
+          "line": 123
+        },
+        {
+          "file": "components\\ui\\skeleton.tsx",
+          "line": 9
+        },
+        {
+          "file": "components\\ui\\slider.tsx",
+          "line": 14
+        },
+        {
+          "file": "components\\ui\\switch.tsx",
+          "line": 13
+        },
+        {
+          "file": "components\\ui\\switch.tsx",
+          "line": 21
+        },
+        {
+          "file": "components\\ui\\table.tsx",
+          "line": 12
+        },
+        {
+          "file": "components\\ui\\table.tsx",
+          "line": 23
+        },
+        {
+          "file": "components\\ui\\table.tsx",
+          "line": 33
+        },
+        {
+          "file": "components\\ui\\table.tsx",
+          "line": 45
+        },
+        {
+          "file": "components\\ui\\table.tsx",
+          "line": 60
+        },
+        {
+          "file": "components\\ui\\table.tsx",
+          "line": 75
+        },
+        {
+          "file": "components\\ui\\table.tsx",
+          "line": 90
+        },
+        {
+          "file": "components\\ui\\table.tsx",
+          "line": 102
+        },
+        {
+          "file": "components\\ui\\tabs.tsx",
+          "line": 16
+        },
+        {
+          "file": "components\\ui\\tabs.tsx",
+          "line": 31
+        },
+        {
+          "file": "components\\ui\\tabs.tsx",
+          "line": 46
+        },
+        {
+          "file": "components\\ui\\textarea.tsx",
+          "line": 12
+        },
+        {
+          "file": "components\\ui\\toast.tsx",
+          "line": 18
+        },
+        {
+          "file": "components\\ui\\toast.tsx",
+          "line": 51
+        },
+        {
+          "file": "components\\ui\\toast.tsx",
+          "line": 64
+        },
+        {
+          "file": "components\\ui\\toast.tsx",
+          "line": 79
+        },
+        {
+          "file": "components\\ui\\toast.tsx",
+          "line": 97
+        },
+        {
+          "file": "components\\ui\\toast.tsx",
+          "line": 109
+        },
+        {
+          "file": "components\\ui\\toggle-group.tsx",
+          "line": 24
+        },
+        {
+          "file": "components\\ui\\toggle-group.tsx",
+          "line": 45
+        },
+        {
+          "file": "components\\ui\\toggle.tsx",
+          "line": 38
+        },
+        {
+          "file": "components\\ui\\tooltip.tsx",
+          "line": 21
+        }
+      ]
+    }
+  },
+  "imports": [
+    "clsx",
+    "tailwind-merge"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.436440"
+  
+}

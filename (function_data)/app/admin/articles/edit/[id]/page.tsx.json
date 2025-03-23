@@ -1,0 +1,46 @@
+{
+  "functions": {
+    "generateStaticParams": {
+      "description": "✅ Next.js가 빌드 시점에 사용할 `id` 목록을 가져옴",
+      "usages": [
+        {
+          "file": "app\\admin\\articles\\edit\\[id]\\page.tsx",
+          "line": 5
+        },
+        {
+          "file": "app\\article\\[id]\\page.tsx",
+          "line": 4
+        },
+        {
+          "file": "app\\[mainCategory]\\page.tsx",
+          "line": 11
+        },
+        {
+          "file": "app\\[mainCategory]\\[subcategory]\\page.tsx",
+          "line": 4
+        },
+        {
+          "file": "lib\\category-options.ts",
+          "line": 179
+        }
+      ]
+    },
+    "EditArticlePage": {
+      "description": "수정할 게시글 페이지",
+      "usages": [
+        {
+          "file": "app\\admin\\articles\\edit\\[id]\\page.tsx",
+          "line": 15
+        }
+      ]
+    }
+  },
+  "imports": [
+    "@/components/article-form",
+    "@/lib/supabase"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:19.332921"
+}

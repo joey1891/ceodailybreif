@@ -1,0 +1,47 @@
+{
+  "functions": {
+    "FinanceInfo": {
+      "description": "This component displays various finance-related information, including market indices, city times, exchange rates, and interest rates.",
+      "usages": [
+        {
+          "file": "components\\finance-info.tsx",
+          "line": 29
+        }
+      ]
+    },
+    "getTimeZone": {
+      "description": "Gets the time zone for a given city.",
+      "usages": [
+        {
+          "file": "components\\finance-info.tsx",
+          "line": 72
+        },
+        {
+          "file": "components\\finance-info.tsx",
+          "line": 168
+        }
+      ]
+    },
+    "updateTimes": {
+      "description": "Updates the time for each city.",
+      "usages": [
+        {
+          "file": "components\\finance-info.tsx",
+          "line": 81
+        },
+        {
+          "file": "components\\world-time.tsx",
+          "line": 33
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "@/components/ui/card",
+    "lucide-react",
+    "@/lib/utils"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.881691"
+}

@@ -1,0 +1,12 @@
+{
+  "functions": {},
+  "imports": [
+    "react",
+    "@radix-ui/react-progress",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Progress"
+  ],
+  "last_updated": "2025-03-22T20:05:18.273280"
+}

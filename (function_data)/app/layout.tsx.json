@@ -1,0 +1,26 @@
+{
+  "functions": {
+    "RootLayout": {
+      "description": "The root layout for the application.",
+      "usages": [
+        {
+          "file": "app\\layout.tsx",
+          "line": 20
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "next/link",
+    "@/components/theme-provider",
+    "@/components/main-nav",
+    "@/components/footer",
+    "@/components/top-header",
+    "@/components/search-dropdown"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.320278"
+}

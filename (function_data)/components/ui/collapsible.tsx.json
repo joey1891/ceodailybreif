@@ -1,0 +1,12 @@
+{
+  "functions": {},
+  "imports": [
+    "@radix-ui/react-collapsible"
+  ],
+  "exports": [
+    "Collapsible",
+    "CollapsibleTrigger",
+    "CollapsibleContent"
+  ],
+  "last_updated": "2025-03-22T20:05:18.252277"
+}

@@ -1,0 +1,20 @@
+{
+  "functions": {
+    "MarketIndices": {
+      "description": "This component displays market indices information.",
+      "usages": [
+        {
+          "file": "components\\market-indices.tsx",
+          "line": 13
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "@/components/ui/card",
+    "lucide-react"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.705641"
+}

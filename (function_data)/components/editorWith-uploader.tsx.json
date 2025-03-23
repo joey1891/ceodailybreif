@@ -1,0 +1,24 @@
+{
+  "functions": {
+    "EditorWithUploader": {
+      "description": "This component is a rich text editor with image upload functionality.",
+      "usages": [
+        {
+          "file": "components\\editorWith-uploader.tsx",
+          "line": 63
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "react-quill",
+    "quill",
+    "quill-image-uploader",
+    "@/lib/supabase"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:19.569637"
+}

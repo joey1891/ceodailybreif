@@ -1,0 +1,33 @@
+{
+  "functions": {
+    "AlertDialogHeader": {
+      "description": "A component for the header of an alert dialog.",
+      "usages": []
+    },
+    "AlertDialogFooter": {
+      "description": "A component for the footer of an alert dialog.",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "@radix-ui/react-alert-dialog",
+    "@/lib/utils",
+    "@/components/ui/button"
+  ],
+  "exports": [
+    "AlertDialog",
+    "AlertDialogPortal",
+    "AlertDialogOverlay",
+    "AlertDialogTrigger",
+    "AlertDialogContent",
+    "AlertDialogHeader",
+    "AlertDialogFooter",
+    "AlertDialogTitle",
+    "AlertDialogDescription",
+    "AlertDialogAction",
+    "AlertDialogCancel",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:19.905691"
+}

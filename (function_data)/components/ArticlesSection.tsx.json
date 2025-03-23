@@ -1,0 +1,22 @@
+{
+  "functions": {
+    "ArticlesSection": {
+      "description": "This component displays a section of articles, typically grouped by category.",
+      "usages": [
+        {
+          "file": "components\\ArticlesSection.tsx",
+          "line": 25
+        }
+      ]
+    }
+  },
+  "imports": [
+    "@/types/supabase",
+    "@/components/ui/button",
+    "next/link",
+    "lucide-react",
+    "@/app/article/[id]/article-content"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.539639"
+}

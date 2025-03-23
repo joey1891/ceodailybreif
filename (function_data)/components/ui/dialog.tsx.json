@@ -1,0 +1,32 @@
+{
+  "functions": {
+    "DialogHeader": {
+      "description": "Dialog 컴포넌트를 구현하기 위한 컴포넌트들을 제공합니다. Dialog, DialogPortal, DialogOverlay, DialogClose, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription 컴포넌트를 포함하며, @radix-ui/react-dialog 라이브러리를 사용하여 다이얼로그의 동작을 관리합니다.",
+      "usages": []
+    },
+    "DialogFooter": {
+      "description": "Dialog 컴포넌트의 Footer를 구현하는 컴포넌트",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "@radix-ui/react-dialog",
+    "lucide-react",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Dialog",
+    "DialogPortal",
+    "DialogOverlay",
+    "DialogClose",
+    "DialogTrigger",
+    "DialogContent",
+    "DialogHeader",
+    "DialogFooter",
+    "DialogTitle",
+    "DialogDescription",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:20.019687"
+}

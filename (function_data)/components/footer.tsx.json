@@ -1,0 +1,21 @@
+{
+  "functions": {
+    "Footer": {
+      "description": "This component renders the footer of the website.",
+      "usages": [
+        {
+          "file": "components\\footer.tsx",
+          "line": 8
+        }
+      ]
+    }
+  },
+  "imports": [
+    "next/link",
+    "lucide-react",
+    "react",
+    "sonner"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.636639"
+}

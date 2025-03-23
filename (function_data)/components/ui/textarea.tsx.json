@@ -1,0 +1,11 @@
+{
+  "functions": {},
+  "imports": [
+    "react",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Textarea"
+  ],
+  "last_updated": "2025-03-22T20:05:18.290278"
+}

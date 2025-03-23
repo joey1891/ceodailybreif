@@ -11,6 +11,7 @@ export const categoryMappings: Record<string, string> = {
   "마케팅 동향": "marketing",
   "인물과 동향": "people",
   "미디어 리뷰": "media-review",
+  "새 카테고리": "new-category",
   
   // 기본 서브 카테고리
   "민간소비": "private-consumption",
@@ -39,6 +40,10 @@ export const categoryMappings: Record<string, string> = {
   "인플루언서 마케팅": "influencer-marketing",
   
   // 산업 동향의 서브카테고리
+  "산업_필러": "industry-filler",
+  "산업_스킨부스터": "industry-skin-booster",
+  "산업_비만치료제": "industry-obesity-treatment",
+  "산업_보톡스": "industry-botox",
   "산업_의료": "industry-medical",
   "산업_제약": "industry-pharmaceutical",
   "산업_의료기기": "industry-medical-devices",
@@ -47,6 +52,10 @@ export const categoryMappings: Record<string, string> = {
   "산업_디지털헬스케어": "industry-digital-healthcare",
   
   // 기업 동향의 서브카테고리
+  "기업_필러": "company-filler",
+  "기업_스킨부스터": "company-skin-booster",
+  "기업_비만치료제": "company-obesity-treatment",
+  "기업_보톡스": "company-botox",
   "기업_의료": "company-medical",
   "기업_제약": "company-pharmaceutical",
   "기업_의료기기": "company-medical-devices",
@@ -55,6 +64,10 @@ export const categoryMappings: Record<string, string> = {
   "기업_디지털헬스케어": "company-digital-healthcare",
   
   // 정책 동향의 서브카테고리
+  "정책_필러": "policy-filler",
+  "정책_스킨부스터": "policy-skin-booster",
+  "정책_비만치료제": "policy-obesity-treatment",
+  "정책_보톡스": "policy-botox",
   "정책_의료": "policy-medical",
   "정책_제약": "policy-pharmaceutical",
   "정책_의료기기": "policy-medical-devices",
@@ -63,17 +76,24 @@ export const categoryMappings: Record<string, string> = {
   "정책_디지털헬스케어": "policy-digital-healthcare",
   
   // 언론 동향의 서브카테고리
+  "언론_필러": "media-filler",
+  "언론_스킨부스터": "media-skin-booster",
+  "언론_비만치료제": "media-obesity-treatment",
+  "언론_보톡스": "media-botox",
   "언론_의료": "media-medical",
   "언론_제약": "media-pharmaceutical",
   "언론_의료기기": "media-medical-devices",
   "언론_화장품": "media-cosmetics",
   "언론_건강기능식품": "media-health-supplements",
-  "언론_디지털헬스케어": "media-digital-healthcare"
 };
 
 // 컨텍스트별 서브카테고리 표시 이름과 매핑
 export const contextualCategoryDisplay: Record<string, Record<string, string>> = {
   "industry": {
+    "필러": "industry-filler",
+    "스킨부스터": "industry-skin-booster",
+    "비만치료제": "industry-obesity-treatment",
+    "보톡스": "industry-botox",
     "의료": "industry-medical",
     "제약": "industry-pharmaceutical",
     "의료기기": "industry-medical-devices",
@@ -82,6 +102,10 @@ export const contextualCategoryDisplay: Record<string, Record<string, string>> =
     "디지털헬스케어": "industry-digital-healthcare",
   },
   "company": {
+    "필러": "company-filler",
+    "스킨부스터": "company-skin-booster",
+    "비만치료제": "company-obesity-treatment",
+    "보톡스": "company-botox",
     "의료": "company-medical",
     "제약": "company-pharmaceutical",
     "의료기기": "company-medical-devices",
@@ -90,6 +114,10 @@ export const contextualCategoryDisplay: Record<string, Record<string, string>> =
     "디지털헬스케어": "company-digital-healthcare",
   },
   "policy": {
+    "필러": "policy-filler",
+    "스킨부스터": "policy-skin-booster",
+    "비만치료제": "policy-obesity-treatment",
+    "보톡스": "policy-botox",
     "의료": "policy-medical",
     "제약": "policy-pharmaceutical",
     "의료기기": "policy-medical-devices",
@@ -98,6 +126,10 @@ export const contextualCategoryDisplay: Record<string, Record<string, string>> =
     "디지털헬스케어": "policy-digital-healthcare",
   },
   "media": {
+    "필러": "media-filler",
+    "스킨부스터": "media-skin-booster",
+    "비만치료제": "media-obesity-treatment",
+    "보톡스": "media-botox",
     "의료": "media-medical",
     "제약": "media-pharmaceutical",
     "의료기기": "media-medical-devices",
@@ -110,6 +142,10 @@ export const contextualCategoryDisplay: Record<string, Record<string, string>> =
 // 부모 카테고리별 동일한 이름의 서브카테고리를 처리하기 위한 매핑
 export const contextualCategoryMappings: Record<string, Record<string, string>> = {
   "industry": {
+    "필러": "industry-filler",
+    "스킨부스터": "industry-skin-booster",
+    "비만치료제": "industry-obesity-treatment",
+    "보톡스": "industry-botox",
     "의료": "industry-medical",
     "제약": "industry-pharmaceutical",
     "의료기기": "industry-medical-devices",
@@ -118,6 +154,10 @@ export const contextualCategoryMappings: Record<string, Record<string, string>> 
     "디지털헬스케어": "industry-digital-healthcare",
   },
   "company": {
+    "필러": "company-filler",
+    "스킨부스터": "company-skin-booster",
+    "비만치료제": "company-obesity-treatment",
+    "보톡스": "company-botox",
     "의료": "company-medical",
     "제약": "company-pharmaceutical",
     "의료기기": "company-medical-devices",
@@ -126,6 +166,10 @@ export const contextualCategoryMappings: Record<string, Record<string, string>> 
     "디지털헬스케어": "company-digital-healthcare",
   },
   "policy": {
+    "필러": "policy-filler",
+    "스킨부스터": "policy-skin-booster",
+    "비만치료제": "policy-obesity-treatment",
+    "보톡스": "policy-botox",
     "의료": "policy-medical",
     "제약": "policy-pharmaceutical",
     "의료기기": "policy-medical-devices",
@@ -134,6 +178,10 @@ export const contextualCategoryMappings: Record<string, Record<string, string>> 
     "디지털헬스케어": "policy-digital-healthcare",
   },
   "media": {
+    "필러": "media-filler",
+    "스킨부스터": "media-skin-booster",
+    "비만치료제": "media-obesity-treatment",
+    "보톡스": "media-botox",
     "의료": "media-medical",
     "제약": "media-pharmaceutical",
     "의료기기": "media-medical-devices",

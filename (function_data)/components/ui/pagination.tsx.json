@@ -1,0 +1,41 @@
+{
+  "functions": {
+    "Pagination": {
+      "description": "페이지네이션 UI를 구현하기 위한 컴포넌트들을 제공합니다. Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious 컴포넌트를 포함하며, 페이지 이동 기능을 제공합니다.",
+      "usages": []
+    },
+    "PaginationLink": {
+      "description": "페이지네이션 링크를 구현하는 컴포넌트",
+      "usages": []
+    },
+    "PaginationPrevious": {
+      "description": "이전 페이지로 이동하는 버튼을 구현하는 컴포넌트",
+      "usages": []
+    },
+    "PaginationNext": {
+      "description": "다음 페이지로 이동하는 버튼을 구현하는 컴포넌트",
+      "usages": []
+    },
+    "PaginationEllipsis": {
+      "description": "페이지네이션에서 생략된 페이지를 표시하는 컴포넌트",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "lucide-react",
+    "@/lib/utils",
+    "@/components/ui/button"
+  ],
+  "exports": [
+    "Pagination",
+    "PaginationContent",
+    "PaginationEllipsis",
+    "PaginationItem",
+    "PaginationLink",
+    "PaginationNext",
+    "PaginationPrevious",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:20.109689"
+}

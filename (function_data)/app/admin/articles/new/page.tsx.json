@@ -1,0 +1,20 @@
+{
+  "functions": {
+    "NewArticlePage": {
+      "description": "새 게시글을 생성하는 페이지",
+      "usages": [
+        {
+          "file": "app\\admin\\articles\\new\\page.tsx",
+          "line": 3
+        }
+      ]
+    }
+  },
+  "imports": [
+    "@/components/article-form"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.651556"
+}

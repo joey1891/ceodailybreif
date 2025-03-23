@@ -1,0 +1,26 @@
+{
+  "functions": {
+    "SubCategoryList": {
+      "description": "특정 카테고리와 서브 카테고리에 속하는 게시글 목록을 표시하는 컴포넌트",
+      "usages": [
+        {
+          "file": "components\\subCategory-list.tsx",
+          "line": 17
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "@/components/ui/card",
+    "lucide-react",
+    "@/lib/supabase",
+    "@/types/supabase",
+    "next/link",
+    "@/lib/routes"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:19.818175"
+}

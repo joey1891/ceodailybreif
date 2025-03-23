@@ -1,0 +1,33 @@
+{
+  "functions": {
+    "WorldTime": {
+      "description": "A component that displays the current time in major cities around the world.",
+      "usages": [
+        {
+          "file": "components\\world-time.tsx",
+          "line": 15
+        }
+      ]
+    },
+    "updateTimes": {
+      "description": "Updates the time for each city based on its timezone.",
+      "usages": [
+        {
+          "file": "components\\finance-info.tsx",
+          "line": 81
+        },
+        {
+          "file": "components\\world-time.tsx",
+          "line": 33
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "@/components/ui/card",
+    "lucide-react"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.890687"
+}

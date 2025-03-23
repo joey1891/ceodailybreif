@@ -1,0 +1,23 @@
+{
+  "functions": {
+    "Badge": {
+      "description": "A component that renders a badge with different variants.",
+      "usages": [
+        {
+          "file": "components\\ui\\badge.tsx",
+          "line": 30
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "class-variance-authority",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Badge",
+    "badgeVariants"
+  ],
+  "last_updated": "2025-03-22T20:05:19.914688"
+}

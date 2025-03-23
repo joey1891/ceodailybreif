@@ -1,0 +1,27 @@
+{
+  "functions": {
+    "Sidebar": {
+      "description": "This component renders the sidebar with author profile, recent posts, and other information.",
+      "usages": [
+        {
+          "file": "components\\sidebar.tsx",
+          "line": 19
+        }
+      ]
+    }
+  },
+  "imports": [
+    "next/image",
+    "next/link",
+    "@/components/ui/card",
+    "@/components/ui/input",
+    "@/components/ui/button",
+    "lucide-react",
+    "@/types/supabase",
+    "react",
+    "@/lib/supabase",
+    "@/lib/routes"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.801148"
+}

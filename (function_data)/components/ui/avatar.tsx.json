@@ -1,0 +1,27 @@
+{
+  "functions": {
+    "Avatar": {
+      "description": "A component that renders an avatar.",
+      "usages": []
+    },
+    "AvatarImage": {
+      "description": "A component that renders the image for an avatar.",
+      "usages": []
+    },
+    "AvatarFallback": {
+      "description": "A component that renders a fallback for an avatar when the image fails to load.",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "@radix-ui/react-avatar",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Avatar",
+    "AvatarImage",
+    "AvatarFallback"
+  ],
+  "last_updated": "2025-03-22T20:05:18.238278"
+}

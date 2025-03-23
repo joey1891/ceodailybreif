@@ -1,0 +1,13 @@
+{
+  "functions": {},
+  "imports": [
+    "react",
+    "@radix-ui/react-label",
+    "class-variance-authority",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Label"
+  ],
+  "last_updated": "2025-03-22T20:05:18.266278"
+}

@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "GET": {
+      "description": "This function handles the database migration to create the calendar_events table if it doesn't exist.",
+      "usages": [
+        {
+          "file": "app\\api\\migrations\\route.ts",
+          "line": 4
+        }
+      ]
+    }
+  },
+  "imports": [
+    "next/server",
+    "@/lib/supabase-admin"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:18.819831"
+}

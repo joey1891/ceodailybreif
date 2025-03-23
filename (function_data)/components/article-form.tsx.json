@@ -1,0 +1,48 @@
+{
+  "functions": {
+    "ArticleForm": {
+      "description": "This component renders the article form for creating or editing articles.",
+      "usages": [
+        {
+          "file": "components\\article-form.tsx",
+          "line": 27
+        }
+      ]
+    },
+    "fetchArticle": {
+      "description": "Fetches an article by its ID.",
+      "usages": [
+        {
+          "file": "components\\article-form.tsx",
+          "line": 58
+        },
+        {
+          "file": "components\\article-form.tsx",
+          "line": 84
+        }
+      ]
+    },
+    "handleMainCategoryChange": {
+      "description": "Handles the change event for the main category selection.",
+      "usages": []
+    },
+    "handleSubCategoryChange": {
+      "description": "Handles the change event for the sub category selection.",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "next/navigation",
+    "@/lib/supabase",
+    "@/hooks/use-toast",
+    "@/lib/admin-auth",
+    "@/lib/category-options",
+    "next/dynamic",
+    "@/lib/category-mappings"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:19.489477"
+}

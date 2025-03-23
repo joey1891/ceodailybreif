@@ -1,0 +1,52 @@
+{
+  "functions": {
+    "generateStaticParams": {
+      "description": "정적 내보내기를 위한 모든 메인 카테고리 경로 생성",
+      "usages": [
+        {
+          "file": "app\\admin\\articles\\edit\\[id]\\page.tsx",
+          "line": 5
+        },
+        {
+          "file": "app\\article\\[id]\\page.tsx",
+          "line": 4
+        },
+        {
+          "file": "app\\[mainCategory]\\page.tsx",
+          "line": 11
+        },
+        {
+          "file": "app\\[mainCategory]\\[subcategory]\\page.tsx",
+          "line": 4
+        },
+        {
+          "file": "lib\\category-options.ts",
+          "line": 179
+        }
+      ]
+    },
+    "CategoryPage": {
+      "description": "A page that displays a specific category and its subcategories.",
+      "usages": [
+        {
+          "file": "app\\[mainCategory]\\page.tsx",
+          "line": 22
+        }
+      ]
+    }
+  },
+  "imports": [
+    "@/lib/category-options",
+    "@/components/finance-info",
+    "@/components/calendar-section",
+    "@/components/sidebar",
+    "@/components/subCategory-preview",
+    "next/link",
+    "next/navigation",
+    "@/lib/category-mappings"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:19.333923"
+}

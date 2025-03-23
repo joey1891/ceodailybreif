@@ -1,0 +1,35 @@
+{
+  "functions": {
+    "Drawer": {
+      "description": "Drawer 컴포넌트를 구현하기 위한 컴포넌트들을 제공합니다. Drawer, DrawerPortal, DrawerOverlay, DrawerTrigger, DrawerClose, DrawerContent, DrawerHeader, DrawerFooter, DrawerTitle, DrawerDescription 컴포넌트를 포함하며, vaul 라이브러리를 사용하여 드로어의 동작을 관리합니다.",
+      "usages": []
+    },
+    "DrawerHeader": {
+      "description": "Drawer 컴포넌트의 Header를 구현하는 컴포넌트",
+      "usages": []
+    },
+    "DrawerFooter": {
+      "description": "Drawer 컴포넌트의 Footer를 구현하는 컴포넌트",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "vaul",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Drawer",
+    "DrawerPortal",
+    "DrawerOverlay",
+    "DrawerTrigger",
+    "DrawerClose",
+    "DrawerContent",
+    "DrawerHeader",
+    "DrawerFooter",
+    "DrawerTitle",
+    "DrawerDescription",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:20.045689"
+}

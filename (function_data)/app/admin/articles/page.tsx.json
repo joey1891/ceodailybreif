@@ -1,0 +1,64 @@
+{
+  "functions": {
+    "AdminArticlesPage": {
+      "description": "The admin articles management page.",
+      "usages": [
+        {
+          "file": "app\\admin\\articles\\page.tsx",
+          "line": 36
+        }
+      ]
+    },
+    "handleEdit": {
+      "description": "Handles the edit action for an article.",
+      "usages": [
+        {
+          "file": "app\\admin\\articles\\page.tsx",
+          "line": 469
+        }
+      ]
+    },
+    "handleFilterMainCategoryChange": {
+      "description": "Handles the change event for the main category filter.",
+      "usages": []
+    },
+    "handleFilterSubCategoryChange": {
+      "description": "Handles the change event for the sub category filter.",
+      "usages": []
+    },
+    "toggleSort": {
+      "description": "Toggles the sort direction for a given field.",
+      "usages": [
+        {
+          "file": "app\\admin\\articles\\page.tsx",
+          "line": 432
+        },
+        {
+          "file": "app\\admin\\articles\\page.tsx",
+          "line": 438
+        },
+        {
+          "file": "app\\admin\\articles\\page.tsx",
+          "line": 444
+        },
+        {
+          "file": "app\\admin\\articles\\page.tsx",
+          "line": 450
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "next/navigation",
+    "@/components/ui/table",
+    "react-hot-toast",
+    "@/lib/supabase",
+    "@/lib/category-options",
+    "@/lib/category-mappings"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.573992"
+}

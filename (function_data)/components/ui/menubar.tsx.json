@@ -1,0 +1,34 @@
+{
+  "functions": {
+    "MenubarShortcut": {
+      "description": "Menubar 컴포넌트를 구현하기 위한 컴포넌트들을 제공합니다. Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarLabel, MenubarCheckboxItem, MenubarRadioGroup, MenubarRadioItem, MenubarPortal, MenubarSubContent, MenubarSubTrigger, MenubarGroup, MenubarSub, MenubarShortcut 컴포넌트를 포함하며, @radix-ui/react-menubar 라이브러리를 사용하여 menubar의 동작을 관리합니다.",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "@radix-ui/react-menubar",
+    "lucide-react",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Menubar",
+    "MenubarMenu",
+    "MenubarTrigger",
+    "MenubarContent",
+    "MenubarItem",
+    "MenubarSeparator",
+    "MenubarLabel",
+    "MenubarCheckboxItem",
+    "MenubarRadioGroup",
+    "MenubarRadioItem",
+    "MenubarPortal",
+    "MenubarSubContent",
+    "MenubarSubTrigger",
+    "MenubarGroup",
+    "MenubarSub",
+    "MenubarShortcut",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:20.069690"
+}

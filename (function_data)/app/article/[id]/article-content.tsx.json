@@ -1,0 +1,61 @@
+{
+  "functions": {
+    "extractImageUrl": {
+      "description": "Extracts the image URL from an HTML string.",
+      "usages": [
+        {
+          "file": "app\\article\\[id]\\article-content.tsx",
+          "line": 12
+        },
+        {
+          "file": "components\\ArticlesSection.tsx",
+          "line": 62
+        },
+        {
+          "file": "components\\ArticlesSection.tsx",
+          "line": 97
+        }
+      ]
+    },
+    "ArticleContent": {
+      "description": "This component displays the content of an article.",
+      "usages": [
+        {
+          "file": "app\\article\\[id]\\article-content.tsx",
+          "line": 20
+        }
+      ]
+    },
+    "handleShare": {
+      "description": "Handles the share action for the article.",
+      "usages": [
+        {
+          "file": "app\\article\\[id]\\article-content.tsx",
+          "line": 166
+        },
+        {
+          "file": "app\\article\\[id]\\article-content.tsx",
+          "line": 169
+        },
+        {
+          "file": "app\\article\\[id]\\article-content.tsx",
+          "line": 172
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "lucide-react",
+    "next/link",
+    "@/lib/supabase",
+    "@/types/supabase",
+    "@/components/ui/button",
+    "@/components/sidebar",
+    "date-fns"
+  ],
+  "exports": [
+    "extractImageUrl"
+  ],
+  "last_updated": "2025-03-22T20:05:18.852832"
+}

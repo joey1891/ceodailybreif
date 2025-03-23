@@ -1,0 +1,79 @@
+{
+  "functions": {
+    "SearchDropdown": {
+      "description": "This component provides a search dropdown for articles.",
+      "usages": [
+        {
+          "file": "components\\search-dropdown.tsx",
+          "line": 9
+        }
+      ]
+    },
+    "handleChange": {
+      "description": "Handles the change event for the search input.",
+      "usages": []
+    },
+    "handleKeyDown": {
+      "description": "Handles keydown events for the search input, enabling arrow key navigation and Enter key selection.",
+      "usages": []
+    },
+    "handleResultClick": {
+      "description": "Handles the click event for a search result, navigating to the article page.",
+      "usages": [
+        {
+          "file": "components\\search-dropdown.tsx",
+          "line": 69
+        },
+        {
+          "file": "components\\search-dropdown.tsx",
+          "line": 165
+        }
+      ]
+    },
+    "handleClickOutside": {
+      "description": "Handles clicks outside the search dropdown to close it.",
+      "usages": []
+    },
+    "handleSubmit": {
+      "description": "Handles the form submission, navigating to a search results page.",
+      "usages": []
+    },
+    "highlightMatch": {
+      "description": "Highlights the matched search term within a text string.",
+      "usages": [
+        {
+          "file": "components\\search-dropdown.tsx",
+          "line": 120
+        },
+        {
+          "file": "components\\search-dropdown.tsx",
+          "line": 125
+        },
+        {
+          "file": "components\\search-dropdown.tsx",
+          "line": 135
+        }
+      ]
+    },
+    "getHighlightedSnippet": {
+      "description": "Generates a highlighted snippet of the article content, showing the search term in context.",
+      "usages": [
+        {
+          "file": "components\\search-dropdown.tsx",
+          "line": 167
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "next/navigation",
+    "@/lib/supabase",
+    "lucide-react",
+    "lodash.debounce"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:19.780147"
+}

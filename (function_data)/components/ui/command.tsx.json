@@ -1,0 +1,33 @@
+{
+  "functions": {
+    "CommandDialog": {
+      "description": "명령 팔레트를 구현하기 위한 컴포넌트들을 제공합니다. Command, CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandShortcut, CommandSeparator 컴포넌트를 포함하며, cmdk 라이브러리를 사용하여 명령 팔레트의 동작을 관리합니다.",
+      "usages": []
+    },
+    "CommandShortcut": {
+      "description": "명령 팔레트에서 단축키를 표시하는 컴포넌트",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "@radix-ui/react-dialog",
+    "cmdk",
+    "lucide-react",
+    "@/lib/utils",
+    "@/components/ui/dialog"
+  ],
+  "exports": [
+    "Command",
+    "CommandDialog",
+    "CommandInput",
+    "CommandList",
+    "CommandEmpty",
+    "CommandGroup",
+    "CommandItem",
+    "CommandShortcut",
+    "CommandSeparator",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:19.992688"
+}

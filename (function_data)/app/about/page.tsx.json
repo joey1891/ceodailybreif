@@ -1,0 +1,23 @@
+{
+  "functions": {
+    "AboutPage": {
+      "description": "The about page of the application.",
+      "usages": [
+        {
+          "file": "app\\about\\page.tsx",
+          "line": 8
+        }
+      ]
+    }
+  },
+  "imports": [
+    "next/image",
+    "@/components/ui/card",
+    "react",
+    "@/lib/supabase"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.425279"
+}

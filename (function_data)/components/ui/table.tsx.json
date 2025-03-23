@@ -1,0 +1,19 @@
+{
+  "functions": {},
+  "imports": [
+    "react",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Table",
+    "TableHeader",
+    "TableBody",
+    "TableFooter",
+    "TableHead",
+    "TableRow",
+    "TableCell",
+    "TableCaption",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:18.287278"
+}

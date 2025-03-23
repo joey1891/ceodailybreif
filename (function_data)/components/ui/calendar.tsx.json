@@ -1,0 +1,24 @@
+{
+  "functions": {
+    "Calendar": {
+      "description": "A reusable calendar component based on react-day-picker.",
+      "usages": [
+        {
+          "file": "components\\ui\\calendar.tsx",
+          "line": 12
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "lucide-react",
+    "react-day-picker",
+    "@/lib/utils",
+    "@/components/ui/button"
+  ],
+  "exports": [
+    "Calendar"
+  ],
+  "last_updated": "2025-03-22T20:05:19.938688"
+}

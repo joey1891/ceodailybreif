@@ -1,0 +1,20 @@
+{
+  "functions": {
+    "Skeleton": {
+      "description": "로딩 상태를 나타내기 위한 Skeleton UI 컴포넌트를 제공합니다. animate-pulse 클래스를 사용하여 애니메이션 효과를 줍니다.",
+      "usages": [
+        {
+          "file": "components\\ui\\skeleton.tsx",
+          "line": 3
+        }
+      ]
+    }
+  },
+  "imports": [
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Skeleton"
+  ],
+  "last_updated": "2025-03-22T20:05:20.151210"
+}

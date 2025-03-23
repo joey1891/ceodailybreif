@@ -1,0 +1,33 @@
+{
+  "functions": {
+    "HeroSlider": {
+      "description": "This component displays a hero slider with featured articles.",
+      "usages": [
+        {
+          "file": "components\\hero-slider.tsx",
+          "line": 27
+        }
+      ]
+    },
+    "onSelect": {
+      "description": "메인 페이지의 슬라이더를 렌더링하는 컴포넌트",
+      "usages": [
+        {
+          "file": "components\\ui\\carousel.tsx",
+          "line": 114
+        }
+      ]
+    }
+  },
+  "imports": [
+    "react",
+    "@/components/ui/button",
+    "lucide-react",
+    "@/lib/supabase",
+    "next/link",
+    "next/image",
+    "@/components/ui/carousel"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.662640"
+}

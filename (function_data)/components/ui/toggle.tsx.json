@@ -1,0 +1,14 @@
+{
+  "functions": {},
+  "imports": [
+    "react",
+    "@radix-ui/react-toggle",
+    "class-variance-authority",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Toggle",
+    "toggleVariants"
+  ],
+  "last_updated": "2025-03-22T20:05:18.295281"
+}

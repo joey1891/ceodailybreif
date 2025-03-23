@@ -1,0 +1,23 @@
+{
+  "functions": {},
+  "imports": [
+    "react",
+    "@radix-ui/react-navigation-menu",
+    "class-variance-authority",
+    "lucide-react",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "navigationMenuTriggerStyle",
+    "NavigationMenu",
+    "NavigationMenuList",
+    "NavigationMenuItem",
+    "NavigationMenuContent",
+    "NavigationMenuTrigger",
+    "NavigationMenuLink",
+    "NavigationMenuIndicator",
+    "NavigationMenuViewport",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:18.269277"
+}

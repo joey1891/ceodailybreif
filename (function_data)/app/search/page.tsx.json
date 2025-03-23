@@ -1,0 +1,22 @@
+{
+  "functions": {
+    "SearchPage": {
+      "description": "검색 결과를 표시하는 페이지",
+      "usages": [
+        {
+          "file": "app\\search\\page.tsx",
+          "line": 8
+        }
+      ]
+    }
+  },
+  "imports": [
+    "@supabase/auth-helpers-nextjs",
+    "next/headers",
+    "next/navigation"
+  ],
+  "exports": [
+    "export default"
+  ],
+  "last_updated": "2025-03-22T20:05:18.996375"
+}

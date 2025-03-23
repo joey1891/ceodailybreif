@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "getCategoryMapping": {
+      "description": "카테고리 이름과 부모 카테고리를 기반으로 카테고리 매핑을 가져옵니다.",
+      "usages": [
+        {
+          "file": "lib\\category-mappings.ts",
+          "line": 195
+        }
+      ]
+    }
+  },
+  "imports": [],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.296924"
+}

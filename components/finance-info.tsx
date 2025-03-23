@@ -53,7 +53,16 @@ export function FinanceInfo() {
     { name: "서울", time: "" }
   ]);
 
-  const [interestRate, setInterestRate] = useState<InterestRate>({ rate: 3.5 });
+  const [interestRates, setInterestRates] = useState<{
+    country: string;
+    rate: number;
+  }[]>([
+    { country: "미국", rate: 5.5 },
+    { country: "유로", rate: 4.5 },
+    { country: "일본", rate: 0.1 },
+    { country: "중국", rate: 3.8 },
+    { country: "한국", rate: 3.5 }
+  ]);
 
   useEffect(() => {
     const updateTimes = () => {
@@ -92,9 +101,9 @@ export function FinanceInfo() {
       try {
         const updatedIndices = await Promise.all(
           indices.map(async (index) => {
-            const symbol = indexMapping[index.name];
+            const symbol = indexMapping[index.name as keyof typeof indexMapping];
             if (!symbol) return index;
-            
+
             const response = await fetch(
               `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`
             );
@@ -146,9 +155,12 @@ export function FinanceInfo() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setInterestRate(() => ({
-        rate: 3.0 + Math.random() * 1.0 // 3.0 ~ 4.0
-      }));
+      setInterestRates(prevRates =>
+        prevRates.map(rate => ({
+          ...rate,
+          rate: rate.rate + (Math.random() - 0.5) * 0.2 // 변동폭을 줄임
+        }))
+      );
     }, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -165,7 +177,7 @@ export function FinanceInfo() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 pt-3">
+    <div className="grid grid-cols-1 gap-4 pt-6">
       {/* 주요 지수 현황 박스 */}
       <div className="relative h-[140px] border-2 border-primary/50 rounded-lg p-4">
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
@@ -199,7 +211,7 @@ export function FinanceInfo() {
       </div>
 
       {/* 주요 도시 시간 박스 */}
-      <div className="relative h-[140px] border-2 border-primary/50 rounded-lg p-4">
+      <div className="relative h-[140px] border-2 border-primary/50 rounded-lg p-4 mt-3">
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
           <div className="flex items-center gap-2 text-gray-500">
             <Clock className="h-4 w-4" />
@@ -247,13 +259,15 @@ export function FinanceInfo() {
             <span className="text-sm font-medium">금리</span>
           </div>
         </div>
-        <div className="mt-4">
-          <div className="text-center">
-            <div className="text-sm text-gray-500 mb-1">기준 금리</div>
-            <div className="text-base font-bold text-gray-700">
-              {interestRate.rate.toFixed(2)}%
+        <div className="mt-4 grid grid-cols-5 gap-4">
+          {interestRates.map((rate) => (
+            <div key={rate.country} className="text-center">
+              <div className="text-sm text-gray-500 mb-1">{rate.country}</div>
+              <div className="text-base font-bold text-gray-700">
+                {rate.rate.toFixed(2)}%
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

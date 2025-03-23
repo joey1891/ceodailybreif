@@ -63,8 +63,12 @@ export const categoryOptions = new Map<string, CategoryOption>([
     "산업 동향",
     {
       title: "산업 동향",
-      href: "/industry",  // 메인 카테고리에 href 추가
+      href: "/industry",
       items: [
+        {title: "필러", slug: "industry-filler"},
+        {title: "스킨부스터", slug: "industry-skin-booster"},
+        {title: "비만치료제", slug: "industry-obesity-treatment"},
+        {title: "보톡스", slug: "industry-botox"},
         {title: "의료", slug: "industry-medical"},
         {title: "제약", slug: "industry-pharmaceutical"},
         {title: "의료기기", slug: "industry-medical-devices"},
@@ -78,8 +82,12 @@ export const categoryOptions = new Map<string, CategoryOption>([
     "기업 동향",
     {
       title: "기업 동향",
-      href: "/company",  // 메인 카테고리에 href 추가
+      href: "/company",
       items: [
+        {title: "필러", slug: "company-filler"},
+        {title: "스킨부스터", slug: "company-skin-booster"},
+        {title: "비만치료제", slug: "company-obesity-treatment"},
+        {title: "보톡스", slug: "company-botox"},
         {title: "의료", slug: "company-medical"},
         {title: "제약", slug: "company-pharmaceutical"},
         {title: "의료기기", slug: "company-medical-devices"},
@@ -93,8 +101,12 @@ export const categoryOptions = new Map<string, CategoryOption>([
     "정책 동향",
     {
       title: "정책 동향",
-      href: "/policy",  // 메인 카테고리에 href 추가
+      href: "/policy",
       items: [
+        {title: "필러", slug: "policy-filler"},
+        {title: "스킨부스터", slug: "policy-skin-booster"},
+        {title: "비만치료제", slug: "policy-obesity-treatment"},
+        {title: "보톡스", slug: "policy-botox"},
         {title: "의료", slug: "policy-medical"},
         {title: "제약", slug: "policy-pharmaceutical"},
         {title: "의료기기", slug: "policy-medical-devices"},
@@ -108,8 +120,12 @@ export const categoryOptions = new Map<string, CategoryOption>([
     "언론 동향",
     {
       title: "언론 동향",
-      href: "/media",  // 메인 카테고리에 href 추가
+      href: "/media",
       items: [
+        {title: "필러", slug: "media-filler"},
+        {title: "스킨부스터", slug: "media-skin-booster"},
+        {title: "비만치료제", slug: "media-obesity-treatment"},
+        {title: "보톡스", slug: "media-botox"},
         {title: "의료", slug: "media-medical"},
         {title: "제약", slug: "media-pharmaceutical"},
         {title: "의료기기", slug: "media-medical-devices"},

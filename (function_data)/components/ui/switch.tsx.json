@@ -1,0 +1,12 @@
+{
+  "functions": {},
+  "imports": [
+    "react",
+    "@radix-ui/react-switch",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Switch"
+  ],
+  "last_updated": "2025-03-22T20:05:18.286278"
+}

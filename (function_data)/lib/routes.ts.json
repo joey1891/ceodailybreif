@@ -1,0 +1,40 @@
+{
+  "functions": {
+    "getCategoryUrl": {
+      "description": "카테고리 URL을 가져오는 함수",
+      "usages": [
+        {
+          "file": "lib\\routes.ts",
+          "line": 20
+        },
+        {
+          "file": "lib\\routes.ts",
+          "line": 86
+        },
+        {
+          "file": "components\\ArticleLink.tsx",
+          "line": 75
+        },
+        {
+          "file": "components\\main-nav.tsx",
+          "line": 115
+        }
+      ]
+    },
+    "getArticleUrl": {
+      "description": "게시물 URL을 가져오는 함수",
+      "usages": [
+        {
+          "file": "lib\\routes.ts",
+          "line": 83
+        }
+      ]
+    }
+  },
+  "imports": [
+    "./category-mappings",
+    "./category-urls"
+  ],
+  "exports": [],
+  "last_updated": "2025-03-22T20:05:19.413925"
+}

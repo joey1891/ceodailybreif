@@ -1,0 +1,29 @@
+{
+  "functions": {
+    "AccordionItem": {
+      "description": "A component that renders an accordion item.",
+      "usages": []
+    },
+    "AccordionTrigger": {
+      "description": "A component that renders the trigger for an accordion item.",
+      "usages": []
+    },
+    "AccordionContent": {
+      "description": "A component that renders the content of an accordion item.",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "@radix-ui/react-accordion",
+    "lucide-react",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "Accordion",
+    "AccordionItem",
+    "AccordionTrigger",
+    "AccordionContent"
+  ],
+  "last_updated": "2025-03-22T20:05:18.229278"
+}

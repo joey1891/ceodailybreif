@@ -1,0 +1,33 @@
+{
+  "functions": {
+    "ContextMenuShortcut": {
+      "description": "컨텍스트 메뉴를 구현하기 위한 컴포넌트들을 제공합니다. ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuCheckboxItem, ContextMenuRadioItem, ContextMenuLabel, ContextMenuSeparator, ContextMenuShortcut, ContextMenuGroup, ContextMenuPortal, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuRadioGroup 컴포넌트를 포함하며, @radix-ui/react-context-menu 라이브러리를 사용하여 컨텍스트 메뉴의 동작을 관리합니다.",
+      "usages": []
+    }
+  },
+  "imports": [
+    "react",
+    "@radix-ui/react-context-menu",
+    "lucide-react",
+    "@/lib/utils"
+  ],
+  "exports": [
+    "ContextMenu",
+    "ContextMenuTrigger",
+    "ContextMenuContent",
+    "ContextMenuItem",
+    "ContextMenuCheckboxItem",
+    "ContextMenuRadioItem",
+    "ContextMenuLabel",
+    "ContextMenuSeparator",
+    "ContextMenuShortcut",
+    "ContextMenuGroup",
+    "ContextMenuPortal",
+    "ContextMenuSub",
+    "ContextMenuSubContent",
+    "ContextMenuSubTrigger",
+    "ContextMenuRadioGroup",
+    ""
+  ],
+  "last_updated": "2025-03-22T20:05:20.001688"
+}
