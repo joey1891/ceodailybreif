@@ -86,8 +86,8 @@ export default function PopupManagement() {
       if (popupData?.image_url) {
         // 이미지 URL에서 파일 경로 추출 (예: https://....supabase.co/storage/v1/object/public/images/popup/uuid.jpg)
         const urlParts = popupData.image_url.split('/');
-        const bucketIndex = urlParts.findIndex(part => part === 'public');
-        
+        const bucketIndex = urlParts.findIndex((part: string) => part === 'public');
+
         if (bucketIndex !== -1 && bucketIndex + 2 < urlParts.length) {
           const bucket = urlParts[bucketIndex + 1]; // 'images'
           const filePath = urlParts.slice(bucketIndex + 2).join('/'); // 'popup/uuid.jpg'
@@ -172,4 +172,4 @@ export default function PopupManagement() {
       )}
     </div>
   );
-} 
+}
