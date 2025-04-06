@@ -60,13 +60,12 @@ export function MainNav() {
       {isMenuOpen && (
         <div 
           ref={menuRef}
-          style={{ width: "1400px", position: "absolute", left: 0, top: "64px" }} 
-          className="bg-white shadow-lg border-y border-gray-200 z-50 max-h-[calc(100vh-5rem)] overflow-y-auto"
+          className="bg-white shadow-lg border-y border-gray-200 z-50 max-h-[calc(100vh-5rem)] overflow-y-auto absolute left-0 top-[64px] w-full"
         >
-          <div className="py-4 w-full">
+          <div className="py-4 w-full overflow-x-auto">
             {/* 메인 카테고리 가로 정렬 - 동적 너비 계산 */}
             <div 
-              className="grid gap-4 pb-4 mb-4 border-b border-gray-200"
+              className="grid gap-4 pb-4 mb-4 border-b border-gray-200 min-w-[800px]"
               style={{ 
                 gridTemplateColumns: `repeat(${categoryCount}, minmax(0, 1fr))` 
               }}
@@ -85,7 +84,7 @@ export function MainNav() {
             
             {/* 하위 카테고리 가로 정렬 */}
             <div 
-              className="grid gap-4"
+              className="grid gap-4 min-w-[800px]"
               style={{ 
                 gridTemplateColumns: `repeat(${categoryCount}, minmax(0, 1fr))` 
               }}

@@ -7,6 +7,21 @@ import { toast } from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import { categoryOptions } from "@/lib/category-options";
 import { categoryMappings, contextualCategoryMappings, reverseCategoryMappings } from "@/lib/category-mappings";
+import { useToast } from "@/hooks/use-toast";
+import { useAdminSession } from "@/lib/admin-auth";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Trash, Edit, Eye, Plus, Check, X, Upload } from "lucide-react";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useRef } from "react";
 
 // 포스트 타입 정의
 interface Post {
@@ -21,8 +36,18 @@ interface Post {
   displayMainCategory?: string;
   displaySubCategory?: string;
   displaySubSubCategory?: string;
+  viewcnt: number;
+  is_slide: boolean;
+  image_url: string | null;
+  slide_order?: number;
   [key: string]: any;
 }
+
+// formatDate 함수 컴포넌트 내에 정의
+const formatDate = (dateString: string): string => {
+  if (!dateString) return "-";
+  return new Date(dateString).toLocaleDateString("ko-KR");
+};
 
 // 슬러그 포맷팅 함수
 const formatSlug = (slug: string): string => {
@@ -38,6 +63,9 @@ export default function AdminArticlesPage() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPosts, setTotalPosts] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [updating, setUpdating] = useState<string | null>(null);
   const postsPerPage = 10;
   const router = useRouter();
 
@@ -48,6 +76,9 @@ export default function AdminArticlesPage() {
   // 정렬 상태 추가
   const [sortField, setSortField] = useState<string | null>('category');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const { adminUser } = useAdminSession();
+  const { toast: useToastToast } = useToast();
 
   // 영문 슬러그를 한글 카테고리명으로 변환하는 함수
   const getMainCategoryTitle = (categorySlug: string): string => {
@@ -266,30 +297,37 @@ export default function AdminArticlesPage() {
     fetchPosts();
   }, [currentPage, filterMainCategory, filterSubCategory, sortField, sortDirection]);
 
-  // DB 쿼리 함수
-  const fetchPosts = async () => {
+  // DB 쿼리 함수 수정
+  const fetchPosts = async (page = currentPage, search = searchTerm) => {
     setLoading(true);
-    const start = (currentPage - 1) * postsPerPage;
-    const end = currentPage * postsPerPage - 1;
+    const start = (page - 1) * postsPerPage;
+    const end = page * postsPerPage - 1;
+    setIsSearching(!!search);
 
     // 필터링을 위한 카테고리 변환
     const categoryFilter = filterMainCategory === "all" 
       ? "all" 
-      : filterMainCategory; // 이미 영문 슬러그로 받음
+      : filterMainCategory;
     
     const subCategoryFilter = filterSubCategory === "all"
       ? "all"
-      : filterSubCategory; // 이미 영문 슬러그로 받음
+      : filterSubCategory;
 
     console.log("필터 정보:", {
       메인카테고리: filterMainCategory,
-      서브카테고리: filterSubCategory
+      서브카테고리: filterSubCategory,
+      검색어: search
     });
 
     let query = supabase
       .from("posts")
       .select("*", { count: "exact" })
       .range(start, end);
+
+    // 검색어 필터 추가
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
+    }
 
     if (categoryFilter !== "all") {
       query = query.eq("category", categoryFilter);
@@ -304,12 +342,11 @@ export default function AdminArticlesPage() {
       console.error("Error fetching posts:", error);
       toast.error("Failed to fetch articles: " + error.message);
     } else if (data) {
-      console.log("원본 데이터:", data);
+      console.log("검색 결과:", data.length);
       
       // 정렬 적용
       const sortedData = sortData(data, sortField, sortDirection);
       
-      console.log("정렬된 데이터:", sortedData);
       setPosts(sortedData);
       
       if (count !== null) {
@@ -374,6 +411,133 @@ export default function AdminArticlesPage() {
     }
   };
 
+  // 검색 핸들러
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1); // 검색 시 첫 페이지로 이동
+    fetchPosts(1, searchTerm);
+  };
+
+  // 검색 초기화
+  const handleResetSearch = () => {
+    setSearchTerm("");
+    setIsSearching(false);
+    setCurrentPage(1);
+    fetchPosts(1, "");
+  };
+
+  // 슬라이드 표시 상태 토글
+  const toggleSlideStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("posts")
+        .update({ is_slide: !currentStatus })
+        .eq("id", id);
+      
+      if (error) throw error;
+      
+      // 로컬 상태 업데이트
+      setPosts(prev => prev.map(post => 
+        post.id === id ? { ...post, is_slide: !currentStatus } : post
+      ));
+      
+      toast.success(`슬라이드 표시가 ${!currentStatus ? '활성화' : '비활성화'}되었습니다.`);
+    } catch (error) {
+      console.error("Error updating slide status:", error);
+      toast.error("슬라이드 상태 변경에 실패했습니다.");
+    }
+  };
+
+  // 이미지 업로드 함수 수정
+  const handleImageUpload = async (postId: string) => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    
+    fileInput.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      try {
+        setUpdating(postId);
+        
+        // 파일 이름 생성
+        const fileName = `${Date.now()}-${file.name}`;
+        
+        // 기존 코드와 동일한 경로 사용
+        const { data, error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(`articles/${fileName}`, file);
+        
+        if (uploadError) {
+          throw uploadError;
+        }
+        
+        // 이미지 URL 가져오기
+        const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/articles/${fileName}`;
+        
+        // 게시물 정보 업데이트
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ image_url: imageUrl })
+          .eq('id', postId);
+          
+        if (updateError) {
+          throw updateError;
+        }
+        
+        // 로컬 상태 업데이트
+        setPosts(prev => 
+          prev.map(post => 
+            post.id === postId 
+              ? { ...post, image_url: imageUrl } 
+              : post
+          )
+        );
+        
+        toast.success("슬라이드 이미지가 업로드되었습니다.");
+      } catch (error) {
+        console.error('이미지 업로드 중 오류 발생:', error);
+        toast.error("이미지 업로드에 실패했습니다");
+      } finally {
+        setUpdating(null);
+      }
+    };
+    
+    // 파일 선택 다이얼로그 열기
+    fileInput.click();
+  };
+
+  // 슬라이드 순서 변경 함수 추가
+  const updateSlideOrder = async (postId: string, order: number) => {
+    try {
+      setUpdating(postId);
+      
+      const { error } = await supabase
+        .from("posts")
+        .update({ slide_order: order })
+        .eq("id", postId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      // 로컬 상태 업데이트
+      setPosts(prev => 
+        prev.map(post => 
+          post.id === postId ? { ...post, slide_order: order } : post
+        )
+      );
+      
+      toast.success(`슬라이드 순서가 ${order}번으로 변경되었습니다.`);
+    } catch (error) {
+      console.error("슬라이드 순서 변경 중 오류:", error);
+      toast.error("슬라이드 순서 변경에 실패했습니다.");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   if (loading) {
     return <div className="container mx-auto px-4 py-8">Loading...</div>;
   }
@@ -422,6 +586,39 @@ export default function AdminArticlesPage() {
         </div>
       </div>
 
+      {/* 검색 폼 추가 */}
+      <div className="mb-6">
+        <form onSubmit={handleSearch} className="flex items-center">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="제목 또는 내용으로 검색..."
+            className="border rounded-l px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            className="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600"
+          >
+            검색
+          </button>
+          {isSearching && (
+            <button
+              type="button"
+              onClick={handleResetSearch}
+              className="ml-2 bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+            >
+              초기화
+            </button>
+          )}
+        </form>
+        {isSearching && (
+          <p className="mt-2 text-sm text-gray-600">
+            "{searchTerm}"에 대한 검색 결과: {totalPosts}개
+          </p>
+        )}
+      </div>
+
       {/* 게시글 테이블 */}
       <div className="bg-white rounded-lg shadow">
         <Table>
@@ -451,36 +648,114 @@ export default function AdminArticlesPage() {
               >
                 Date {sortField === "date" && (sortDirection === "asc" ? "↑" : "↓")}
               </TableHead>
+              <TableHead className="text-center">슬라이드 표시</TableHead>
+              <TableHead className="text-center">슬라이드 사진</TableHead>
+              <TableHead className="text-center">슬라이드 순서</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {posts.map((post) => (
-              <TableRow key={post.id}>
-                <TableCell className="font-medium">{post.title}</TableCell>
-                <TableCell>{getMainCategoryTitle(post.category)}</TableCell>
-                <TableCell>
-                  {post.subcategory ? getSubCategoryTitle(post.category, post.subcategory) : "-"}
-                </TableCell>
-                <TableCell>{post.date}</TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEdit(post.id)}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(post.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Delete
-                    </button>
-                  </div>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  Loading...
                 </TableCell>
               </TableRow>
-            ))}
+            ) : posts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center">
+                  {isSearching ? "검색 결과가 없습니다." : "등록된 기사가 없습니다."}
+                </TableCell>
+              </TableRow>
+            ) : (
+              posts.map((post) => (
+                <TableRow key={post.id}>
+                  <TableCell className="font-medium">{post.title}</TableCell>
+                  <TableCell>{getMainCategoryTitle(post.category)}</TableCell>
+                  <TableCell>
+                    {post.subcategory ? getSubCategoryTitle(post.category, post.subcategory) : "-"}
+                  </TableCell>
+                  <TableCell>{formatDate(post.date)}</TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex justify-center items-center">
+                      <Checkbox 
+                        checked={post.is_slide}
+                        onCheckedChange={() => toggleSlideStatus(post.id, post.is_slide)}
+                        className={post.is_slide ? "data-[state=checked]:bg-blue-500" : ""}
+                      />
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex justify-center items-center">
+                      {updating === post.id ? (
+                        <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          {post.image_url && (
+                            <div className="w-10 h-10 overflow-hidden rounded">
+                              <img 
+                                src={post.image_url} 
+                                alt="슬라이드 이미지" 
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleImageUpload(post.id)}
+                            className="flex items-center gap-1"
+                          >
+                            <Upload size={14} />
+                            <span>업로드</span>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex justify-center items-center">
+                      {updating === post.id ? (
+                        <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                      ) : (
+                        <Select
+                          disabled={!post.is_slide}
+                          value={post.slide_order?.toString() || ""}
+                          onValueChange={(value) => updateSlideOrder(post.id, parseInt(value))}
+                        >
+                          <SelectTrigger className="w-16">
+                            <SelectValue placeholder="순서" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1</SelectItem>
+                            <SelectItem value="2">2</SelectItem>
+                            <SelectItem value="3">3</SelectItem>
+                            <SelectItem value="4">4</SelectItem>
+                            <SelectItem value="5">5</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleEdit(post.id)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(post.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

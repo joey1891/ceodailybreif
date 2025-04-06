@@ -4,6 +4,8 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useRecoilState } from 'recoil';
+import { aboutMeDataState } from '@/lib/recoil/atoms';
 
 // Define an interface for the about me data structure
 interface AboutMeData {
@@ -18,7 +20,7 @@ interface AboutMeData {
 }
 
 export default function AboutPage() {
-  const [aboutMeData, setAboutMeData] = useState<AboutMeData | null>(null);
+  const [aboutMeData, setAboutMeData] = useRecoilState(aboutMeDataState);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

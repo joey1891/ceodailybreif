@@ -14,7 +14,7 @@ Quill.register("modules/imageUploader", ImageUploader);
 
 interface Props {
   value: string;
-  onChange: (val: string) => void;
+  onChangeAction: (val: string) => void;
 }
 
 // 모듈 설정
@@ -35,37 +35,67 @@ const modules = {
     ["clean"],
   ],
   imageUploader: {
-// imageUploader: {
     upload: async (file: File) => {
-        const fileName = `${Date.now()}-${file.name}`;
-        const filePath = `articles/${fileName}`;
+      // 파일 확장자 추출 및 안전한 파일명 생성
+      const fileExt = file.name.split('.').pop() || '';
+      const originalFileName = file.name;
+      const safeFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const filePath = `articles/${safeFileName}`;
       
-        // Supabase Storage 업로드
-        const { data, error } = await supabase.storage.from("images").upload(filePath, file);
+      console.log("원본 파일명:", originalFileName);
+      console.log("업로드 경로:", filePath);
+      
+      // 파일 타입 검증
+      if (!file.type.startsWith('image/')) {
+        console.error("이미지 파일이 아닙니다:", file.type);
+        throw new Error('이미지 파일만 업로드 가능합니다');
+      }
+      
+      // 파일 크기 체크 (5MB 제한)
+      if (file.size > 5 * 1024 * 1024) {
+        console.error("파일 크기 초과:", file.size);
+        throw new Error('이미지 크기는 5MB 이하여야 합니다');
+      }
+
+      try {
+        const { data, error } = await supabase.storage
+          .from('images')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+        
         if (error) {
-          console.error("Image upload error:", error);
+          console.error("이미지 업로드 오류:", error);
+          console.error("실패한 파일 정보:", {
+            name: originalFileName,
+            encodedName: encodeURIComponent(originalFileName),
+            size: file.size,
+            type: file.type
+          });
           throw error;
         }
-      
-        // public URL로 변환
-        // (공개 버킷이거나, public URL을 만들 수 있는 설정이 되어 있어야 합니다)
-        const { data: publicUrlData } = supabase.storage
-          .from("images")
+        
+        const { data: urlData } = supabase.storage
+          .from('images')
           .getPublicUrl(filePath);
-      
-        // 에디터에 삽입될 <img src="..."> 경로
-        return publicUrlData.publicUrl;
-      },
-      
+        
+        console.log("이미지 업로드 성공, URL:", urlData.publicUrl);
+        return urlData.publicUrl;
+      } catch (error) {
+        console.error("이미지 업로드 실패:", error);
+        throw error;
+      }
+    },
   },
 };
 
-export default function EditorWithUploader({ value, onChange }: Props) {
+export default function EditorWithUploader({ value, onChangeAction }: Props) {
   return (
     <ReactQuill
       theme="snow"
       value={value}
-      onChange={onChange}
+      onChange={onChangeAction}
       modules={modules}
       style={{ minHeight: 300 }}
     />

@@ -58,19 +58,19 @@ export function TopHeader() {
     <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 bg-black border-b border-gray-200">
       <div className="flex justify-between py-2 text-sm">
         {/* 왼쪽 영역: Home, About, Contact */}
-        <div className="flex items-center space-x-4 select-none">
+        <div className="flex items-center space-x-4 select-none justify-center">
           <Link
             href="/"
             className="text-white font-bold hover:text-gray-300 inline-flex items-center select-none"
           >
             Home
           </Link>
-          <Link
+          {/* <Link
             href="/about"
             className="text-white font-bold hover:text-gray-300 inline-flex items-center select-none"
           >
             About Me
-          </Link>
+          </Link> */}
           <a
             href="mailto:wjshin2450@gmail.com"
             className="text-white font-bold hover:text-gray-300 inline-flex items-center select-none"
@@ -103,14 +103,14 @@ export function TopHeader() {
               {isAdmin && (
                 <Link
                   href="/admin"
-                  className="text-blue-600 hover:text-blue-800 inline-flex items-center font-bold"
+                  className="text-white hover:text-white inline-flex items-center font-bold"
                 >
                   관리자 페이지
                 </Link>
               )}
               <button
                 onClick={handleLogout}
-                className="text-red-600 hover:text-red-800 inline-flex items-center font-bold"
+                className="text-white hover:text-white inline-flex items-center font-bold"
               >
                 <LogOut className="h-4 w-4 mr-1" />
                 로그아웃

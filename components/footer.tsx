@@ -8,7 +8,7 @@ import { toast } from "sonner";
 export function Footer() {
   return (
     <footer className="border-t mt-12">
-      <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 py-8 select-none">
+      <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
@@ -16,7 +16,7 @@ export function Footer() {
             <div className="space-y-2 text-sm text-muted-foreground">
               <p className="flex items-center gap-2">
                 <Building2 className="h-4 w-4" />
-                123 Healthcare Street, Seoul
+                서울시 송파구 송파대로
               </p>
               <p className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
@@ -24,12 +24,12 @@ export function Footer() {
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                contact@healthcare-blog.com
+                <a href="mailto:wjshin2450@gmail.com">wjshin2450@gmail.com</a>
               </p>
             </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Quick Links
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Quick Links</h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -40,10 +40,10 @@ export function Footer() {
               <Link href="/schedule" className="hover:underline">Schedule</Link>
               <Link href="/people" className="hover:underline">People</Link>
             </div>
-          </div>
+          </div> */}
 
           {/* Newsletter */}
-          <div className="space-y-4">
+          {/* <div className="space-y-4">
             <h3 className="text-lg font-semibold">Stay Updated</h3>
             <p className="text-sm text-muted-foreground">
               Subscribe to our newsletter for the latest healthcare industry updates.
@@ -91,7 +91,7 @@ export function Footer() {
                 Subscribe
               </button>
             </form>
-          </div>
+          </div> */}
         </div>
 
         <div className="mt-8 pt-4 border-t text-center text-sm text-muted-foreground">

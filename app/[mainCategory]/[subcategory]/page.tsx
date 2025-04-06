@@ -1,5 +1,6 @@
 import SubCategoryList from "@/components/subCategory-list";
 import { categoryOptions, CategoryItem } from "@/lib/category-options";
+import { Sidebar } from "@/components/sidebar";
 
 export async function generateStaticParams() {
   const paramsArray: { mainCategory: string; subcategory: string }[] = [];

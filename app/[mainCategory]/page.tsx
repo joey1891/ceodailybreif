@@ -73,7 +73,7 @@ export default function CategoryPage({
         currentCategory.items
           .filter((subCat) => subCat.slug !== undefined)
           .map((subCat) => (
-            <div key={subCat.slug} className="mb-12">
+            <div key={subCat.slug} className="my-36">
               <h2 className="text-2xl md:text-3xl font-bold mb-4">
                 {subCat.title}
               </h2>
@@ -93,9 +93,6 @@ export default function CategoryPage({
       <div className="flex flex-col lg:flex-row gap-8 mt-12">
         <div className="w-full lg:w-2/3">
           {/* 추가 메인 컨텐츠 */}
-        </div>
-        <div className="w-full lg:w-1/3">
-          <Sidebar recentPosts={[]} popularPosts={[]} />
         </div>
       </div>
 

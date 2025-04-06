@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ArrowLeft, Calendar, User, Share2 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -20,6 +20,7 @@ export { extractImageUrl };
 export function ArticleContent({ params }: { params: { id: string } }) {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isKakaoInitialized, setIsKakaoInitialized] = useState(false);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -63,10 +64,23 @@ export function ArticleContent({ params }: { params: { id: string } }) {
     }
   }, [post, loading]);
 
-  const handleShare = (platform: string) => {
+  useEffect(() => {
+    // Poll to check if Kakao SDK is initialized
+    const intervalId = setInterval(() => {
+      if (window.Kakao && window.Kakao.isInitialized()) {
+        setIsKakaoInitialized(true);
+        clearInterval(intervalId); // Clear interval once initialized
+      }
+    }, 100); // Check every 100ms
+
+    // Cleanup function to clear interval on component unmount
+    return () => clearInterval(intervalId);
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  const handleShare = useCallback((platform: string) => {
     const url = window.location.href;
     const title = post?.title || '';
-    
+
     const shareUrls = {
       twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
@@ -74,7 +88,7 @@ export function ArticleContent({ params }: { params: { id: string } }) {
     };
 
     window.open(shareUrls[platform as keyof typeof shareUrls], '_blank');
-  };
+  }, [post]);
 
   if (loading) {
     return (
@@ -163,6 +177,41 @@ export function ArticleContent({ params }: { params: { id: string } }) {
               <span className="font-medium">이 기사 공유하기</span>
             </div>
             <div className="flex gap-4">
+              <Button variant="outline" onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                alert("링크가 복사되었습니다.");
+              }}>
+                링크 복사
+              </Button>
+              <Button variant="outline" onClick={() => {
+                if (isKakaoInitialized && window.Kakao) {
+                  window.Kakao.Share.sendDefault({
+                    objectType: 'feed',
+                    content: {
+                      title: post?.title || '',
+                      description: post?.content || '',
+                      imageUrl: post?.image_url || '',
+                      link: {
+                        mobileWebUrl: window.location.href,
+                        webUrl: window.location.href,
+                      },
+                    },
+                    buttons: [
+                      {
+                        title: '자세히 보기',
+                        link: {
+                          mobileWebUrl: window.location.href,
+                          webUrl: window.location.href,
+                        },
+                      },
+                    ],
+                  });
+                } else {
+                  alert("카카오톡 공유 기능 초기화에 실패했습니다.");
+                }
+              }} disabled={!isKakaoInitialized}>
+                카카오톡
+              </Button>
               <Button variant="outline" onClick={() => handleShare('twitter')}>
                 Twitter
               </Button>

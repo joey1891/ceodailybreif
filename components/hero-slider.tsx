@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Carousel,
   CarouselContent,
@@ -24,13 +24,75 @@ type SlideArticle = {
   description?: string;
 };
 
-export function HeroSlider() {
+interface HeroSliderProps {
+  slides: {
+    id: string;
+    title: string;
+    image_url: string;
+    description: string;
+    slide_order: number;
+  }[];
+}
+
+export function HeroSlider({ slides }: HeroSliderProps) {
   const [slideArticles, setSlideArticles] = useState<SlideArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [api, setApi] = useState<CarouselApi | null>(null);
+  const [sliderInterval, setSliderInterval] = useState(5); // 기본값 5초
+  const autoChangeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // 슬라이더 설정 로드 (인터벌)
+  useEffect(() => {
+    const fetchSliderSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("slider_settings")
+          .select("interval_seconds")
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .single();
+          
+        if (!error && data) {
+          setSliderInterval(data.interval_seconds);
+        }
+      } catch (error) {
+        console.error("Error fetching slider settings:", error);
+        // 오류 발생 시 기본값 사용
+      }
+    };
+    
+    fetchSliderSettings();
+  }, []);
 
+  // 자동 슬라이더 기능 구현
+  useEffect(() => {
+    if (!api || slideArticles.length <= 1) return;
+    
+    // 기존 인터벌 초기화
+    if (autoChangeIntervalRef.current) {
+      clearInterval(autoChangeIntervalRef.current);
+    }
+    
+    // 새 인터벌 설정 (밀리초 단위로 변환)
+    autoChangeIntervalRef.current = setInterval(() => {
+      if (api.canScrollNext()) {
+        api.scrollNext();
+      } else {
+        api.scrollTo(0); // 처음으로 돌아가기
+      }
+    }, sliderInterval * 1000);
+    
+    // 컴포넌트 언마운트 시 정리
+    return () => {
+      if (autoChangeIntervalRef.current) {
+        clearInterval(autoChangeIntervalRef.current);
+      }
+    };
+  }, [api, sliderInterval, slideArticles.length]);
+
+  // 슬라이드 로드 코드는 기존과 동일
   useEffect(() => {
     const fetchSlideArticles = async () => {
       try {
@@ -42,23 +104,14 @@ export function HeroSlider() {
           .from("posts")
           .select("id, title, content, image_url, is_slide")
           .eq("is_slide", true)
-          .order("created_at", { ascending: false });
+          .order("slide_order", { ascending: true });
 
         if (error) {
           console.error("Error fetching slide articles:", error.message);
           setError(error.message);
           return;
         }
-
-        // console.log("Slides data:", data);
         
-        // // 데이터가 없는 경우 처리
-        // if (!data || data.length === 0) {
-        //   console.log("No slide articles found");
-        //   setSlideArticles([]);
-        //   return;
-        // }
-
         // 설명 생성 및 데이터 정제 - 텍스트 클리닝 개선
         const articlesWithDescription = data.map(article => {
           // 콘텐츠가 없는 경우 처리
@@ -99,19 +152,23 @@ export function HeroSlider() {
 
     fetchSlideArticles();
   }, []);
+  
+  // 슬라이드 선택 이벤트 핸들러
+  const handleSelect = useCallback(() => {
+    if (!api) return;
+    setCurrentSlide(api.selectedScrollSnap());
+  }, [api]);
 
+  // API 객체 설정
   useEffect(() => {
     if (!api) return;
     
-    const onSelect = () => {
-      setCurrentSlide(api.selectedScrollSnap());
-    };
+    api.on("select", handleSelect);
     
-    api.on("select", onSelect);
     return () => {
-      api.off("select", onSelect);
+      api.off("select", handleSelect);
     };
-  }, [api]);
+  }, [api, handleSelect]);
 
   // 로딩 상태 표시
   if (isLoading) {

@@ -48,7 +48,7 @@ export default function ArticleForm({ id }: ArticleFormProps) {
   // 관리자 로그인 확인
   useEffect(() => {
     if (!adminLoading && !adminUser) {
-      router.push("/admin/login");
+      router.push("/login");
     }
   }, [adminLoading, adminUser, router]);
 
@@ -114,6 +114,44 @@ export default function ArticleForm({ id }: ArticleFormProps) {
             "You must be logged in as admin to save articles.",
           variant: "destructive",
         });
+        return;
+      }
+
+      // 유효성 검사 추가
+      if (!title) {
+        toast({
+          title: "Error",
+          description: "Title is required.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      if (!mainCategory) {
+        toast({
+          title: "Error",
+          description: "Main Category is required.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      if (!subCategory) {
+        toast({
+          title: "Error",
+          description: "Sub Category is required.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+      if (!content) {
+        toast({
+          title: "Error",
+          description: "Content is required.",
+          variant: "destructive",
+        });
+        setLoading(false);
         return;
       }
 
@@ -365,7 +403,7 @@ export default function ArticleForm({ id }: ArticleFormProps) {
         {/* Content */}
         <div>
           <h1>Test Editor Page</h1>
-          <EditorWithUploader value={content} onChange={setContent} />
+          <EditorWithUploader value={content} onChangeAction={setContent} />
         </div>
         <div>
           <button

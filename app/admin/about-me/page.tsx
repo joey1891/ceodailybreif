@@ -128,7 +128,14 @@ export default function AdminAboutMePage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      console.log("Selected image file:", file.name, file.size);
+      const fileName = file.name;
+      console.log("Selected image file:", fileName, file.size, "Original filename encoding check:", encodeURIComponent(fileName));
+      
+      // 파일 타입 검증
+      if (!file.type.startsWith('image/')) {
+        toast.error('이미지 파일만 업로드 가능합니다');
+        return;
+      }
       
       // 파일 크기 체크 (2MB 제한)
       if (file.size > 2 * 1024 * 1024) {
@@ -217,15 +224,17 @@ export default function AdminAboutMePage() {
       let profileImageUrl = aboutMeData.profile_image_url;
       
       if (imageFile) {
-        // ArticleForm 패턴을 따라 이미지 업로드
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const filePath = `about_me/${fileName}`;
+        // 파일 확장자 추출 및 안전한 파일명 생성
+        const fileExt = imageFile.name.split('.').pop() || '';
+        const originalFileName = imageFile.name;
+        const safeFileName = `${Date.now()}.${fileExt}`;
+        const filePath = `about_me/${safeFileName}`;
         
+        console.log("Original filename:", originalFileName);
         console.log("Uploading image to path:", filePath);
         
-        const { error: uploadError } = await supabase.storage
-          .from('images')  // 기본 images 버킷 사용
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('images')
           .upload(filePath, imageFile, {
             cacheControl: '3600',
             upsert: false
@@ -233,6 +242,12 @@ export default function AdminAboutMePage() {
           
         if (uploadError) {
           console.error("Error uploading image:", uploadError);
+          console.error("Failed file details:", {
+            name: originalFileName,
+            encodedName: encodeURIComponent(originalFileName),
+            size: imageFile.size,
+            type: imageFile.type
+          });
           toast.error('이미지 업로드 실패: ' + uploadError.message);
         } else {
           // 업로드 성공 시 URL 업데이트
@@ -242,6 +257,7 @@ export default function AdminAboutMePage() {
             
           profileImageUrl = urlData.publicUrl;
           console.log("Image uploaded successfully, new URL:", profileImageUrl);
+          console.log("Original filename was:", originalFileName);
         }
       }
       

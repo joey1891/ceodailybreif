@@ -12,9 +12,17 @@ export function CalendarSection() {
 
   useEffect(() => {
     const fetchEvents = async () => {
-      const { data, error } = await supabase.from("calendar_events").select("*");
-      if (!error && data) {
-        setEvents(data);
+      try {
+        const { data, error } = await supabase.from("calendar_events").select("*");
+        if (error) {
+          console.error("Error fetching calendar events:", error);
+          return;
+        }
+        if (data) {
+          setEvents(data);
+        }
+      } catch (error) {
+        console.error("Unexpected error fetching calendar events:", error);
       }
     };
     fetchEvents();
