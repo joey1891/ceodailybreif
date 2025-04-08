@@ -1,0 +1,66 @@
+{
+  "id": "people",
+  "title": {
+    "ko": "인사 동향",
+    "en": "People"
+  },
+  "slug": "people",
+  "subcategories": [
+    {
+      "id": "businessman",
+      "title": {
+        "ko": "기업인",
+        "en": "Businessman"
+      },
+      "slug": "businessman"
+    },
+    {
+      "id": "politician",
+      "title": {
+        "ko": "정치인",
+        "en": "Politician"
+      },
+      "slug": "politician"
+    },
+    {
+      "id": "government-official",
+      "title": {
+        "ko": "공무원",
+        "en": "Government Official"
+      },
+      "slug": "government-official"
+    },
+    {
+      "id": "lawyer",
+      "title": {
+        "ko": "법조인",
+        "en": "Lawyer"
+      },
+      "slug": "lawyer"
+    },
+    {
+      "id": "accountant",
+      "title": {
+        "ko": "회계사",
+        "en": "Accountant"
+      },
+      "slug": "accountant"
+    },
+    {
+      "id": "tax-accountant",
+      "title": {
+        "ko": "세무사",
+        "en": "Tax Accountant"
+      },
+      "slug": "tax-accountant"
+    },
+    {
+      "id": "patent-attorney",
+      "title": {
+        "ko": "변리사",
+        "en": "Patent Attorney"
+      },
+      "slug": "patent-attorney"
+    }
+  ]
+} 

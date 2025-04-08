@@ -1,0 +1,66 @@
+{
+  "id": "report",
+  "title": {
+    "ko": "리포트",
+    "en": "Report"
+  },
+  "slug": "report",
+  "subcategories": [
+    {
+      "id": "ha-ingredients",
+      "title": {
+        "ko": "HA원료",
+        "en": "HA Ingredients"
+      },
+      "slug": "ha-ingredients"
+    },
+    {
+      "id": "syringe",
+      "title": {
+        "ko": "시린지",
+        "en": "Syringe"
+      },
+      "slug": "syringe"
+    },
+    {
+      "id": "filler",
+      "title": {
+        "ko": "필러",
+        "en": "Filler"
+      },
+      "slug": "filler"
+    },
+    {
+      "id": "skin-booster",
+      "title": {
+        "ko": "스킨부스터",
+        "en": "Skin Booster"
+      },
+      "slug": "skin-booster"
+    },
+    {
+      "id": "stem-cell-therapy",
+      "title": {
+        "ko": "줄기세포치료제",
+        "en": "Stem Cell Therapy"
+      },
+      "slug": "stem-cell-therapy"
+    },
+    {
+      "id": "obesity-treatment",
+      "title": {
+        "ko": "비만치료제",
+        "en": "Obesity Treatment"
+      },
+      "slug": "obesity-treatment"
+    },
+    {
+      "id": "cosmetics",
+      "title": {
+        "ko": "화장품",
+        "en": "Cosmetics"
+      },
+      "slug": "cosmetics"
+    }
+  ]
+} 

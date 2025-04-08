@@ -1,107 +1,389 @@
-import { categoryOptions } from "@/lib/category-options";
-import { FinanceInfo } from "@/components/finance-info";
-import { CalendarSection } from "@/components/calendar-section";
-import { Sidebar } from "@/components/sidebar";
-import SubCategoryPreview from "@/components/subCategory-preview";
-import Link from "next/link";
-import { redirect } from 'next/navigation';
-import { categoryMappings } from '@/lib/category-mappings';
+"use client";
 
-// 정적 내보내기를 위한 모든 메인 카테고리 경로 생성
-export async function generateStaticParams() {
-  return Array.from(categoryOptions.values()).map((cat) => {
-    const mainPath = cat.base
-      ? cat.base.replace(/^\//, "") // base가 있으면 base를 우선 사용
-      : cat.href
-      ? cat.href.replace(/^\//, "")
-      : cat.title.toLowerCase().replace(/[\s]+/g, "-");
-    return { mainCategory: mainPath };
-  });
-}
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileText, Calendar } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { Post } from "@/types/supabase";
+import Link from "next/link";
+import { getCategoryById } from "@/lib/category-loader";
+import { notFound } from "next/navigation";
 
 export default function CategoryPage({
   params,
 }: {
   params: { mainCategory: string };
 }) {
-  const { mainCategory } = params;
+  const [mainPosts, setMainPosts] = useState<Post[]>([]);
+  const [subcategoryPosts, setSubcategoryPosts] = useState<Record<string, Post[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [showMoreMain, setShowMoreMain] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   
-  // URL이 한글인 경우 영문으로 리다이렉트
-  if (categoryMappings[decodeURIComponent(mainCategory)]) {
-    const englishCategory = categoryMappings[decodeURIComponent(mainCategory)];
-    redirect(`/${englishCategory}`);
+  // Post display configuration
+  const postsPerInitialView = 3;
+  const postsPerExpandedView = 9;
+  const postsPerPage = 9;
+  
+  // 슬러그로 카테고리 찾기
+  const category = getCategoryById(params.mainCategory);
+  console.log("Category data:", category);
+
+  if (!category) {
+    console.error("Category not found:", params.mainCategory);
+    return notFound();
   }
+  
+  // 카테고리 제목 처리 (한글 우선)
+  const categoryTitle = typeof category.title === "string" 
+    ? category.title 
+    : category.title.ko;
+  
+  useEffect(() => {
+    const fetchPosts = async () => {
+      setLoading(true);
+      console.log(`Fetching posts for category: ${category.id}`);
+      
+      // 메인 카테고리 글 가져오기 (서브카테고리 유무 관계없이 모두 가져옴)
+      const { data: mainCategoryPosts, error: mainError } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("category", category.id)
+        .order("updated_at", { ascending: false });
+      
+      if (mainError) {
+        console.error("Error fetching main category posts:", mainError);
+      }
+      
+      console.log(`Found ${mainCategoryPosts?.length || 0} main category posts`);
+      setMainPosts(mainCategoryPosts || []);
+      
+      // 하위 카테고리 ID 목록
+      const subcategories = category.subcategories || [];
+      
+      // 각 하위 카테고리별 글 가져오기
+      const subcatPostsObj: Record<string, Post[]> = {};
+      
+      for (const subcategory of subcategories) {
+        const { data: subPosts, error: subError } = await supabase
+          .from("posts")
+          .select("*")
+          .eq("subcategory", subcategory.id)
+          .order("updated_at", { ascending: false });
+          
+        if (subError) {
+          console.error(`Error fetching posts for subcategory ${subcategory.id}:`, subError);
+        }
+        
+        console.log(`Found ${subPosts?.length || 0} posts for subcategory ${subcategory.id}`);
+        subcatPostsObj[subcategory.id] = subPosts || [];
+      }
+      
+      setSubcategoryPosts(subcatPostsObj);
+      setLoading(false);
+    };
 
-  // 모든 메인 카테고리를 배열로 추출
-  const mainCategories = Array.from(categoryOptions.values());
+    fetchPosts();
+  }, [category.id, category.subcategories]);
 
-  // URL의 mainCategory 값과 일치하는 카테고리 객체 찾기
-  const currentCategory = mainCategories.find((cat) => {
-    let mainPath = "";
-    if (cat.href) {
-      mainPath = cat.href.replace(/^\//, "");
-    } else if (cat.base) {
-      mainPath = cat.base.replace(/^\//, "");
-    } else {
-      mainPath = cat.title.toLowerCase().replace(/\s+/g, "-");
-    }
-    return mainPath === params.mainCategory;
-  });
+  // 페이지네이션 계산
+  const totalMainPosts = mainPosts.length;
+  const totalPages = Math.ceil(totalMainPosts / postsPerPage);
+  
+  // 현재 표시할 메인 포스트 결정
+  const visibleMainPosts = showMoreMain 
+    ? mainPosts.slice((currentPage - 1) * postsPerPage, currentPage * postsPerPage)
+    : mainPosts.slice(0, postsPerInitialView);
 
-  if (!currentCategory) {
+  // 게시글 카드 렌더링 함수
+  const renderPostCards = (posts: Post[]) => {
+    return posts.length > 0 ? (
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-10">
+        {posts.map((post) => (
+          <Link key={post.id} href={`/article/${post.id}`}>
+            <Card className="cursor-pointer hover:shadow-xl transition-shadow h-full flex flex-col">
+              <div className="relative h-48 w-full overflow-hidden">
+                <img
+                  src={post.image_url || "https://mblogthumb-phinf.pstatic.net/MjAxODAzMDNfMTky/MDAxNTIwMDQxODU1OTY0.MZsSmhugRX-R3f6ASTwd3oTAtFvsh_NEHrV2SpVHk_Ag.9vP6o2DWWIr6-QJXR8Ydt9g53VijyckSbVp6HMgDfvkg.PNG.osy2201/3_%2860%ED%8D%BC%EC%84%BC%ED%8A%B8_%ED%9A%8C%EC%83%89%29_%ED%9A%8C%EC%83%89_%EB%8B%A8%EC%83%89_%EB%B0%B0%EA%B2%BD%ED%99%94%EB%A9%B4_180303.png?type=w800"}
+                  alt={post.title}
+                  className="object-cover w-full h-full"
+                />
+              </div>
+              
+              {/* 제목 */}
+              <CardHeader className="pb-1 pt-3">
+                <CardTitle className="text-lg font-bold leading-tight">
+                  {post.title}
+                </CardTitle>
+              </CardHeader>
+              
+              {/* 텍스트 콘텐츠 */}
+              <CardContent className="py-2 flex-grow">
+                <div className="text-gray-700 text-sm min-h-[3.6rem]">
+                  {post.content ? (
+                    <p className="line-clamp-3">
+                      {post.content.replace(/<[^>]+>/g, "").slice(0, 150)}...
+                    </p>
+                  ) : (
+                    <p className="italic">내용 없음</p>
+                  )}
+                </div>
+              </CardContent>
+              
+              <div className="flex items-center text-sm text-muted-foreground p-4 pt-2 mt-auto border-t">
+                <Calendar className="mr-2 h-4 w-4" />
+                {new Date(post.updated_at || post.created_at).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </div>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    ) : (
+      <p className="text-gray-500 mb-10">이 카테고리에 게시물이 없습니다.</p>
+    );
+  };
+
+  // 페이지 변경 핸들러
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // 페이지네이션 컴포넌트
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    
     return (
-      <div className="container mx-auto px-4 py-8">
-        Category not found.
+      <div className="flex justify-center mt-8 mb-10 gap-2">
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+          <button
+            key={page}
+            onClick={() => handlePageChange(page)}
+            className={`px-4 py-2 rounded ${
+              currentPage === page 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-200 hover:bg-gray-300'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
       </div>
     );
-  }
-
-  let mainPath: string = "";
-  if (currentCategory.href) {
-    mainPath = currentCategory.href.replace(/^\//, "");
-  } else if (currentCategory.base) {
-    mainPath = currentCategory.base.replace(/^\//, "");
-  } else {
-    mainPath = currentCategory.title.toLowerCase().replace(/\s+/g, "-");
-  }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8">{currentCategory.title}</h1>
-      {/* 하위 카테고리 목록 */}
-      {currentCategory.items && currentCategory.items.length > 0 ? (
-        currentCategory.items
-          .filter((subCat) => subCat.slug !== undefined)
-          .map((subCat) => (
-            <div key={subCat.slug} className="my-36">
-              <h2 className="text-2xl md:text-3xl font-bold mb-4">
-                {subCat.title}
-              </h2>
-              {/* SubCategoryPreview 내부에서 게시물이 없으면 "No articles" 메시지와 함께 View All 버튼은 숨김 */}
-              <SubCategoryPreview
-                mainCategory={mainPath}
-                subCategory={subCat.slug!}
-                limit={3}
-                showViewAll={true}
-              />
-            </div>
-          ))
+      {loading ? (
+        <p>콘텐츠를 불러오는 중...</p>
       ) : (
-        <p>No subcategories available for this category.</p>
+        <>
+          {/* 메인 카테고리 섹션 */}
+          <h1 className="text-4xl font-bold mb-8">{categoryTitle}</h1>
+          {renderPostCards(visibleMainPosts)}
+          
+          {/* 더보기 버튼 및 페이지네이션 */}
+          {mainPosts.length > postsPerInitialView && !showMoreMain && (
+            <div className="flex justify-center mb-10">
+              <button
+                onClick={() => {
+                  setShowMoreMain(true);
+                  setCurrentPage(1);
+                }}
+                className="px-5 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+              >
+                더보기 ↓
+              </button>
+            </div>
+          )}
+          
+          {/* 페이지네이션 (더보기가 활성화된 경우에만 표시) */}
+          {showMoreMain && totalMainPosts > 0 && renderPagination()}
+          
+          {/* 하위 카테고리 섹션 - 여백 축소 적용 */}
+          {category.subcategories && category.subcategories.length > 0 && (
+            <div className="mt-12 mx-[-1rem] sm:mx-[-1.5rem] md:mx-[-2rem] lg:mx-[-2.5rem] xl:mx-[-4rem] 2xl:mx-[-5rem]">
+              <h2 className="text-2xl font-bold mb-4 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">하위 카테고리</h2>
+              
+              {/* 모바일에서만 세로로 표시 */}
+              <div className="md:hidden flex flex-col space-y-8 mb-6 px-4 sm:px-6">
+                {category.subcategories.map((subcategory) => {
+                  const subTitle = typeof subcategory.title === "string" 
+                    ? subcategory.title 
+                    : subcategory.title.ko;
+                    
+                  const subPosts = subcategoryPosts[subcategory.id] || [];
+                  
+                  return (
+                    <div key={subcategory.id} className="w-full">
+                      {/* 하위 카테고리 버튼 */}
+                      {/* <Link 
+                        href={`/${category.slug}/${subcategory.slug}`}
+                        className="w-full px-4 py-2 bg-gray-100 text-center rounded-full hover:bg-gray-200 transition font-medium block mb-3"
+                      >
+                        {subTitle}
+                      </Link> */}
+                      
+                      {/* 하위 카테고리 제목 */}
+                      <div className="flex justify-between items-center mb-3 pb-1 border-b">
+                        <h3 className="text-sm font-semibold">{subTitle}</h3>
+                        <Link 
+                          href={`/${category.slug}/${subcategory.slug}`}
+                          className="text-xs text-blue-600 hover:text-blue-800"
+                        >
+                          더보기
+                        </Link>
+                      </div>
+                      
+                      {/* 게시글 목록 - 세로 배치 */}
+                      {subPosts.length > 0 ? (
+                        <div className="flex flex-col gap-3">
+                          {subPosts.slice(0, 3).map((post) => (
+                            <Link key={post.id} href={`/article/${post.id}`}>
+                              <div className="border rounded hover:shadow-md transition-shadow cursor-pointer">
+                                {/* 이미지 표시 영역 - 높이 증가 */}
+                                <div className="h-32 w-full overflow-hidden">
+                                  <img
+                                    src={post.image_url || "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&q=80&w=2087"}
+                                    alt={post.title}
+                                    className="object-cover w-full h-full"
+                                  />
+                                </div>
+                                
+                                {/* 텍스트 콘텐츠 - 높이 증가 및 여백 조정 */}
+                                <div className="p-3">
+                                  <h4 className="font-medium line-clamp-2 text-sm mb-2">{post.title}</h4>
+                                  <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                    {post.content ? post.content.replace(/<[^>]+>/g, "").slice(0, 100) : "내용 없음"}
+                                  </p>
+                                  <div className="flex items-center text-xs text-muted-foreground">
+                                    <Calendar className="mr-1 h-3 w-3" />
+                                    {new Date(post.updated_at || post.created_at).toLocaleDateString('ko-KR', {
+                                      month: 'numeric',
+                                      day: 'numeric'
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-xs min-h-[15rem] flex items-center justify-center">게시물이 없습니다</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* PC에서만 표시 - 고정 너비 1400px 유지하고 가로 스크롤 */}
+              <div className="hidden md:block overflow-hidden">
+                <div className="overflow-x-scroll pb-4 w-full" style={{ scrollbarWidth: 'thin' }}>
+                  <div className="min-w-[1400px] md:pl-8 lg:pl-10 xl:pl-12">
+                    {/* 하위 카테고리 버튼들 - 한 줄에 모두 배치 */}
+                    {/* <div className="flex mb-6 space-x-4">
+                      {category.subcategories.map((subcategory) => {
+                        const subTitle = typeof subcategory.title === "string" 
+                          ? subcategory.title 
+                          : subcategory.title.ko;
+                          
+                        return (
+                          <Link 
+                            key={subcategory.id}
+                            href={`/${category.slug}/${subcategory.slug}`}
+                            className="w-[140px] flex-shrink-0 px-4 py-2 bg-gray-100 text-center rounded-full hover:bg-gray-200 transition font-medium"
+                          >
+                            {subTitle}
+                          </Link>
+                        );
+                      })}
+                    </div> */}
+                    
+                    {/* 게시글들 - 각 카테고리 버튼 아래 열에 맞춰 배치 */}
+                    <div className="flex space-x-4">
+                      {category.subcategories.map((subcategory, index) => {
+                        const subTitle = typeof subcategory.title === "string" 
+                          ? subcategory.title 
+                          : subcategory.title.ko;
+                          
+                        const subPosts = subcategoryPosts[subcategory.id] || [];
+                        
+                        // Add separator classes
+                        const separatorClass = "relative";
+                        const afterClass = "after:content-[''] after:absolute after:top-0 after:right-[-12px] after:w-[1px] after:h-full after:bg-gray-200";
+                        
+                        const columnClass = `w-[140px] ${separatorClass} ${index !== (category.subcategories?.length || 0) - 1 ? afterClass : ''}`;
+                        
+                        return (
+                          <div key={subcategory.id} className={columnClass}>
+                            {/* 하위 카테고리 제목 */}
+                            <div className="flex justify-between items-end mb-3 pb-1 ">
+                              <h3 className="text-sm font-semibold">{subTitle}</h3>
+                              <Link 
+                                href={`/${category.slug}/${subcategory.slug}`}
+                                className="text-xs text-blue-600 hover:text-blue-800"
+                              >
+                                더보기
+                              </Link>
+                            </div>
+                            
+                            {/* 게시글 목록 - 세로 배치 */}
+                            {subPosts.length > 0 ? (
+                              <div className="flex flex-col gap-3">
+                                {subPosts.slice(0, 3).map((post) => (
+                                  <Link key={post.id} href={`/article/${post.id}`}>
+                                    <div className="border rounded hover:shadow-md transition-shadow cursor-pointer">
+                                      {/* 이미지 표시 영역 - 높이 증가 */}
+                                      <div className="h-32 w-full overflow-hidden">
+                                        <img
+                                          src={post.image_url || "https://mblogthumb-phinf.pstatic.net/MjAxODAzMDNfMTky/MDAxNTIwMDQxODU1OTY0.MZsSmhugRX-R3f6ASTwd3oTAtFvsh_NEHrV2SpVHk_Ag.9vP6o2DWWIr6-QJXR8Ydt9g53VijyckSbVp6HMgDfvkg.PNG.osy2201/3_%2860%ED%8D%BC%EC%84%BC%ED%8A%B8_%ED%9A%8C%EC%83%89%29_%ED%9A%8C%EC%83%89_%EB%8B%A8%EC%83%89_%EB%B0%B0%EA%B2%BD%ED%99%94%EB%A9%B4_180303.png?type=w800"}
+                                          alt={post.title}
+                                          className="object-cover w-full h-full"
+                                        />
+                                      </div>
+                                      
+                                      {/* 텍스트 콘텐츠 - 높이 증가 및 여백 조정 */}
+                                      <div className="p-3">
+                                        <h4 className="font-medium line-clamp-2 text-sm mb-2">{post.title}</h4>
+                                        <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                                          {post.content ? post.content.replace(/<[^>]+>/g, "").slice(0, 100) : "내용 없음"}
+                                        </p>
+                                        <div className="flex items-center text-xs text-muted-foreground">
+                                          <Calendar className="mr-1 h-3 w-3" />
+                                          {new Date(post.updated_at || post.created_at).toLocaleDateString('ko-KR', {
+                                            month: 'numeric',
+                                            day: 'numeric'
+                                          })}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </Link>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="min-h-[15rem] text-gray-500 text-xs">게시물이 없습니다</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* 모든 카테고리에 글이 없는 경우 */}
+          {mainPosts.length === 0 && 
+           Object.values(subcategoryPosts).every(posts => posts.length === 0) && (
+            <p className="text-gray-500">게시물이 없습니다.</p>
+          )}
+        </>
       )}
-
-      <div className="flex flex-col lg:flex-row gap-8 mt-12">
-        <div className="w-full lg:w-2/3">
-          {/* 추가 메인 컨텐츠 */}
-        </div>
-      </div>
-
-      <div className="mt-12">
-        <FinanceInfo />
-      </div>
-      <div className="mt-12">
-        <CalendarSection />
-      </div>
     </div>
   );
 }

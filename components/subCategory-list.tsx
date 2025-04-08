@@ -3,47 +3,71 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, Calendar } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import Link from "next/link";
 import { getCategoryUrl } from '@/lib/routes';
+import { getPostsByCategory } from '@/lib/supabase/categories';
+import { getCategoryById, CategoryItem } from '@/lib/category-loader';
 
 interface SubCategoryListProps {
   category: string;
-  subcategories: { slug: string; title: string }[];
+  subcategories: string[] | { id: string; title: { ko: string; en: string; }; slug: string; }[];
   subcategory?: string;
 }
 
 export default function SubCategoryList({ category, subcategories, subcategory }: SubCategoryListProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 카테고리 정보 가져오기
+  const categoryData = getCategoryById(category);
 
   useEffect(() => {
     const fetchPosts = async () => {
       if (!category || !subcategories) return;
-
+      
       setLoading(true);
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("category", category)
-        .in("subcategory", subcategories.map(sub => sub.slug))
-        .order("updated_at", { ascending: false });
-
-      if (!error && data) {
-        setPosts(data);
-      }
+      
+      // 서브카테고리 슬러그 배열로 변환
+      const subcategorySlugs = Array.isArray(subcategories) 
+        ? subcategories.map(sub => typeof sub === 'string' ? sub : sub.slug)
+        : [];
+      
+      const data = await getPostsByCategory({
+        mainCategory: category,
+        subCategory: subcategorySlugs,
+        orderBy: "updated_at",
+        ascending: false
+      });
+      
+      setPosts(data);
       setLoading(false);
     };
 
     fetchPosts();
   }, [category, subcategories]);
 
-  if (!subcategories || !Array.isArray(subcategories)) {
+  // 서브카테고리 제목 가져오기
+  const getSubcategoryTitles = () => {
+    if (!Array.isArray(subcategories)) {
+      return category;
+    }
+    
+    return subcategories.map(sub => {
+      if (typeof sub === 'string') {
+        // 문자열인 경우 카테고리 ID에서 찾기
+        const categoryItem = getCategoryById(sub);
+        return categoryItem?.title.ko || sub;
+      }
+      return sub.title.ko;
+    }).join(" in ");
+  };
+
+  if (!subcategories || !Array.isArray(subcategories) || subcategories.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8">
-          {category || "카테고리"}
+          {categoryData?.title.ko || category || "카테고리"}
         </h1>
         <p>서브 카테고리를 찾을 수 없습니다.</p>
       </div>
@@ -53,7 +77,7 @@ export default function SubCategoryList({ category, subcategories, subcategory }
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold mb-8">
-        {subcategories.map(sub => sub.title).join(" in ")}
+        {getSubcategoryTitles()}
       </h1>
       {loading ? (
         <p>Loading reports...</p>

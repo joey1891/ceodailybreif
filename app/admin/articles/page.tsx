@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
-import { categoryOptions } from "@/lib/category-options";
+import { categoryOptions, loadCategoryData } from "@/lib/category-options";
 import { categoryMappings, contextualCategoryMappings, reverseCategoryMappings } from "@/lib/category-mappings";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSession } from "@/lib/admin-auth";
@@ -58,6 +58,11 @@ const formatSlug = (slug: string): string => {
     .join(" ");
 };
 
+// 카테고리 제목 표시 도우미 함수 추가
+const getTitleString = (title: string | { ko: string; en: string }): string => {
+  return typeof title === 'object' ? title.ko : title;
+};
+
 export default function AdminArticlesPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,80 +85,105 @@ export default function AdminArticlesPage() {
   const { adminUser } = useAdminSession();
   const { toast: useToastToast } = useToast();
 
-  // 영문 슬러그를 한글 카테고리명으로 변환하는 함수
-  const getMainCategoryTitle = (categorySlug: string): string => {
-    if (!categorySlug) return "";
-    
-    // 이미 한글인 경우 그대로 반환
-    if (/[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(categorySlug)) {
-      return categorySlug;
-    }
-    
-    // 1. reverseCategoryMappings 사용
-    if (reverseCategoryMappings[categorySlug]) {
-      return reverseCategoryMappings[categorySlug];
-    }
-    
-    // 2. categoryOptions에서 찾기
-    for (const [koreanTitle, option] of categoryOptions.entries()) {
-      const slug = option.href?.replace(/^\//, '') || '';
-      if (slug === categorySlug) {
-        return koreanTitle;
+  // 카테고리 데이터를 저장할 상태 추가
+  const [categoriesData, setCategoriesData] = useState<Map<string, any>>(new Map());
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+
+  // 컴포넌트 마운트 시 카테고리 데이터 로드
+  useEffect(() => {
+    async function fetchCategories() {
+      setIsLoadingCategories(true);
+      try {
+        const data = await loadCategoryData();
+        setCategoriesData(data);
+      } catch (error) {
+        console.error("카테고리 로드 실패:", error);
+      } finally {
+        setIsLoadingCategories(false);
       }
     }
     
-    // 3. 매핑에 없는 경우 기본 포맷
-    return formatSlug(categorySlug);
-  };
+    fetchCategories();
+  }, []);
 
-  // 서브카테고리 변환 함수
-  const getSubCategoryTitle = (mainCategorySlug: string, subCategorySlug: string): string => {
-    if (!subCategorySlug) return "";
+  // 메인 카테고리 옵션 가져오기
+  const getMainCategoryOptions = () => {
+    const options: { value: string; label: string }[] = [];
     
-    // 이미 한글인 경우 그대로 반환
-    if (/[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(subCategorySlug)) {
-      return subCategorySlug;
+    // 카테고리 데이터가 로드되지 않았으면 빈 배열 반환
+    if (categoriesData.size === 0) return options;
+    
+    for (const [categoryName, categoryData] of categoriesData.entries()) {
+      const slug = categoryData.href?.replace(/^\//, '') || '';
+      options.push({
+        value: slug,
+        label: categoryName
+      });
     }
     
-    // 1. 메인 카테고리의 한글명 찾기
-    let mainCategoryKorean = "";
-    for (const [koreanTitle, option] of categoryOptions.entries()) {
-      const slug = option.href?.replace(/^\//, '') || '';
-      if (slug === mainCategorySlug) {
-        mainCategoryKorean = koreanTitle;
+    return options;
+  };
+
+  // 서브 카테고리 옵션 가져오기
+  const getSubCategoryOptions = () => {
+    const options: { value: string; label: string }[] = [];
+    
+    // 카테고리 데이터가 로드되지 않았거나 메인 카테고리가 선택되지 않았으면 빈 배열 반환
+    if (categoriesData.size === 0 || filterMainCategory === 'all') {
+      return options;
+    }
+    
+    // 선택된 메인 카테고리 찾기
+    for (const [categoryName, categoryData] of categoriesData.entries()) {
+      const slug = categoryData.href?.replace(/^\//, '') || '';
+      
+      // 현재 선택된 메인 카테고리와 일치하는지 확인
+      if (slug === filterMainCategory && categoryData.items) {
+        // 서브카테고리 추가
+        for (const subCategory of categoryData.items) {
+          const title = typeof subCategory.title === 'object' 
+            ? subCategory.title.ko 
+            : subCategory.title;
+            
+          options.push({
+            value: subCategory.slug,
+            label: title
+          });
+        }
         break;
       }
     }
     
-    // 2. 한글 메인 카테고리를 찾았다면 해당 카테고리의 items에서 서브카테고리 찾기
-    if (mainCategoryKorean) {
-      const mainCategory = categoryOptions.get(mainCategoryKorean);
-      if (mainCategory && mainCategory.items) {
-        // 직접 매칭
-        for (const item of mainCategory.items) {
-          if (item.slug === subCategorySlug) {
-            return item.title;
-          }
-          
-          // 중첩된 서브카테고리 확인
-          if (item.items) {
-            for (const subItem of item.items) {
-              if (subItem.slug === subCategorySlug) {
-                return subItem.title;
-              }
-            }
+    return options;
+  };
+
+  // 메인 카테고리 제목 가져오기
+  const getMainCategoryTitle = (slug: string): string => {
+    for (const [categoryName, categoryData] of categoriesData.entries()) {
+      const categorySlug = categoryData.href?.replace(/^\//, '') || '';
+      if (categorySlug === slug) {
+        return categoryName;
+      }
+    }
+    return slug;
+  };
+
+  // 서브 카테고리 제목 가져오기
+  const getSubCategoryTitle = (mainSlug: string, subSlug: string): string => {
+    for (const [categoryName, categoryData] of categoriesData.entries()) {
+      const categorySlug = categoryData.href?.replace(/^\//, '') || '';
+      
+      if (categorySlug === mainSlug && categoryData.items) {
+        for (const subCategory of categoryData.items) {
+          if (subCategory.slug === subSlug) {
+            return typeof subCategory.title === 'object'
+              ? subCategory.title.ko
+              : subCategory.title;
           }
         }
       }
     }
-    
-    // 3. 역매핑에서 찾기 시도
-    if (reverseCategoryMappings[subCategorySlug]) {
-      return reverseCategoryMappings[subCategorySlug];
-    }
-    
-    // 4. 매핑에 없는 경우 기본 포맷
-    return formatSlug(subCategorySlug);
+    return subSlug;
   };
 
   // 한글 카테고리명을 영문 슬러그로 변환하는 함수
@@ -232,64 +262,6 @@ export default function AdminArticlesPage() {
           : (valueA < valueB ? 1 : -1);
       }
     });
-  };
-
-  // 메인 카테고리 옵션 가져오는 함수
-  const getMainCategoryOptions = (): { value: string; label: string }[] => {
-    const options: { value: string; label: string }[] = [];
-    
-    for (const [koreanTitle, option] of categoryOptions.entries()) {
-      // 특수 카테고리(주요일정 등) 제외
-      if (koreanTitle === "주요일정") continue;
-      
-      const slug = option.href?.replace(/^\//, '') || 
-                   option.base?.replace(/^\//, '') || 
-                   koreanTitle.toLowerCase().replace(/\s+/g, "-");
-                   
-      options.push({ value: slug, label: koreanTitle });
-    }
-    
-    return options;
-  };
-
-  // 서브카테고리 옵션 가져오는 함수
-  const getSubCategoryOptions = (): { value: string; label: string }[] => {
-    if (filterMainCategory === "all") return [];
-    
-    const options: { value: string; label: string }[] = [];
-    
-    // 1. 선택된 메인 카테고리의 한글명 찾기
-    let mainCategoryKorean = "";
-    for (const [koreanTitle, option] of categoryOptions.entries()) {
-      const slug = option.href?.replace(/^\//, '') || '';
-      if (slug === filterMainCategory) {
-        mainCategoryKorean = koreanTitle;
-        break;
-      }
-    }
-    
-    // 2. 해당 카테고리의 서브카테고리 목록 가져오기
-    if (mainCategoryKorean) {
-      const mainCategory = categoryOptions.get(mainCategoryKorean);
-      if (mainCategory && mainCategory.items) {
-        for (const item of mainCategory.items) {
-          if (item.slug) {
-            options.push({ value: item.slug, label: item.title });
-          }
-          
-          // 중첩된 서브카테고리 추가
-          if (item.items) {
-            for (const subItem of item.items) {
-              if (subItem.slug) {
-                options.push({ value: subItem.slug, label: subItem.title });
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    return options;
   };
 
   // 필터 조건이나 페이지 변경 시 게시글 다시 조회
@@ -562,12 +534,16 @@ export default function AdminArticlesPage() {
             className="w-full p-2 border rounded"
             value={filterMainCategory}
             onChange={handleFilterMainCategoryChange}
+            disabled={isLoadingCategories}
           >
             <option value="all">All Categories</option>
             {getMainCategoryOptions().map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
+          {isLoadingCategories && (
+            <p className="text-sm text-gray-500 mt-1">카테고리 로딩 중...</p>
+          )}
         </div>
         
         <div>
@@ -576,7 +552,7 @@ export default function AdminArticlesPage() {
             className="w-full p-2 border rounded"
             value={filterSubCategory}
             onChange={handleFilterSubCategoryChange}
-            disabled={filterMainCategory === "all"}
+            disabled={filterMainCategory === "all" || isLoadingCategories}
           >
             <option value="all">All Sub Categories</option>
             {getSubCategoryOptions().map(option => (

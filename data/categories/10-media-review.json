@@ -1,0 +1,34 @@
+{
+  "id": "media-review",
+  "title": {
+    "ko": "미디어 리뷰",
+    "en": "Media Review"
+  },
+  "slug": "media-review",
+  "subcategories": [
+    {
+      "id": "news",
+      "title": {
+        "ko": "뉴스",
+        "en": "News"
+      },
+      "slug": "news"
+    },
+    {
+      "id": "magazine",
+      "title": {
+        "ko": "매거진",
+        "en": "Magazine"
+      },
+      "slug": "magazine"
+    },
+    {
+      "id": "books",
+      "title": {
+        "ko": "도서",
+        "en": "Books"
+      },
+      "slug": "books"
+    }
+  ]
+} 

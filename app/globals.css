@@ -176,6 +176,14 @@
   min-height: 300px;
 }
 
+.ql-container {
+  height: 500px; /* 원하는 높이로 설정 */
+}
+
+.ql-editor {
+  min-height: 400px; /* 내용이 적을 때 최소 높이 */
+}
+
 /* Hide chevron-down icons in navigation menu */
 @layer utilities {
   .NavigationMenuTrigger svg,

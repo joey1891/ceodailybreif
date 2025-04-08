@@ -18,10 +18,10 @@ export function Footer() {
                 <Building2 className="h-4 w-4" />
                 서울시 송파구 송파대로
               </p>
-              <p className="flex items-center gap-2">
+              {/* <p className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 02-123-4567
-              </p>
+              </p> */}
               <p className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 <a href="mailto:wjshin2450@gmail.com">wjshin2450@gmail.com</a>

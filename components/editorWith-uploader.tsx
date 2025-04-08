@@ -1,103 +1,734 @@
-"use client"; 
+"use client";
 
-import React from "react";
-import ReactQuill from "react-quill";
-import Quill from "quill";
-import ImageUploader from "quill-image-uploader";
-import { supabase } from "@/lib/supabase";
-
-import "react-quill/dist/quill.snow.css";
-import "quill-image-uploader/dist/quill.imageUploader.min.css";
-
-// 플러그인 등록
-Quill.register("modules/imageUploader", ImageUploader);
-
-interface Props {
-  value: string;
-  onChangeAction: (val: string) => void;
+// Add this before importing ReactQuill
+// This suppresses console warnings only in production
+if (process.env.NODE_ENV === 'production') {
+  // Save the original console.warn
+  const originalWarn = console.warn;
+  // Override console.warn to filter out the specific warning
+  console.warn = (...args) => {
+    if (typeof args[0] === 'string' && args[0].includes('DOMNodeInserted')) {
+      return;
+    }
+    originalWarn(...args);
+  };
 }
 
-// 모듈 설정
-const modules = {
-  toolbar: [
-    [{ header: [1, 2, false] }],
-    ["bold", "italic", "underline", "strike"],
-    ["blockquote", "code-block"],
-    [{ list: "ordered" }, { list: "bullet" }],
-    [{ script: "sub" }, { script: "super" }],
-    [{ indent: "-1" }, { indent: "+1" }],
-    [{ direction: "rtl" }],
-    [{ color: [] }, { background: [] }],
-    [{ font: [] }],
-    [{ align: [] }],
-    // 이미지 버튼 추가
-    ["image"],
-    ["clean"],
-  ],
-  imageUploader: {
-    upload: async (file: File) => {
-      // 파일 확장자 추출 및 안전한 파일명 생성
-      const fileExt = file.name.split('.').pop() || '';
-      const originalFileName = file.name;
-      const safeFileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-      const filePath = `articles/${safeFileName}`;
-      
-      console.log("원본 파일명:", originalFileName);
-      console.log("업로드 경로:", filePath);
-      
-      // 파일 타입 검증
-      if (!file.type.startsWith('image/')) {
-        console.error("이미지 파일이 아닙니다:", file.type);
-        throw new Error('이미지 파일만 업로드 가능합니다');
-      }
-      
-      // 파일 크기 체크 (5MB 제한)
-      if (file.size > 5 * 1024 * 1024) {
-        console.error("파일 크기 초과:", file.size);
-        throw new Error('이미지 크기는 5MB 이하여야 합니다');
-      }
+import React, { useState, useEffect } from "react";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Image from '@tiptap/extension-image';
+import Table from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import TextAlign from '@tiptap/extension-text-align';
+import Link from '@tiptap/extension-link';
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import Underline from '@tiptap/extension-underline';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
+import { common, createLowlight } from 'lowlight';
+import { supabase } from "@/lib/supabase";
+import { Node } from '@tiptap/core';
 
+// lowlight 인스턴스 생성
+const lowlight = createLowlight(common);
+
+// Quill 관련 임포트 모두 제거
+
+// 상수 및 타입 정의
+interface Props {
+  value: string;
+  onChangeAction: (content: string) => void;
+  style?: React.CSSProperties;
+}
+
+// 표에 인라인 스타일을 적용하는 확장 생성
+const TableWithStyle = Table.extend({
+  renderHTML({ HTMLAttributes }) {
+    return ['table', { 
+      ...HTMLAttributes, 
+      style: 'border-collapse: collapse; width: 100%; margin: 8px 0; border: 1px solid #ced4da;' 
+    }, ['tbody', {}, 0]];
+  }
+});
+
+const TableCellWithStyle = TableCell.extend({
+  renderHTML({ HTMLAttributes }) {
+    return ['td', { 
+      ...HTMLAttributes, 
+      style: 'border: 1px solid #ced4da; padding: 8px; min-width: 1em;' 
+    }, 0];
+  }
+});
+
+const TableHeaderWithStyle = TableHeader.extend({
+  renderHTML({ HTMLAttributes }) {
+    return ['th', { 
+      ...HTMLAttributes, 
+      style: 'border: 1px solid #ced4da; padding: 8px; background-color: #f8f9fa; font-weight: bold; text-align: left;' 
+    }, 0];
+  }
+});
+
+export default function EditorWithUploader({ value, onChangeAction, style }: Props) {
+  const [isMounted, setIsMounted] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [showLinkModal, setShowLinkModal] = useState(false);
+
+  // HTML 출력을 정제하는 함수 추가
+  const sanitizeHtml = (html: string) => {
+    // 빈 내용이면 빈 문자열 반환
+    if (!html || html === '<p></p>') return '';
+    return html;
+  };
+
+  // 에디터 설정
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3, 4, 5, 6],
+        },
+      }),
+      Image,
+      TableWithStyle.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableCellWithStyle,
+      TableHeaderWithStyle,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Link.configure({
+        openOnClick: false,
+      }),
+      TextStyle,
+      Color,
+      Highlight,
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+      }),
+      Underline,
+      CodeBlockLowlight.configure({
+        lowlight,
+      }),
+      Subscript,
+      Superscript,
+    ],
+    content: value,
+    onUpdate: ({ editor }) => {
       try {
-        const { data, error } = await supabase.storage
-          .from('images')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-        
-        if (error) {
-          console.error("이미지 업로드 오류:", error);
-          console.error("실패한 파일 정보:", {
-            name: originalFileName,
-            encodedName: encodeURIComponent(originalFileName),
-            size: file.size,
-            type: file.type
-          });
-          throw error;
-        }
-        
-        const { data: urlData } = supabase.storage
-          .from('images')
-          .getPublicUrl(filePath);
-        
-        console.log("이미지 업로드 성공, URL:", urlData.publicUrl);
-        return urlData.publicUrl;
+        // HTML을 정제하여 전달
+        const html = editor.getHTML();
+        const sanitizedHtml = sanitizeHtml(html);
+        onChangeAction(sanitizedHtml);
       } catch (error) {
-        console.error("이미지 업로드 실패:", error);
-        throw error;
+        console.error("에디터 업데이트 오류:", error);
+        // 오류 발생 시 기본 텍스트만 추출하여 전달
+        const text = editor.getText();
+        onChangeAction(`<p>${text}</p>`);
       }
     },
-  },
-};
+    editable: true,
+    autofocus: 'end',
+  });
 
-export default function EditorWithUploader({ value, onChangeAction }: Props) {
+  // 이미지 업로드 핸들러
+  const handleImageUpload = async (file: File) => {
+    try {
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const filePath = `articles/${fileName}`;
+      
+      const { data, error } = await supabase.storage
+        .from('images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (error) throw error;
+      
+      const { data: urlData } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+      
+      editor?.chain().focus().setImage({ src: urlData.publicUrl }).run();
+      
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("이미지 업로드 실패:", error);
+      return '';
+    }
+  };
+
+  // 링크 추가 핸들러
+  const addLink = () => {
+    if (linkUrl) {
+      editor?.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run();
+      setLinkUrl('');
+      setShowLinkModal(false);
+    }
+  };
+  
+  // 툴바 스타일 공통화
+  const buttonStyle = (isActive: boolean) => ({
+    marginRight: '5px', 
+    padding: '5px 10px', 
+    backgroundColor: isActive ? '#e9ecef' : '#fff', 
+    border: '1px solid #ced4da', 
+    borderRadius: '4px',
+    fontSize: '12px',
+    cursor: 'pointer'
+  });
+
+  // 툴바 버튼 렌더링
+  const renderToolbar = () => {
+    if (!editor) return null;
+    
+    return (
+      <div className="editor-toolbar" style={{ 
+        marginBottom: '10px', 
+        padding: '10px', 
+        backgroundColor: '#f8f9fa', 
+        borderRadius: '4px',
+        border: '1px solid #ced4da'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '8px' }}>
+          {/* 서식 관련 버튼 */}
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            style={buttonStyle(editor.isActive('bold'))}
+            title="굵게"
+          >
+            <strong>B</strong>
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            style={buttonStyle(editor.isActive('italic'))}
+            title="기울임"
+          >
+            <em>I</em>
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            style={buttonStyle(editor.isActive('underline'))}
+            title="밑줄"
+          >
+            <u>U</u>
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            style={buttonStyle(editor.isActive('strike'))}
+            title="취소선"
+          >
+            <s>S</s>
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleSubscript().run()}
+            style={buttonStyle(editor.isActive('subscript'))}
+            title="아래 첨자"
+          >
+            x₂
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleSuperscript().run()}
+            style={buttonStyle(editor.isActive('superscript'))}
+            title="위 첨자"
+          >
+            x²
+          </button>
+          
+          {/* 구분선 */}
+          <div style={{ width: '1px', backgroundColor: '#ced4da', margin: '0 10px' }}></div>
+          
+          {/* 제목 버튼 */}
+          <select 
+            onChange={(e) => {
+              const level = parseInt(e.target.value);
+              if (level === 0) {
+                editor.chain().focus().setParagraph().run();
+              } else {
+                editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 | 4 | 5 | 6 }).run();
+              }
+            }}
+            style={{ 
+              marginRight: '5px', 
+              padding: '5px 10px', 
+              border: '1px solid #ced4da', 
+              borderRadius: '4px',
+              backgroundColor: '#fff' 
+            }}
+          >
+            <option value="0">텍스트</option>
+            <option value="1">제목 1</option>
+            <option value="2">제목 2</option>
+            <option value="3">제목 3</option>
+            <option value="4">제목 4</option>
+            <option value="5">제목 5</option>
+            <option value="6">제목 6</option>
+          </select>
+          
+          {/* 텍스트 정렬 */}
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            style={buttonStyle(editor.isActive({ textAlign: 'left' }))}
+            title="왼쪽 정렬"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            style={buttonStyle(editor.isActive({ textAlign: 'center' }))}
+            title="가운데 정렬"
+          >
+            ↔
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            style={buttonStyle(editor.isActive({ textAlign: 'right' }))}
+            title="오른쪽 정렬"
+          >
+            →
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+            style={buttonStyle(editor.isActive({ textAlign: 'justify' }))}
+            title="양쪽 정렬"
+          >
+            ⇋
+          </button>
+        </div>
+        
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {/* 목록 관련 버튼 */}
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            style={buttonStyle(editor.isActive('bulletList'))}
+            title="글머리 기호"
+          >
+            • 목록
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            style={buttonStyle(editor.isActive('orderedList'))}
+            title="번호 매기기"
+          >
+            1. 번호
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleTaskList().run()}
+            style={buttonStyle(editor.isActive('taskList'))}
+            title="체크리스트"
+          >
+            ☑ 체크
+          </button>
+          
+          {/* 구분선 */}
+          <div style={{ width: '1px', backgroundColor: '#ced4da', margin: '0 10px' }}></div>
+          
+          {/* 기타 서식 */}
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            style={buttonStyle(editor.isActive('blockquote'))}
+            title="인용구"
+          >
+            인용
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            style={buttonStyle(editor.isActive('codeBlock'))}
+            title="코드 블록"
+          >
+            코드
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            style={buttonStyle(false)}
+            title="가로선"
+          >
+            가로선
+          </button>
+          
+          {/* 구분선 */}
+          <div style={{ width: '1px', backgroundColor: '#ced4da', margin: '0 10px' }}></div>
+          
+          {/* 링크 */}
+          <button
+            type="button"
+            onClick={() => setShowLinkModal(true)}
+            style={buttonStyle(editor.isActive('link'))}
+            title="링크"
+          >
+            링크
+          </button>
+          {editor.isActive('link') && (
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().unsetLink().run()}
+              style={buttonStyle(false)}
+              title="링크 제거"
+            >
+              링크제거
+            </button>
+          )}
+          
+          {/* 색상 선택 */}
+          <input
+            type="color"
+            onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+            title="글자 색상"
+            style={{ 
+              marginRight: '5px',
+              width: '30px',
+              height: '30px',
+              padding: '0',
+              border: '1px solid #ced4da',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          />
+          
+          {/* 구분선 */}
+          <div style={{ width: '1px', backgroundColor: '#ced4da', margin: '0 10px' }}></div>
+          
+          {/* 테이블 버튼 */}
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+            style={buttonStyle(false)}
+            title="테이블 삽입"
+          >
+            테이블
+          </button>
+          
+          {/* 이미지 업로드 버튼 */}
+          <input
+            type="file"
+            id="image-upload"
+            style={{ display: 'none' }}
+            accept="image/*" 
+            onChange={(e) => {
+              if (e.target.files?.length) {
+                handleImageUpload(e.target.files[0]);
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => document.getElementById('image-upload')?.click()}
+            style={buttonStyle(false)}
+            title="이미지 삽입"
+          >
+            이미지
+          </button>
+          
+          {/* 실행 취소/다시 실행 */}
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().undo().run()}
+            style={buttonStyle(false)}
+            title="실행 취소"
+            disabled={!editor.can().undo()}
+          >
+            ↩
+          </button>
+          <button
+            type="button"
+            onClick={() => editor.chain().focus().redo().run()}
+            style={buttonStyle(false)}
+            title="다시 실행"
+            disabled={!editor.can().redo()}
+          >
+            ↪
+          </button>
+        </div>
+        
+        {/* 링크 모달 */}
+        {showLinkModal && (
+          <div style={{ 
+            marginTop: '10px', 
+            padding: '10px', 
+            border: '1px solid #ced4da', 
+            borderRadius: '4px',
+            backgroundColor: '#fff'
+          }}>
+            <input 
+              type="text" 
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="URL 입력"
+              style={{ 
+                width: '70%', 
+                padding: '5px', 
+                marginRight: '10px',
+                border: '1px solid #ced4da',
+                borderRadius: '4px'
+              }}
+            />
+            <button 
+              type="button" 
+              onClick={addLink}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: '#4dabf7',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                marginRight: '5px'
+              }}
+            >
+              확인
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setShowLinkModal(false)}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: '#f1f3f5',
+                border: '1px solid #ced4da',
+                borderRadius: '4px'
+              }}
+            >
+              취소
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // 에디터 초기화 확인
+  useEffect(() => {
+    if (editor) {
+      // 에디터가 초기화되면 내용 설정
+      if (value && editor.isEmpty) {
+        editor.commands.setContent(value);
+      }
+      
+      // 디버깅을 위한 이벤트 리스너
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (editor.isEmpty) return;
+        
+        // 작성 중인 내용이 있으면 경고
+        e.preventDefault();
+        e.returnValue = '';
+      };
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [editor, value]);
+
+  useEffect(() => {
+    // CSS 동적 삽입 (클래식한 에디터 스타일)
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .ProseMirror {
+        outline: none;
+        background-color: #fff;
+        color: #333;
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      .ProseMirror:focus {
+        outline: none;
+      }
+      .ProseMirror p {
+        margin: 0.5em 0;
+      }
+      .ProseMirror h1 {
+        font-size: 2em;
+        margin: 0.67em 0;
+      }
+      .ProseMirror h2 {
+        font-size: 1.5em;
+        margin: 0.83em 0;
+      }
+      .ProseMirror h3 {
+        font-size: 1.17em;
+        margin: 1em 0;
+      }
+      .ProseMirror h4 {
+        font-size: 1em;
+        margin: 1.33em 0;
+      }
+      .ProseMirror h5 {
+        font-size: 0.83em;
+        margin: 1.67em 0;
+      }
+      .ProseMirror h6 {
+        font-size: 0.67em;
+        margin: 2.33em 0;
+      }
+      .ProseMirror ul, .ProseMirror ol {
+        padding-left: 2em;
+      }
+      .ProseMirror ul {
+        list-style-type: disc;
+      }
+      .ProseMirror ol {
+        list-style-type: decimal;
+      }
+      .ProseMirror blockquote {
+        border-left: 3px solid #ddd;
+        margin-left: 0;
+        margin-right: 0;
+        padding-left: 1em;
+        color: #666;
+      }
+      .ProseMirror pre {
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        padding: 0.75em 1em;
+        white-space: pre-wrap;
+      }
+      .ProseMirror code {
+        background-color: rgba(97, 97, 97, 0.1);
+        border-radius: 2px;
+        font-size: 0.9em;
+        padding: 0.25em;
+        font-family: Consolas, Monaco, 'Andale Mono', monospace;
+      }
+      .ProseMirror a {
+        color: #007bff;
+        text-decoration: underline;
+      }
+      .ProseMirror hr {
+        border: none;
+        border-top: 1px solid #ced4da;
+        margin: 1em 0;
+      }
+      .ProseMirror table {
+        border-collapse: collapse;
+        margin: 0;
+        overflow: hidden;
+        table-layout: fixed;
+        width: 100%;
+        margin: 0.5em 0;
+      }
+      .ProseMirror table td,
+      .ProseMirror table th {
+        border: 1px solid #ced4da;
+        box-sizing: border-box;
+        min-width: 1em;
+        padding: 8px;
+        position: relative;
+        vertical-align: top;
+      }
+      .ProseMirror table th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+        text-align: left;
+      }
+      .ProseMirror table .selectedCell:after {
+        background: rgba(200, 200, 255, 0.4);
+        content: "";
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        pointer-events: none;
+        position: absolute;
+        z-index: 2;
+      }
+      .ProseMirror img {
+        max-width: 100%;
+        height: auto;
+        margin: 0.5em 0;
+      }
+      .ProseMirror .task-list {
+        list-style-type: none;
+        padding-left: 0.5em;
+      }
+      .ProseMirror .task-list-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 0.5em;
+      }
+      .ProseMirror .task-list-item-checkbox {
+        margin-right: 0.5em;
+        margin-top: 0.2em;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    setIsMounted(true);
+    
+    return () => {
+      document.head.removeChild(style);
+      editor?.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (editor && !editor.isEditable) {
+      editor.setEditable(true);
+    }
+  }, [editor]);
+
+  if (!isMounted) {
+    return <div style={{ height: "400px", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f8f9fa", borderRadius: "4px", border: '1px solid #ced4da' }}>
+      에디터 로딩 중...
+    </div>;
+  }
+
   return (
-    <ReactQuill
-      theme="snow"
-      value={value}
-      onChange={onChangeAction}
-      modules={modules}
-      style={{ minHeight: 300 }}
-    />
+    <div style={{ ...style, height: "auto", minHeight: "500px", padding: '10px' }}>
+      {renderToolbar()}
+      <div 
+        onClick={() => editor?.chain().focus().run()}
+        style={{ position: 'relative', height: '400px' }}
+      >
+        <EditorContent 
+          editor={editor}
+          style={{ 
+            height: "100%", 
+            overflow: 'auto',
+            border: '1px solid #ced4da', 
+            borderRadius: '4px',
+            padding: '10px',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1,
+            cursor: 'text',
+            backgroundColor: '#ffffff'
+          }}
+        />
+      </div>
+    </div>
   );
 }

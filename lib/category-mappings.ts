@@ -9,22 +9,29 @@ export const categoryMappings: Record<string, string> = {
   "정책 동향": "policy",
   "언론 동향": "media",
   "마케팅 동향": "marketing",
-  "인물과 동향": "people",
+  "인사 동향": "people",
   "미디어 리뷰": "media-review",
   "새 카테고리": "new-category",
+
+  // 리포트 하위 카테고리
+  "HA원료": "ha-ingredients",
+  "시린지": "syringe",
+  "필러": "filler",
+  "스킨부스터": "skin-booster",
+  "줄기세포치료제": "stem-cell-therapy",
+  "비만치료제": "obesity-treatment",
+  "화장품": "cosmetics",
   
   // 기본 서브 카테고리
   "민간소비": "private-consumption",
   "정부지출": "government-spending",
   "기업투자": "corporate-investment",
   "수출입": "trade",
-  "금리": "interest-rate",
-  "환율": "exchange-rate",
   "은행": "bank",
-  "금융투자회사": "financial-investment-company",
-  "보험회사": "insurance-company",
+  "보험사": "insurance-company",
   "PE": "private-equity",
   "VC": "venture-capital",
+  "AC": "ac",
   "ATL": "atl",
   "BTL": "btl",
   "광고대행사": "advertising-agency",
@@ -32,6 +39,15 @@ export const categoryMappings: Record<string, string> = {
   "뉴스": "news",
   "매거진": "magazine",
   "도서": "books",
+
+  // 인사 동향 하위 카테고리
+  "기업인": "businessman",
+  "정치인": "politician",
+  "공무원": "government-official",
+  "법조인": "lawyer",
+  "회계사": "accountant",
+  "세무사": "tax-accountant",
+  "변리사": "patent-attorney",
   
   // 서브서브 카테고리
   "시설투자": "infrastructure-investment",
@@ -111,7 +127,7 @@ export const contextualCategoryDisplay: Record<string, Record<string, string>> =
     "의료기기": "company-medical-devices",
     "화장품": "company-cosmetics",
     "건강기능식품": "company-health-supplements",
-    "디지털헬스케어": "company-digital-healthcare",
+    "디지털헬스케어": "industry-digital-healthcare",
   },
   "policy": {
     "필러": "policy-filler",
@@ -121,21 +137,21 @@ export const contextualCategoryDisplay: Record<string, Record<string, string>> =
     "의료": "policy-medical",
     "제약": "policy-pharmaceutical",
     "의료기기": "policy-medical-devices",
-    "화장품": "policy-cosmetics",
-    "건강기능식품": "policy-health-supplements",
-    "디지털헬스케어": "policy-digital-healthcare",
+    "화장품": "industry-cosmetics",
+    "건강기능식품": "industry-health-supplements",
+    "디지털헬스케어": "industry-digital-healthcare",
   },
   "media": {
     "필러": "media-filler",
     "스킨부스터": "media-skin-booster",
     "비만치료제": "media-obesity-treatment",
     "보톡스": "media-botox",
-    "의료": "media-medical",
-    "제약": "media-pharmaceutical",
-    "의료기기": "media-medical-devices",
-    "화장품": "media-cosmetics",
-    "건강기능식품": "media-health-supplements",
-    "디지털헬스케어": "media-digital-healthcare",
+    "의료": "industry-medical",
+    "제약": "industry-pharmaceutical",
+    "의료기기": "industry-medical-devices",
+    "화장품": "industry-cosmetics",
+    "건강기능식품": "industry-health-supplements",
+    "디지털헬스케어": "industry-digital-healthcare",
   }
 };
 
@@ -161,33 +177,33 @@ export const contextualCategoryMappings: Record<string, Record<string, string>> 
     "의료": "company-medical",
     "제약": "company-pharmaceutical",
     "의료기기": "company-medical-devices",
-    "화장품": "company-cosmetics",
-    "건강기능식품": "company-health-supplements",
-    "디지털헬스케어": "company-digital-healthcare",
+    "화장품": "industry-cosmetics",
+    "건강기능식품": "industry-health-supplements",
+    "디지털헬스케어": "industry-digital-healthcare",
   },
   "policy": {
     "필러": "policy-filler",
     "스킨부스터": "policy-skin-booster",
-    "비만치료제": "policy-obesity-treatment",
+    "비만치료제": "industry-obesity-treatment",
     "보톡스": "policy-botox",
-    "의료": "policy-medical",
-    "제약": "policy-pharmaceutical",
-    "의료기기": "policy-medical-devices",
-    "화장품": "policy-cosmetics",
-    "건강기능식품": "policy-health-supplements",
-    "디지털헬스케어": "policy-digital-healthcare",
+    "의료": "industry-medical",
+    "제약": "industry-pharmaceutical",
+    "의료기기": "industry-medical-devices",
+    "화장품": "industry-cosmetics",
+    "건강기능식품": "industry-health-supplements",
+    "디지털헬스케어": "industry-digital-healthcare",
   },
   "media": {
     "필러": "media-filler",
     "스킨부스터": "media-skin-booster",
     "비만치료제": "media-obesity-treatment",
     "보톡스": "media-botox",
-    "의료": "media-medical",
-    "제약": "media-pharmaceutical",
-    "의료기기": "media-medical-devices",
-    "화장품": "media-cosmetics",
-    "건강기능식품": "media-health-supplements",
-    "디지털헬스케어": "media-digital-healthcare",
+    "의료": "industry-medical",
+    "제약": "industry-pharmaceutical",
+    "의료기기": "industry-medical-devices",
+    "화장품": "industry-cosmetics",
+    "건강기능식품": "industry-health-supplements",
+    "디지털헬스케어": "industry-digital-healthcare",
   }
 };
 
@@ -205,4 +221,4 @@ export function getCategoryMapping(category: string, parentCategory?: string): s
 
 // 역방향 매핑 (영문 -> 한글) - 필요시 사용
 export const reverseCategoryMappings: Record<string, string> = 
-  Object.fromEntries(Object.entries(categoryMappings).map(([k, v]) => [v, k])); 
+  Object.fromEntries(Object.entries(categoryMappings).map(([k, v]) => [v, k]));

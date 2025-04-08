@@ -1,0 +1,50 @@
+{
+  "id": "finance",
+  "title": {
+    "ko": "금융 동향",
+    "en": "Finance"
+  },
+  "slug": "finance",
+  "subcategories": [
+    {
+      "id": "bank",
+      "title": {
+        "ko": "은행",
+        "en": "Bank"
+      },
+      "slug": "bank"
+    },
+    {
+      "id": "insurance-company",
+      "title": {
+        "ko": "보험사",
+        "en": "Insurance Company"
+      },
+      "slug": "insurance-company"
+    },
+    {
+      "id": "private-equity",
+      "title": {
+        "ko": "PE",
+        "en": "Private Equity"
+      },
+      "slug": "private-equity"
+    },
+    {
+      "id": "venture-capital",
+      "title": {
+        "ko": "VC",
+        "en": "Venture Capital"
+      },
+      "slug": "venture-capital"
+    },
+    {
+      "id": "ac",
+      "title": {
+        "ko": "AC",
+        "en": "AC"
+      },
+      "slug": "ac"
+    }
+  ]
+} 

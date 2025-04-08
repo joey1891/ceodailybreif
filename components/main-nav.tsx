@@ -3,22 +3,19 @@
 import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { categoryOptions } from "@/lib/category-options";
 import { Menu, X } from "lucide-react";
 import { getCategoryUrl } from '@/lib/routes';
+import { getAllCategories, CategoryItem } from '@/lib/category-loader';
 
 export function MainNav() {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   
-  // 모든 카테고리 가져오기 (주요일정은 이미 categoryOptions에 있음)
+  // 모든 카테고리 가져오기 (새로운 방식)
   const allCategories = React.useMemo(() => {
-    return Array.from(categoryOptions.values());
+    return getAllCategories();
   }, []);
-  
-  // 카테고리 수에 따른 동적 스타일 계산
-  const categoryCount = allCategories.length;
   
   // 메뉴 바깥 클릭 시 닫기
   React.useEffect(() => {
@@ -39,6 +36,11 @@ export function MainNav() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isMenuOpen]);
+  
+  // 링크 클릭 시 메뉴 닫기 함수
+  const handleLinkClick = () => {
+    setIsMenuOpen(false);
+  };
   
   return (
     <div className="relative w-full max-w-[1400px] ml-0 mr-auto">
@@ -62,66 +64,51 @@ export function MainNav() {
           ref={menuRef}
           className="bg-white shadow-lg border-y border-gray-200 z-50 max-h-[calc(100vh-5rem)] overflow-y-auto absolute left-0 top-[64px] w-full"
         >
-          <div className="py-4 w-full overflow-x-auto">
-            {/* 메인 카테고리 가로 정렬 - 동적 너비 계산 */}
-            <div 
-              className="grid gap-4 pb-4 mb-4 border-b border-gray-200 min-w-[800px]"
-              style={{ 
-                gridTemplateColumns: `repeat(${categoryCount}, minmax(0, 1fr))` 
-              }}
-            >
-              {allCategories.map((category, idx) => (
-                <div key={idx}>
+          <div className="py-3 w-full px-3 sm:py-4 sm:px-4">
+            <div className="flex flex-row overflow-x-auto pb-3 sm:pb-4 gap-3 sm:gap-6 no-scrollbar">
+              {allCategories.map((category) => (
+                <div key={category.id} className="flex flex-col items-start min-w-[80px] max-w-[80px] sm:min-w-[100px] sm:max-w-[100px] flex-shrink-0">
+                  {/* Main category */}
                   <Link
-                    href={category.href || "#"}
-                    className="block px-3 py-2 bg-primary/10 rounded-md text-sm font-bold text-primary hover:bg-primary/20 transition-colors text-center"
+                    href={`/${category.slug}`}
+                    className="whitespace-nowrap px-3 py-1.5 sm:px-4 sm:py-2 bg-primary/10 rounded-md text-xs sm:text-sm font-bold text-primary hover:bg-primary/20 transition-colors"
+                    onClick={handleLinkClick}
                   >
-                    {category.title}
+                    {category.title.ko}
                   </Link>
-                </div>
-              ))}
-            </div>
-            
-            {/* 하위 카테고리 가로 정렬 */}
-            <div 
-              className="grid gap-4 min-w-[800px]"
-              style={{ 
-                gridTemplateColumns: `repeat(${categoryCount}, minmax(0, 1fr))` 
-              }}
-            >
-              {Array.from(categoryOptions.values()).map((category) => (
-                <div key={category.title} className="space-y-1">
-                  <div className="flex flex-col space-y-1">
+                  
+                  {/* Subcategories directly below each main category */}
+                  <div className="w-full flex flex-col gap-1.5 sm:gap-2 mt-2 sm:mt-3 pl-1">
                     {/* 주요일정인 경우 하드코딩된 항목 대신 동적으로 처리 */}
-                    {category.title === "주요일정" ? (
+                    {category.id === "schedule" ? (
                       <>
                         <Link
                           href="/schedule/annual"
-                          className="px-3 py-2 text-sm text-primary/80 hover:bg-gray-100 rounded-md transition-colors"
+                          className="px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-primary/80 hover:bg-gray-100 rounded-md transition-colors break-words"
+                          onClick={handleLinkClick}
                         >
                           연간일정
                         </Link>
                         <Link
                           href="/schedule/monthly"
-                          className="px-3 py-2 text-sm text-primary/80 hover:bg-gray-100 rounded-md transition-colors"
+                          className="px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-primary/80 hover:bg-gray-100 rounded-md transition-colors break-words"
+                          onClick={handleLinkClick}
                         >
                           월간일정
                         </Link>
                       </>
                     ) : (
                       // 다른 카테고리는 기존 방식대로 처리
-                      category.items.map((item) => {
-                        const href = getCategoryUrl(category, item.slug);
-                        return (
-                          <Link
-                            key={href}
-                            href={href}
-                            className="px-3 py-2 text-sm text-primary/80 hover:bg-gray-100 rounded-md transition-colors"
-                          >
-                            {item.title}
-                          </Link>
-                        );
-                      })
+                      category.subcategories?.map((subcategory) => (
+                        <Link
+                          key={subcategory.id}
+                          href={getCategoryUrl(category, subcategory)}
+                          className="px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm text-primary/80 hover:bg-gray-100 rounded-md transition-colors break-words"
+                          onClick={handleLinkClick}
+                        >
+                          {subcategory.title.ko}
+                        </Link>
+                      ))
                     )}
                   </div>
                 </div>

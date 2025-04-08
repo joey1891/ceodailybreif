@@ -1,47 +1,49 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Clock } from "lucide-react";
 import Link from "next/link";
-
-const categories = [
-  { 
-    title: "Annual", 
-    href: "/schedule/annual",
-    icon: Calendar,
-    description: "Yearly industry events and milestones"
-  },
-  { 
-    title: "Monthly", 
-    href: "/schedule/monthly",
-    icon: Clock,
-    description: "Monthly schedules and upcoming events"
-  }
-];
+import { CalendarSection } from "@/components/calendar-section";
+import { Card, CardContent } from "@/components/ui/card";
+import { Calendar } from "lucide-react";
 
 export default function SchedulePage() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8">Key Schedule</h1>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {categories.map((category) => (
-          <Link key={category.href} href={category.href}>
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <category.icon className="h-5 w-5" />
-                  {category.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  {category.description}
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+    <div className="container py-8">
+      <h1 className="text-2xl font-bold mb-6">주요일정</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        {/* Annual Schedule Card */}
+        <Link href="/schedule/annual">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-3 text-primary">
+                <Calendar className="h-5 w-5" />
+                <h2 className="text-lg font-semibold">연간일정</h2>
+              </div>
+              <p className="text-gray-600">
+                연간 주요 일정을 확인할 수 있습니다.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        
+        {/* Monthly Schedule Card */}
+        <Link href="/schedule/monthly">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-3 text-primary">
+                <Calendar className="h-5 w-5" />
+                <h2 className="text-lg font-semibold">월간일정</h2>
+              </div>
+              <p className="text-gray-600">
+                월간 주요 일정을 확인할 수 있습니다.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
+      
+      {/* Calendar Section below */}
+      <CalendarSection />
     </div>
   );
 }

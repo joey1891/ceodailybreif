@@ -34,7 +34,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   }, []);
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body className="overflow-x-hidden max-w-full">
        <Providers>
           <ThemeProvider

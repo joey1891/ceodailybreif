@@ -1,0 +1,90 @@
+{
+  "id": "policy",
+  "title": {
+    "ko": "정책 동향",
+    "en": "Policy"
+  },
+  "slug": "policy",
+  "subcategories": [
+    {
+      "id": "policy-filler",
+      "title": {
+        "ko": "필러",
+        "en": "Filler"
+      },
+      "slug": "policy-filler"
+    },
+    {
+      "id": "policy-skin-booster",
+      "title": {
+        "ko": "스킨부스터",
+        "en": "Skin Booster"
+      },
+      "slug": "policy-skin-booster"
+    },
+    {
+      "id": "policy-obesity-treatment",
+      "title": {
+        "ko": "비만치료제",
+        "en": "Obesity Treatment"
+      },
+      "slug": "policy-obesity-treatment"
+    },
+    {
+      "id": "policy-botox",
+      "title": {
+        "ko": "보톡스",
+        "en": "Botox"
+      },
+      "slug": "policy-botox"
+    },
+    {
+      "id": "policy-medical",
+      "title": {
+        "ko": "의료",
+        "en": "Medical"
+      },
+      "slug": "policy-medical"
+    },
+    {
+      "id": "policy-pharmaceutical",
+      "title": {
+        "ko": "제약",
+        "en": "Pharmaceutical"
+      },
+      "slug": "policy-pharmaceutical"
+    },
+    {
+      "id": "policy-medical-devices",
+      "title": {
+        "ko": "의료기기",
+        "en": "Medical Devices"
+      },
+      "slug": "policy-medical-devices"
+    },
+    {
+      "id": "policy-cosmetics",
+      "title": {
+        "ko": "화장품",
+        "en": "Cosmetics"
+      },
+      "slug": "policy-cosmetics"
+    },
+    {
+      "id": "policy-health-supplements",
+      "title": {
+        "ko": "건강기능식품",
+        "en": "Health Supplements"
+      },
+      "slug": "policy-health-supplements"
+    },
+    {
+      "id": "policy-digital-healthcare",
+      "title": {
+        "ko": "디지털헬스케어",
+        "en": "Digital Healthcare"
+      },
+      "slug": "policy-digital-healthcare"
+    }
+  ]
+} 

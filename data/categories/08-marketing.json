@@ -1,0 +1,60 @@
+{
+  "id": "marketing",
+  "title": {
+    "ko": "마케팅 동향",
+    "en": "Marketing"
+  },
+  "slug": "marketing",
+  "subcategories": [
+    {
+      "id": "atl",
+      "title": {
+        "ko": "ATL",
+        "en": "ATL"
+      },
+      "slug": "atl"
+    },
+    {
+      "id": "btl",
+      "title": {
+        "ko": "BTL",
+        "en": "BTL"
+      },
+      "slug": "btl",
+      "subcategories": [
+        {
+          "id": "performance-marketing",
+          "title": {
+            "ko": "퍼포먼스 마케팅",
+            "en": "Performance Marketing"
+          },
+          "slug": "performance-marketing"
+        },
+        {
+          "id": "influencer-marketing",
+          "title": {
+            "ko": "인플루언서 마케팅",
+            "en": "Influencer Marketing"
+          },
+          "slug": "influencer-marketing"
+        }
+      ]
+    },
+    {
+      "id": "advertising-agency",
+      "title": {
+        "ko": "광고대행사",
+        "en": "Advertising Agency"
+      },
+      "slug": "advertising-agency"
+    },
+    {
+      "id": "advertising-media",
+      "title": {
+        "ko": "광고매체",
+        "en": "Advertising Media"
+      },
+      "slug": "advertising-media"
+    }
+  ]
+} 

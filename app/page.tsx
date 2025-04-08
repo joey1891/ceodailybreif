@@ -16,18 +16,45 @@ import { ArticlesSection } from "@/components/ArticlesSection";
 import { FinanceInfo } from "@/components/finance-info";
 import { Sidebar } from "@/components/sidebar";
 import { CalendarSection } from "@/components/calendar-section";
-import { categoryOptions } from "@/lib/category-options";
+import { getAllCategories } from "@/lib/category-loader";
 import { Post } from "@/types/supabase";
 import { supabase } from "@/lib/supabase";
 import PopupDisplay from "@/components/popup-display";
 
 export default function Home() {
   // mainCategories를 컴포넌트가 마운트될 때 한 번만 생성
-  const [mainCategories] = useState(() => Array.from(categoryOptions.values()));
+  const [mainCategories] = useState(() => Array.from(getAllCategories()));
   const [categoryPosts, setCategoryPosts] = useState<Record<string, Post[]>>({});
   const [recentPosts, setRecentPosts] = useState<Post[]>([]);
   const [popularPosts, setPopularPosts] = useState<Post[]>([]);
   const [slides, setSlides] = useState<any[]>([]);
+
+  // 기존 카테고리 게시물 가져오는 로직
+  const fetchCategoryPosts = async () => {
+    const posts: Record<string, Post[]> = {};
+    let allPosts: Post[] = [];
+
+    // 각 카테고리별 게시물 가져오기
+    for (const category of mainCategories) {
+      try {
+        const { data } = await supabase
+          .from("posts")
+          .select("*")
+          .eq("category", category.id)
+          .order("updated_at", { ascending: false })
+          .limit(7);
+        
+        if (data) {
+          posts[category.slug] = data;
+          allPosts = [...allPosts, ...data];
+        }
+      } catch (error) {
+        console.error(`Error fetching posts for category ${category.id}:`, error);
+      }
+    }
+
+    return { posts, allPosts };
+  };
 
   useEffect(() => {
     // 슬라이드 데이터 가져오기
@@ -37,7 +64,7 @@ export default function Home() {
           .from('posts')
           .select('id, title, image_url, description, slide_order')
           .eq('is_slide', true)
-          .order('slide_order', { ascending: true });  // 슬라이드 순서로 정렬
+          .order('slide_order', { ascending: true });
         
         if (error) throw error;
         setSlides(data || []);
@@ -47,53 +74,29 @@ export default function Home() {
       }
     };
     
-    fetchSlides();
-    
-    // 기존 카테고리 게시물 가져오는 로직
-    const fetchCategoryPosts = async () => {
-      const posts: Record<string, Post[]> = {};
-      let allPosts: Post[] = [];
-
-      for (const [key, mainCat] of categoryOptions) {
-        // Report 등 href가 정의되어 있다면 우선 사용
-        const mainPath = mainCat.href
-          ? mainCat.href.replace(/^\//, "")
-          : mainCat.base
-          ? mainCat.base?.replace(/^\//, "")
-          : mainCat.title.toLowerCase().replace(/\s+/g, "-");
-
-        // 하위 카테고리 slug 추출
-        const subcategorySlugs = mainCat.items?.map((item) => item.slug).filter(slug => slug !== undefined) || [];
+    // 기사 데이터 가져오기 - Promise 체이닝 사용
+    const fetchPosts = () => {
+      fetchCategoryPosts().then(({ posts, allPosts }) => {
+        setCategoryPosts(posts);
         
-        const { data, error } = await supabase
-          .from("posts")
-          .select("*, subcategory")
-          .eq("category", mainPath)
-          .order("updated_at", { ascending: false })
-          .limit(10); // 10개로 변경
-
-        if (!error && data) {
-          posts[mainPath] = data;
-          allPosts = [...allPosts, ...data];
-        }
-      }
-
-      setCategoryPosts(posts);
-      
-      // 모든 카테고리 게시물에서 최신글 5개 추출
-      const recent = [...allPosts]
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 5);
-      setRecentPosts(recent);
-      
-      // 모든 카테고리 게시물에서 조회수 높은 글 5개 추출
-      const popular = [...allPosts]
-        .sort((a, b) => (b.viewcnt || 0) - (a.viewcnt || 0)) // 조회수 내림차순 정렬
-        .slice(0, 5);
-      setPopularPosts(popular);
+        // 모든 카테고리 게시물에서 최신글 5개 추출
+        const recent = [...allPosts]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 5);
+        setRecentPosts(recent);
+        
+        // 모든 카테고리 게시물에서 조회수 높은 글 5개 추출
+        const popular = [...allPosts]
+          .sort((a, b) => (b.viewcnt || 0) - (a.viewcnt || 0))
+          .slice(0, 5);
+        setPopularPosts(popular);
+      }).catch(error => {
+        console.error('기사 데이터를 가져오는 중 오류 발생:', error);
+      });
     };
-
-    fetchCategoryPosts();
+    
+    fetchSlides();
+    fetchPosts();
   }, [mainCategories]);
 
   return (

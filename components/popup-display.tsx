@@ -122,7 +122,9 @@ export default function PopupDisplay() {
           ${popup.content ? `<div class="popup-content">${popup.content}</div>` : ''}
           ${popup.image_url ? 
             popup.link_url ? 
-              `<a href="${popup.link_url}" target="_blank"><img src="${popup.image_url}" alt="${popup.title}" class="popup-image"></a>` :
+              `<a href="${popup.link_url}" target="_blank" rel="noopener noreferrer">
+                <img src="${popup.image_url}" alt="${popup.title}" class="popup-image">
+              </a>` :
               `<img src="${popup.image_url}" alt="${popup.title}" class="popup-image">` 
             : ''
           }
@@ -137,11 +139,6 @@ export default function PopupDisplay() {
               tomorrow.setHours(0, 0, 0, 0);
               window.opener.postMessage({type: 'DISMISS_POPUP', until: tomorrow.toISOString()}, '*');
               window.close();
-            }
-            ${popup.link_url && popup.image_url ? 
-              `document.querySelector('.popup-image').addEventListener('click', function() {
-                window.open('${popup.link_url}', '_blank');
-              });` : ''
             }
           </script>
         </body>

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
 import Link from "next/link";
+import { getPostsByCategory } from '@/lib/supabase/categories';
+import { getCategoryById, CategoryItem } from '@/lib/category-loader';
+import { getCategoryUrl } from '@/lib/routes';
 
 interface SubCategoryPreviewProps {
   mainCategory: string; // 예: "economic-trends"
@@ -26,21 +28,25 @@ export default function SubCategoryPreview({
   const [loading, setLoading] = useState(true);
   const [shouldShowViewAll, setShouldShowViewAll] = useState<boolean>(false);
 
+  // 카테고리 정보 가져오기
+  const mainCategoryData = getCategoryById(mainCategory);
+  const subcategoryData = mainCategoryData?.subcategories?.find(sub => sub.slug === subCategory);
+
   useEffect(() => {
     const fetchSubPosts = async () => {
       setLoading(true);
       // limit+1 개를 가져와서 실제 게시물 수가 limit 이상인지 판단
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("category", mainCategory)
-        .eq("subcategory", subCategory)
-        .order("updated_at", { ascending: false })
-        .limit(limit + 1);
+      const data = await getPostsByCategory({
+        mainCategory,
+        subCategory,
+        limit: limit + 1,
+        orderBy: "updated_at",
+        ascending: false
+      });
 
-      if (!error && data) {
+      if (data) {
         // 만약 data.length가 limit+1 이상이면 게시물이 limit개 이상 존재하는 것으로 판단
-        if (data.length >= limit) {
+        if (data.length > limit) {
           setShouldShowViewAll(true);
           // 화면에는 limit 개만 보여줌
           setPosts(data.slice(0, limit));
@@ -74,7 +80,7 @@ export default function SubCategoryPreview({
       {shouldShowViewAll && showViewAll && (
         <div className="mb-2 text-right">
           <Link
-            href={`/${mainCategory}/${subCategory}`}
+            href={getCategoryUrl(mainCategory, subCategory)}
             className="text-blue-500 hover:underline"
           >
             View All

@@ -5,9 +5,15 @@ import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminSession } from "@/lib/admin-auth";
-import { categoryOptions } from "@/lib/category-options";
+import { loadCategoryData } from "@/lib/category-options";
 import dynamic from "next/dynamic";
 import { categoryMappings } from '@/lib/category-mappings';
+import { Post } from "@/types/supabase";
+import { getCategoryById } from "@/lib/category-loader";
+import { CategoryItem, CategoryOption } from "@/lib/category-options";
+// import { Editor } from "@/components/editor";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "react-hot-toast";
 
 const EditorWithUploader = dynamic(
   () => import("@/components/editorWith-uploader"),
@@ -19,31 +25,171 @@ const EditorWithUploader = dynamic(
 
 interface ArticleFormProps {
   id?: string;
+  post?: Post;
 }
 
 // 한글 카테고리를 영문으로 변환하는 매핑 추가
 // const categoryMappings = { ... }; 부분 삭제
 
-export default function ArticleForm({ id }: ArticleFormProps) {
+// Helper function to handle title objects
+const getTitleString = (title: string | { ko: string; en: string }): string => {
+  return typeof title === 'object' ? title.ko : title;
+};
+
+// Improved image extraction function
+const extractFirstImage = (htmlContent: string): string | null => {
+  const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
+  const match = htmlContent.match(imgRegex);
+  
+  if (!match) return null;
+  
+  const imageUrl = match[1];
+  
+  // Check if it's a data URL (base64 encoded image)
+  if (imageUrl.startsWith('data:image/')) {
+    // Here you need to actually upload this image to your Supabase storage
+    // This is a placeholder; you'll want to implement proper image uploading
+    console.log("Found base64 image. Consider implementing proper image upload to storage.");
+    
+    // If your EditorWithUploader already handles image uploads to storage,
+    // you shouldn't need to extract base64 images at all
+    return null;
+  }
+  
+  return imageUrl;
+};
+
+export default function ArticleForm({ id, post }: ArticleFormProps) {
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast: useToastToast } = useToast();
   const { adminUser, loading: adminLoading } = useAdminSession();
 
-  // Map에서 메인 카테고리 키 배열을 추출
-  const mainCategoryKeys = Array.from(categoryOptions.keys());
-  const defaultMainCategory = mainCategoryKeys[0] || "";
-  // 기본 서브 카테고리는 해당 메인 카테고리의 첫번째 항목의 title (없으면 빈 문자열)
-  const defaultSubCategory =
-    categoryOptions.get(defaultMainCategory)?.items[0]?.title || "";
-
-  const [title, setTitle] = useState("");
-  const [mainCategory, setMainCategory] = useState(defaultMainCategory);
-  const [subCategory, setSubCategory] = useState(defaultSubCategory);
+  const [title, setTitle] = useState(post?.title || "");
+  const [mainCategory, setMainCategory] = useState(post?.category || "");
+  const [subCategory, setSubCategory] = useState<string>("");
   const [subSubCategory, setSubSubCategory] = useState("");
-  const [content, setContent] = useState("");
-  const [imgUrl, setImgUrl] = useState("");
-  const [description, setDescription] = useState("");
+  const [content, setContent] = useState(post?.content || "");
+  const [imgUrl, setImgUrl] = useState(post?.image_url || "");
+  const [description, setDescription] = useState(post?.description || "");
   const [loading, setLoading] = useState(false);
+  const [isSlide, setIsSlide] = useState(post?.is_slide || false);
+  const [slideOrder, setSlideOrder] = useState<number | null>(post?.slide_order || null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 서브카테고리 옵션
+  const [subcategoryOptions, setSubcategoryOptions] = useState<{value: string; label: string}[]>([]);
+  
+  // 1. Add a state to track if categories are loaded
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
+
+  // State for categories
+  const [categoriesData, setCategoriesData] = useState<Map<string, any>>(new Map());
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  
+  // Load categories on component mount
+  useEffect(() => {
+    async function fetchCategories() {
+      console.log("⚠️ STARTING CATEGORY FETCH");
+      setIsLoadingCategories(true);
+      try {
+        console.log("📊 Calling loadCategoryData()");
+        const data = await loadCategoryData();
+        console.log("📊 LOADED CATEGORIES DATA:", data);
+        console.log("📊 Categories Map Size:", data.size);
+        console.log("📊 Categories Keys:", Array.from(data.keys()));
+        setCategoriesData(data);
+        setCategoriesLoaded(true);
+      } catch (error) {
+        console.error("❌ 카테고리 로드 실패:", error);
+      } finally {
+        setIsLoadingCategories(false);
+        console.log("⚠️ CATEGORY FETCH COMPLETE, isLoading=false");
+      }
+    }
+    
+    fetchCategories();
+  }, []);
+  
+  // Helper functions to get category options
+  const getMainCategoryOptions = () => {
+    const options: { value: string; label: string }[] = [];
+
+    if (categoriesData.size === 0) return options;
+
+    for (const [categoryName, categoryData] of categoriesData.entries()) {
+      const slug = categoryData.href?.replace(/^\//, '') || '';
+      options.push({
+        value: slug,
+        label: categoryName,
+      });
+    }
+
+    return options;
+  };
+
+  const getSubCategoryOptions = () => {
+    const options: { value: string; label: string }[] = [];
+
+    if (categoriesData.size === 0 || !mainCategory) {
+      return options;
+    }
+
+    for (const [categoryName, categoryData] of categoriesData.entries()) {
+      const slug = categoryData.href?.replace(/^\//, '') || '';
+
+      if (slug === mainCategory && categoryData.items) {
+        for (const subCategory of categoryData.items) {
+          const title = typeof subCategory.title === 'object'
+            ? subCategory.title.ko
+            : subCategory.title;
+
+          options.push({
+            value: subCategory.slug,
+            label: title,
+          });
+        }
+        break;
+      }
+    }
+
+    return options as { value: string; label: string }[];
+  };
+
+  useEffect(() => {
+    if (!mainCategory) {
+      setSubcategoryOptions([]);
+      return;
+    }
+
+    const subOptions = getSubCategoryOptions();
+    setSubcategoryOptions(subOptions);
+
+    if (subCategory && !subOptions.some(opt => opt.value === subCategory)) {
+      setSubCategory("");
+    }
+  }, [mainCategory]);
+
+  useEffect(() => {
+    if (post) {
+      // 카테고리 정보 로그
+      console.log("편집 중인 게시글 카테고리 정보:", {
+        category: post.category,
+        subcategory: post.subcategory
+      });
+      
+      // 이미 한글로 저장된 카테고리라면 그대로 사용
+      if (post.category && /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(post.category)) {
+        setMainCategory(post.category);
+      }
+      
+      // 영문 슬러그인 경우 한글 이름으로 변환하여 표시
+      const categoryData = getCategoryById(post.category);
+      if (categoryData) {
+        console.log("카테고리 정보 찾음:", categoryData);
+        setMainCategory(post.category);
+      }
+    }
+  }, [post]);
 
   // 관리자 로그인 확인
   useEffect(() => {
@@ -62,7 +208,7 @@ export default function ArticleForm({ id }: ArticleFormProps) {
         .eq("id", id)
         .single();
       if (error) {
-        toast({
+        useToastToast({
           title: "Error",
           description: "Failed to load article",
           variant: "destructive",
@@ -82,19 +228,15 @@ export default function ArticleForm({ id }: ArticleFormProps) {
       }
     }
     fetchArticle();
-  }, [id, router, toast]);
+  }, [id, router, useToastToast]);
 
-  const handleMainCategoryChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const newMain = e.target.value;
-    setMainCategory(newMain);
-    const selectedCategory = categoryOptions.get(newMain);
-    if (selectedCategory && selectedCategory.items.length > 0) {
-      setSubCategory(selectedCategory.items[0].title);
-    } else {
-      setSubCategory("");
-    }
+  // 메인 카테고리 변경 핸들러 업데이트
+  const handleMainCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newMainSlug = e.target.value;
+    setMainCategory(newMainSlug);
+
+    // 서브카테고리 초기화
+    setSubCategory("");
   };
 
   const handleSubCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -105,10 +247,10 @@ export default function ArticleForm({ id }: ArticleFormProps) {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setLoading(true);
+    setIsSubmitting(true);
     try {
       if (!adminUser) {
-        toast({
+        useToastToast({
           title: "Error",
           description:
             "You must be logged in as admin to save articles.",
@@ -119,106 +261,58 @@ export default function ArticleForm({ id }: ArticleFormProps) {
 
       // 유효성 검사 추가
       if (!title) {
-        toast({
+        useToastToast({
           title: "Error",
           description: "Title is required.",
           variant: "destructive",
         });
-        setLoading(false);
+        setIsSubmitting(false);
         return;
       }
       if (!mainCategory) {
-        toast({
+        useToastToast({
           title: "Error",
           description: "Main Category is required.",
           variant: "destructive",
         });
-        setLoading(false);
-        return;
-      }
-      if (!subCategory) {
-        toast({
-          title: "Error",
-          description: "Sub Category is required.",
-          variant: "destructive",
-        });
-        setLoading(false);
+        setIsSubmitting(false);
         return;
       }
       if (!content) {
-        toast({
+        useToastToast({
           title: "Error",
           description: "Content is required.",
           variant: "destructive",
         });
-        setLoading(false);
+        setIsSubmitting(false);
         return;
       }
 
-      // 한글 카테고리명을 영문으로 변환
-      const mainCategoryEnglish = categoryMappings[mainCategory] || mainCategory.toLowerCase().replace(/\s+/g, "-");
-      
-      // 메인 카테고리 객체
-      const selectedMainCategory = categoryOptions.get(mainCategory);
-      
-      // 메인 카테고리 슬러그 결정
-      const mainCategorySlug = mainCategoryEnglish;
-      
-      // 서브 카테고리 찾기
-      const selectedSubCategory = selectedMainCategory?.items.find(
-        (item) => item.title === subCategory
-      );
-      
-      // 서브 카테고리 슬러그
-      const subCategorySlug = selectedSubCategory?.slug || "";
-      
-      // 서브서브 카테고리 처리
-      let subSubCategorySlug = "";
-      if (selectedSubCategory && "items" in selectedSubCategory && selectedSubCategory.items) {
-        const selectedSubSubCategory = selectedSubCategory.items.find(
-          (item) => item.title === subSubCategory
-        );
-        subSubCategorySlug = selectedSubSubCategory?.slug || "";
-      }
-      
-      // 계층 구조 검증: 서브서브카테고리가 있으면 반드시 서브카테고리도 있어야 함
-      if (subSubCategorySlug && !subCategorySlug) {
-        toast({
-          title: "Warning",
-          description: "Cannot select a sub-sub category without a sub category",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      const articleData: any = {
+      let articleData: any = {
         title,
-        // 영문 카테고리명 사용
-        category: mainCategorySlug,
-        subcategory: subCategorySlug,
-        subsubcategory: subSubCategorySlug,
+        category: mainCategory,
+        subcategory: subCategory || "",
+        subsubcategory: subSubCategory,
         content,
         date: new Date().toISOString().split("T")[0],
-        is_slide: mainCategorySlug === "report",
+        is_slide: isSlide,
+        ...(isSlide && slideOrder !== null ? { slide_order: slideOrder } : {}),
+        description: description,
+        image_url: imgUrl.trim() !== "" ? imgUrl.trim() : null, // 이미지 URL 추가
       };
-      if (mainCategory === "Report" || mainCategorySlug === "report") {
-        articleData.description = description;
-        if (imgUrl.trim() !== "") {
-          articleData.image_url = imgUrl.trim();
-        }
-      }
+      
       let error;
       if (id) {
         const { error: updateError, count } = await supabase
           .from("posts")
           .update(articleData)
           .eq("id", id)
+          
           //.eq("user_id", adminUser.id);
         if (updateError) error = updateError;
         else if (count === 0) {
           alert("You are not the author of this article.");
-          toast({
+          useToastToast({
             title: "Warning",
             description: "You are not the logged in user.",
             variant: "destructive",
@@ -233,13 +327,13 @@ export default function ArticleForm({ id }: ArticleFormProps) {
         if (insertError) error = insertError;
       }
       if (error) {
-        toast({
+        useToastToast({
           title: "Error",
           description: `Failed to ${id ? "update" : "create"} article`,
           variant: "destructive",
         });
       } else {
-        toast({
+        useToastToast({
           title: "Success",
           description: `Article ${id ? "updated" : "created"} successfully`,
         });
@@ -247,13 +341,13 @@ export default function ArticleForm({ id }: ArticleFormProps) {
       }
     } catch (err) {
       console.error("Unexpected error:", err);
-      toast({
+      useToastToast({
         title: "Error",
         description: "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -261,13 +355,20 @@ export default function ArticleForm({ id }: ArticleFormProps) {
     return <div>Loading...</div>;
   }
 
-  // 현재 선택된 메인 카테고리의 옵션 객체
-  const currentCategory = categoryOptions.get(mainCategory);
-  const currentSubCategory = currentCategory?.items.find(item => item.title === subCategory);
+  // Replace the incorrect categoryOptions references with categoriesData
+  const currentCategory = mainCategory ? 
+    Array.from(categoriesData.entries())
+      .find(([_, data]) => data.href?.replace(/^\//, '') === mainCategory)?.[1] as CategoryOption | undefined
+    : null;
+    
+  const currentSubCategoryData = mainCategory && subCategory && currentCategory?.items && Array.isArray(currentCategory.items) ?
+    currentCategory.items.find((item: CategoryItem) => item.slug === subCategory) : null;
   
-  // 현재 서브 카테고리에 하위 항목이 있는지 확인
-  const hasSubSubCategories = currentSubCategory && 'items' in currentSubCategory && 
-    currentSubCategory.items && currentSubCategory.items.length > 0;
+  // Check if the subcategory has items
+  const hasSubSubCategories = currentSubCategoryData && 
+    'items' in currentSubCategoryData && 
+    currentSubCategoryData.items && 
+    currentSubCategoryData.items.length > 0;
 
   return (
     <div className="w-full min-h-screen flex flex-col items-center justify-start bg-white px-4 py-4">
@@ -301,20 +402,26 @@ export default function ArticleForm({ id }: ArticleFormProps) {
             >
               Main Category
             </label>
-            <select
-              id="mainCategory"
-              value={mainCategory}
-              onChange={handleMainCategoryChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-            >
-              {mainCategoryKeys.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+            {!categoriesLoaded ? (
+              <div className="text-red-500">Loading categories...</div>
+            ) : (
+              <select
+                id="mainCategory"
+                value={mainCategory}
+                onChange={handleMainCategoryChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                disabled={isLoadingCategories}
+              >
+                <option value="">Select Category</option>
+                {getMainCategoryOptions().map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
-          {currentCategory && currentCategory.items.length > 0 && (
+          {getSubCategoryOptions().length > 0 && (
             <div className="flex-1">
               <label
                 htmlFor="subCategory"
@@ -325,18 +432,20 @@ export default function ArticleForm({ id }: ArticleFormProps) {
               <select
                 id="subCategory"
                 value={subCategory}
-                onChange={handleSubCategoryChange}
+                onChange={(e) => setSubCategory(e.target.value)}
                 className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                disabled={isLoadingCategories || !mainCategory}
               >
-                {currentCategory.items.map((sub) => (
-                  <option key={sub.title} value={sub.title}>
-                    {sub.title}
+                <option value="">Select Subcategory</option>
+                {getSubCategoryOptions().map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
             </div>
           )}
-          {hasSubSubCategories && (
+          {/* hasSubSubCategories && (
             <div className="flex-1">
               <label
                 htmlFor="subSubCategory"
@@ -352,72 +461,75 @@ export default function ArticleForm({ id }: ArticleFormProps) {
               >
                 <option value="">Select...</option>
                 {currentSubCategory?.items && currentSubCategory.items.map((subSub) => (
-                  <option key={subSub.title} value={subSub.title}>
-                    {subSub.title}
+                  <option key={getTitleString(subSub.title)} value={getTitleString(subSub.title)}>
+                    {getTitleString(subSub.title)}
                   </option>
                 ))}
               </select>
             </div>
-          )}
+          ) */}
         </div>
-        {/* Slider Options: Report 카테고리일 때 바로 표시 (카테고리 선택 바로 아래) */}
-        {(mainCategory === "Report" ||
-          (selectedMainCategory => {
-            // 만약 mainCategory가 "Report"가 아니더라도, base slug가 report라면
-            const cat = categoryOptions.get(mainCategory);
-            return cat?.base?.replace(/^\//, "") === "report";
-          })(mainCategory)) && (
-          <div className="border p-4 rounded bg-gray-50 mt-4">
-            <div className="mb-4">
-              <label
-                htmlFor="imgUrl"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Image URL
-              </label>
-              <input
-                type="text"
-                id="imgUrl"
-                value={imgUrl}
-                onChange={(e) => setImgUrl(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="description"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Description
-              </label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2 h-24"
-                placeholder="Enter description for slider"
-              ></textarea>
-            </div>
-          </div>
-        )}
         {/* Content */}
         <div>
-          <h1>Test Editor Page</h1>
-          <EditorWithUploader value={content} onChangeAction={setContent} />
+          <EditorWithUploader 
+            value={content} 
+            onChangeAction={(newContent) => {
+              setContent(newContent);
+              
+              // 콘텐츠가 변경될 때마다 첫 번째 이미지 추출하여 image_url 설정
+              if (!imgUrl) {
+                const firstImage = extractFirstImage(newContent);
+                if (firstImage) {
+                  setImgUrl(firstImage);
+                  console.log("첫 번째 이미지를 대표 이미지로 설정:", firstImage);
+                }
+              }
+            }}
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch
+            checked={isSlide}
+            onCheckedChange={setIsSlide}
+            id="slide-switch"
+          />
+          <label htmlFor="slide-switch" className="text-sm font-medium">
+            메인 슬라이드에 표시
+          </label>
+          
+          {isSlide && (
+            <div className="ml-4">
+              <select
+                value={slideOrder?.toString() || ""}
+                onChange={(e) => setSlideOrder(e.target.value ? parseInt(e.target.value) : null)}
+                className="p-1 border rounded"
+              >
+                <option value="">순서 선택</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
+          )}
         </div>
         <div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="bg-blue-500 text-white p-2 rounded w-full"
           >
-            {loading
-              ? id
-                ? "Updating..."
-                : "Creating..."
-              : id
-              ? "Update Article"
-              : "Create Article"}
+            {isSubmitting ? (
+              <>
+                <span className="inline-block animate-spin mr-2">⟳</span>
+                처리 중...
+              </>
+            ) : (
+              id
+                ? "Update Article"
+                : "Create Article"
+            )}
           </button>
         </div>
       </form>

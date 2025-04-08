@@ -1,0 +1,60 @@
+{
+  "id": "economic-trends",
+  "title": {
+    "ko": "경제 동향",
+    "en": "Economic Trends"
+  },
+  "slug": "economic-trends",
+  "subcategories": [
+    {
+      "id": "private-consumption",
+      "title": {
+        "ko": "민간소비",
+        "en": "Private Consumption"
+      },
+      "slug": "private-consumption"
+    },
+    {
+      "id": "government-spending",
+      "title": {
+        "ko": "정부지출",
+        "en": "Government Spending"
+      },
+      "slug": "government-spending",
+      "subcategories": [
+        {
+          "id": "infrastructure-investment",
+          "title": {
+            "ko": "시설투자",
+            "en": "Infrastructure Investment"
+          },
+          "slug": "infrastructure-investment"
+        },
+        {
+          "id": "inventory-investment",
+          "title": {
+            "ko": "재고투자",
+            "en": "Inventory Investment"
+          },
+          "slug": "inventory-investment"
+        }
+      ]
+    },
+    {
+      "id": "corporate-investment",
+      "title": {
+        "ko": "기업투자",
+        "en": "Corporate Investment"
+      },
+      "slug": "corporate-investment"
+    },
+    {
+      "id": "trade",
+      "title": {
+        "ko": "수출입",
+        "en": "Trade"
+      },
+      "slug": "trade"
+    }
+  ]
+} 

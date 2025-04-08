@@ -11,10 +11,12 @@ import Link from "next/link";
 import { ArrowRight, Calendar } from "lucide-react";
 import { extractImageUrl } from "@/app/article/[id]/article-content";
 
+
 type CategoryOption = {
-  title: string;
+  title: string | { ko: string; en: string };
   href?: string;
   base?: string;
+  slug?: string;
 };
 
 type ArticlesSectionProps = {
@@ -29,23 +31,27 @@ export function ArticlesSection({
   return (
     <div className="w-full lg:w-2/3 max-w-full overflow-x-hidden">
       {mainCategories.map((mainCat) => {
-        const mainPath = mainCat.href
-          ? mainCat.href.replace(/^\//, "")
+        const mainPath = mainCat.slug
+          ? mainCat.slug
           : mainCat.base
           ? mainCat.base.replace(/^\//, "")
-          : mainCat.title.toLowerCase().replace(/\s+/g, "-");
+          : typeof mainCat.title === 'string' 
+            ? mainCat.title.toLowerCase().replace(/\s+/g, "-")
+            : mainCat.title.ko.toLowerCase().replace(/\s+/g, "-");
 
         const posts = categoryPosts[mainPath] || [];
         const latestPost = posts.length > 0 ? posts[0] : null;
         const remainingPosts = posts.slice(1, 7);
 
         return (
-          <div key={mainCat.title} className="mb-12 max-w-full overflow-x-hidden">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-2xl md:text-3xl font-bold select-none">
-                {mainCat.title}
-              </h2>
-              <Button variant="outline" asChild>
+          <div key={typeof mainCat.title === 'string' ? mainCat.title : mainCat.slug || mainCat.title.ko} className="mb-12 max-w-full overflow-x-hidden">
+<div className="flex justify-between items-center mb-8 relative overflow-hidden before:absolute before:bottom-0 before:left-0 before:w-full before:h-1 before:bg-gradient-to-r before:from-gray-400 before:to-transparent">
+<h2 className="text-2xl font-semibold leading-none tracking-tight relative overflow-hidden">
+<span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800">
+    {typeof mainCat.title === 'string' ? mainCat.title : mainCat.title.ko}
+  </span>
+</h2>
+<Button variant="outline" asChild className="px-4 py-2 mb-2">
                 <Link href={`/${mainPath}`}>
                   View All <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>

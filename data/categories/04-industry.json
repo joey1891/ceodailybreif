@@ -1,0 +1,90 @@
+{
+  "id": "industry",
+  "title": {
+    "ko": "산업 동향",
+    "en": "Industry"
+  },
+  "slug": "industry",
+  "subcategories": [
+    {
+      "id": "industry-filler",
+      "title": {
+        "ko": "필러",
+        "en": "Filler"
+      },
+      "slug": "industry-filler"
+    },
+    {
+      "id": "industry-skin-booster",
+      "title": {
+        "ko": "스킨부스터",
+        "en": "Skin Booster"
+      },
+      "slug": "industry-skin-booster"
+    },
+    {
+      "id": "industry-obesity-treatment",
+      "title": {
+        "ko": "비만치료제",
+        "en": "Obesity Treatment"
+      },
+      "slug": "industry-obesity-treatment"
+    },
+    {
+      "id": "industry-botox",
+      "title": {
+        "ko": "보톡스",
+        "en": "Botox"
+      },
+      "slug": "industry-botox"
+    },
+    {
+      "id": "industry-medical",
+      "title": {
+        "ko": "의료",
+        "en": "Medical"
+      },
+      "slug": "industry-medical"
+    },
+    {
+      "id": "industry-pharmaceutical",
+      "title": {
+        "ko": "제약",
+        "en": "Pharmaceutical"
+      },
+      "slug": "industry-pharmaceutical"
+    },
+    {
+      "id": "industry-medical-devices",
+      "title": {
+        "ko": "의료기기",
+        "en": "Medical Devices"
+      },
+      "slug": "industry-medical-devices"
+    },
+    {
+      "id": "industry-cosmetics",
+      "title": {
+        "ko": "화장품",
+        "en": "Cosmetics"
+      },
+      "slug": "industry-cosmetics"
+    },
+    {
+      "id": "industry-health-supplements",
+      "title": {
+        "ko": "건강기능식품",
+        "en": "Health Supplements"
+      },
+      "slug": "industry-health-supplements"
+    },
+    {
+      "id": "industry-digital-healthcare",
+      "title": {
+        "ko": "디지털헬스케어",
+        "en": "Digital Healthcare"
+      },
+      "slug": "industry-digital-healthcare"
+    }
+  ]
+} 

@@ -3,14 +3,16 @@ export type Post = {
   title: string;
   content: string;
   category: string;
-  subcategory?: string;
+  subcategory?: string | null;
   created_at: string;
   updated_at: string;
   author_id: string | null;
-  image_url?: string;
+  image_url?: string | null;
   date?: string;
   viewcnt?: number;
   is_slide?: boolean;
+  slide_order?: number | null;
+  description?: string | null;
 };
 
 export type Profile = {

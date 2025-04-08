@@ -1,0 +1,90 @@
+{
+  "id": "company",
+  "title": {
+    "ko": "기업 동향",
+    "en": "Company"
+  },
+  "slug": "company",
+  "subcategories": [
+    {
+      "id": "company-filler",
+      "title": {
+        "ko": "필러",
+        "en": "Filler"
+      },
+      "slug": "company-filler"
+    },
+    {
+      "id": "company-skin-booster",
+      "title": {
+        "ko": "스킨부스터",
+        "en": "Skin Booster"
+      },
+      "slug": "company-skin-booster"
+    },
+    {
+      "id": "company-obesity-treatment",
+      "title": {
+        "ko": "비만치료제",
+        "en": "Obesity Treatment"
+      },
+      "slug": "company-obesity-treatment"
+    },
+    {
+      "id": "company-botox",
+      "title": {
+        "ko": "보톡스",
+        "en": "Botox"
+      },
+      "slug": "company-botox"
+    },
+    {
+      "id": "company-medical",
+      "title": {
+        "ko": "의료",
+        "en": "Medical"
+      },
+      "slug": "company-medical"
+    },
+    {
+      "id": "company-pharmaceutical",
+      "title": {
+        "ko": "제약",
+        "en": "Pharmaceutical"
+      },
+      "slug": "company-pharmaceutical"
+    },
+    {
+      "id": "company-medical-devices",
+      "title": {
+        "ko": "의료기기",
+        "en": "Medical Devices"
+      },
+      "slug": "company-medical-devices"
+    },
+    {
+      "id": "company-cosmetics",
+      "title": {
+        "ko": "화장품",
+        "en": "Cosmetics"
+      },
+      "slug": "company-cosmetics"
+    },
+    {
+      "id": "company-health-supplements",
+      "title": {
+        "ko": "건강기능식품",
+        "en": "Health Supplements"
+      },
+      "slug": "company-health-supplements"
+    },
+    {
+      "id": "company-digital-healthcare",
+      "title": {
+        "ko": "디지털헬스케어",
+        "en": "Digital Healthcare"
+      },
+      "slug": "company-digital-healthcare"
+    }
+  ]
+} 
