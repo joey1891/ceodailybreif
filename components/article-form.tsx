@@ -11,6 +11,7 @@ import { categoryMappings } from '@/lib/category-mappings';
 import { Post } from "@/types/supabase";
 import { getCategoryById } from "@/lib/category-loader";
 import { CategoryItem, CategoryOption } from "@/lib/category-options";
+import Select from 'react-select';
 // import { Editor } from "@/components/editor";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "react-hot-toast";
@@ -405,20 +406,17 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
             {!categoriesLoaded ? (
               <div className="text-red-500">Loading categories...</div>
             ) : (
-              <select
+              <Select
                 id="mainCategory"
-                value={mainCategory}
-                onChange={handleMainCategoryChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                disabled={isLoadingCategories}
-              >
-                <option value="">Select Category</option>
-                {getMainCategoryOptions().map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                value={getMainCategoryOptions().find(option => option.value === mainCategory)}
+                onChange={(selectedOption: any) => handleMainCategoryChange({ target: { value: selectedOption?.value } } as any)}
+                options={getMainCategoryOptions()}
+                getOptionLabel={(option) => option.label}
+                getOptionValue={(option) => option.value}
+                className="mt-1 block w-full"
+                isDisabled={isLoadingCategories}
+                placeholder="Select Category"
+              />
             )}
           </div>
           {getSubCategoryOptions().length > 0 && (
@@ -429,20 +427,17 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
               >
                 Sub Category
               </label>
-              <select
+              <Select
                 id="subCategory"
-                value={subCategory}
-                onChange={(e) => setSubCategory(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
-                disabled={isLoadingCategories || !mainCategory}
-              >
-                <option value="">Select Subcategory</option>
-                {getSubCategoryOptions().map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+                value={getSubCategoryOptions().find(option => option.value === subCategory)}
+                onChange={(selectedOption: any) => setSubCategory(selectedOption?.value || "")}
+                options={getSubCategoryOptions()}
+                getOptionLabel={(option) => option.label}
+                getOptionValue={(option) => option.value}
+                className="mt-1 block w-full"
+                isDisabled={isLoadingCategories || !mainCategory}
+                placeholder="Select Subcategory"
+              />
             </div>
           )}
           {/* hasSubSubCategories && (
