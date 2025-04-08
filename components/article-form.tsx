@@ -413,7 +413,7 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
                 options={getMainCategoryOptions()}
                 getOptionLabel={(option) => option.label}
                 getOptionValue={(option) => option.value}
-                className="mt-1 block w-full"
+                className="mt-4 block w-full"
                 isDisabled={isLoadingCategories}
                 placeholder="Select Category"
               />
