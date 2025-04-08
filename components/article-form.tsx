@@ -11,7 +11,6 @@ import { categoryMappings } from '@/lib/category-mappings';
 import { Post } from "@/types/supabase";
 import { getCategoryById } from "@/lib/category-loader";
 import { CategoryItem, CategoryOption } from "@/lib/category-options";
-import Select from 'react-select';
 // import { Editor } from "@/components/editor";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "react-hot-toast";
@@ -37,27 +36,11 @@ const getTitleString = (title: string | { ko: string; en: string }): string => {
   return typeof title === 'object' ? title.ko : title;
 };
 
-// Improved image extraction function
+// 이미지 추출 함수 추가 (파일 상단에 추가)
 const extractFirstImage = (htmlContent: string): string | null => {
   const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
   const match = htmlContent.match(imgRegex);
-  
-  if (!match) return null;
-  
-  const imageUrl = match[1];
-  
-  // Check if it's a data URL (base64 encoded image)
-  if (imageUrl.startsWith('data:image/')) {
-    // Here you need to actually upload this image to your Supabase storage
-    // This is a placeholder; you'll want to implement proper image uploading
-    console.log("Found base64 image. Consider implementing proper image upload to storage.");
-    
-    // If your EditorWithUploader already handles image uploads to storage,
-    // you shouldn't need to extract base64 images at all
-    return null;
-  }
-  
-  return imageUrl;
+  return match ? match[1] : null;
 };
 
 export default function ArticleForm({ id, post }: ArticleFormProps) {
@@ -303,6 +286,8 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
       };
       
       let error;
+      let articleId = id;
+      
       if (id) {
         const { error: updateError, count } = await supabase
           .from("posts")
@@ -326,6 +311,9 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
           .insert([{ ...articleData, user_id: adminUser.id }])
           .select();
         if (insertError) error = insertError;
+        if (newArticle && newArticle.length > 0) {
+          articleId = newArticle[0].id;
+        }
       }
       if (error) {
         useToastToast({
@@ -338,7 +326,21 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
           title: "Success",
           description: `Article ${id ? "updated" : "created"} successfully`,
         });
-        router.push("/admin");
+        
+        // Generate category URL and redirect
+        let categoryUrl = '/';
+        
+        if (mainCategory) {
+          // 1. 메인 카테고리만 있는 경우
+          categoryUrl = `/${mainCategory}`;
+          
+          // 2. 하위 카테고리까지 있는 경우
+          if (subCategory) {
+            categoryUrl = `/${mainCategory}/${subCategory}`;
+          }
+        }
+        
+        router.push(categoryUrl);
       }
     } catch (err) {
       console.error("Unexpected error:", err);
@@ -406,17 +408,20 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
             {!categoriesLoaded ? (
               <div className="text-red-500">Loading categories...</div>
             ) : (
-              <Select
+              <select
                 id="mainCategory"
-                value={getMainCategoryOptions().find(option => option.value === mainCategory)}
-                onChange={(selectedOption: any) => handleMainCategoryChange({ target: { value: selectedOption?.value } } as any)}
-                options={getMainCategoryOptions()}
-                getOptionLabel={(option) => option.label}
-                getOptionValue={(option) => option.value}
-                className="mt-4 block w-full"
-                isDisabled={isLoadingCategories}
-                placeholder="Select Category"
-              />
+                value={mainCategory}
+                onChange={handleMainCategoryChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                disabled={isLoadingCategories}
+              >
+                <option value="">Select Category</option>
+                {getMainCategoryOptions().map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             )}
           </div>
           {getSubCategoryOptions().length > 0 && (
@@ -427,17 +432,20 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
               >
                 Sub Category
               </label>
-              <Select
+              <select
                 id="subCategory"
-                value={getSubCategoryOptions().find(option => option.value === subCategory)}
-                onChange={(selectedOption: any) => setSubCategory(selectedOption?.value || "")}
-                options={getSubCategoryOptions()}
-                getOptionLabel={(option) => option.label}
-                getOptionValue={(option) => option.value}
-                className="mt-1 block w-full"
-                isDisabled={isLoadingCategories || !mainCategory}
-                placeholder="Select Subcategory"
-              />
+                value={subCategory}
+                onChange={(e) => setSubCategory(e.target.value)}
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                disabled={isLoadingCategories || !mainCategory}
+              >
+                <option value="">Select Subcategory</option>
+                {getSubCategoryOptions().map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
           {/* hasSubSubCategories && (
@@ -478,6 +486,13 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
                   setImgUrl(firstImage);
                   console.log("첫 번째 이미지를 대표 이미지로 설정:", firstImage);
                 }
+              }
+            }}
+            onImageUpload={(imageUrl) => {
+              // 이미 대표 이미지가 없는 경우에만 새로 업로드된 이미지를 대표 이미지로 설정
+              if (!imgUrl) {
+                setImgUrl(imageUrl);
+                console.log("업로드된 이미지를 대표 이미지로 설정:", imageUrl);
               }
             }}
           />

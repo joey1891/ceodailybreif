@@ -36,6 +36,7 @@ import Superscript from '@tiptap/extension-superscript';
 import { common, createLowlight } from 'lowlight';
 import { supabase } from "@/lib/supabase";
 import { Node } from '@tiptap/core';
+// import CKEditorCloud from "./CKEditorCloud";
 
 // lowlight 인스턴스 생성
 const lowlight = createLowlight(common);
@@ -45,7 +46,8 @@ const lowlight = createLowlight(common);
 // 상수 및 타입 정의
 interface Props {
   value: string;
-  onChangeAction: (content: string) => void;
+  onChangeAction: (value: string) => void;
+  onImageUpload?: (imageUrl: string) => void;
   style?: React.CSSProperties;
 }
 
@@ -77,10 +79,89 @@ const TableHeaderWithStyle = TableHeader.extend({
   }
 });
 
-export default function EditorWithUploader({ value, onChangeAction, style }: Props) {
+// Add this CSS to your component or in a global CSS file
+const tableStyles = `
+  .ProseMirror table {
+    border-collapse: collapse;
+    margin: 0;
+    overflow: hidden;
+    table-layout: fixed;
+    width: 100%;
+  }
+  
+  .ProseMirror td,
+  .ProseMirror th {
+    border: 2px solid #ced4da;
+    box-sizing: border-box;
+    min-width: 1em;
+    padding: 3px 5px;
+    position: relative;
+    vertical-align: top;
+  }
+  
+  .ProseMirror th {
+    background-color: #f1f3f5;
+    font-weight: bold;
+    text-align: left;
+  }
+  
+  .ProseMirror .selectedCell:after {
+    background: rgba(200, 200, 255, 0.4);
+    content: "";
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 2;
+  }
+  
+  .ProseMirror .column-resize-handle {
+    background-color: #adf;
+    bottom: -2px;
+    position: absolute;
+    right: -2px;
+    pointer-events: none;
+    top: 0;
+    width: 4px;
+    cursor: col-resize !important;
+  }
+  
+  .ProseMirror .row-resize-handle {
+    background-color: #adf;
+    height: 4px;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    position: absolute;
+    pointer-events: none;
+    cursor: row-resize !important;
+  }
+  
+  .tableWrapper {
+    overflow-x: auto;
+  }
+  
+  .resize-cursor {
+    cursor: col-resize !important;
+  }
+  
+  .row-resize-cursor {
+    cursor: row-resize !important;
+  }
+`;
+
+export default function EditorWithUploader({ 
+  value, 
+  onChangeAction, 
+  onImageUpload,
+  style 
+}: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [editorData, setEditorData] = useState(value);
 
   // HTML 출력을 정제하는 함수 추가
   const sanitizeHtml = (html: string) => {
@@ -100,6 +181,8 @@ export default function EditorWithUploader({ value, onChangeAction, style }: Pro
       Image,
       TableWithStyle.configure({
         resizable: true,
+        lastColumnResizable: true,
+        cellMinWidth: 50,
       }),
       TableRow,
       TableCellWithStyle,
@@ -130,11 +213,13 @@ export default function EditorWithUploader({ value, onChangeAction, style }: Pro
         // HTML을 정제하여 전달
         const html = editor.getHTML();
         const sanitizedHtml = sanitizeHtml(html);
+        setEditorData(sanitizedHtml);
         onChangeAction(sanitizedHtml);
       } catch (error) {
         console.error("에디터 업데이트 오류:", error);
         // 오류 발생 시 기본 텍스트만 추출하여 전달
         const text = editor.getText();
+        setEditorData(`<p>${text}</p>`);
         onChangeAction(`<p>${text}</p>`);
       }
     },
@@ -704,31 +789,34 @@ export default function EditorWithUploader({ value, onChangeAction, style }: Pro
   }
 
   return (
-    <div style={{ ...style, height: "auto", minHeight: "500px", padding: '10px' }}>
-      {renderToolbar()}
-      <div 
-        onClick={() => editor?.chain().focus().run()}
-        style={{ position: 'relative', height: '400px' }}
-      >
-        <EditorContent 
-          editor={editor}
-          style={{ 
-            height: "100%", 
-            overflow: 'auto',
-            border: '1px solid #ced4da', 
-            borderRadius: '4px',
-            padding: '10px',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 1,
-            cursor: 'text',
-            backgroundColor: '#ffffff'
-          }}
-        />
+    <>
+      <style jsx global>{tableStyles}</style>
+      <div style={{ ...style, height: "auto", minHeight: "400px", padding: '10px' }}>
+        {renderToolbar()}
+        <div 
+          onClick={() => editor?.chain().focus().run()}
+          style={{ position: 'relative', height: '300px' }}
+        >
+          <EditorContent 
+            editor={editor}
+            style={{ 
+              height: "100%", 
+              overflow: 'auto',
+              border: '1px solid #ced4da', 
+              borderRadius: '4px',
+              padding: '10px',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 1,
+              cursor: 'text',
+              backgroundColor: '#ffffff'
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -251,15 +251,25 @@ export default function AdminArticlesPage() {
         valueB = b[field as keyof Post] || "";
       }
       
-      // 문자열 정렬은 localeCompare로, 날짜는 직접 비교
-      if (typeof valueA === "string" && typeof valueB === "string") {
+      // 날짜 필드 특별 처리
+      if (field === "date") {
+        const dateA = valueA ? new Date(valueA as string).getTime() : 0;
+        const dateB = valueB ? new Date(valueB as string).getTime() : 0;
+        return direction === "asc" ? dateA - dateB : dateB - dateA;
+      } 
+      // 다른 문자열 필드는 localeCompare 사용
+      else if (typeof valueA === "string" && typeof valueB === "string") {
         return direction === "asc" 
           ? valueA.localeCompare(valueB, "ko") 
           : valueB.localeCompare(valueA, "ko");
-      } else {
+      } 
+      // 숫자 등 기타 타입 비교 (viewcnt 등)
+      else {
+        const numA = Number(valueA) || 0;
+        const numB = Number(valueB) || 0;
         return direction === "asc" 
-          ? (valueA > valueB ? 1 : -1) 
-          : (valueA < valueB ? 1 : -1);
+          ? numA - numB
+          : numB - numA;
       }
     });
   };
@@ -510,6 +520,47 @@ export default function AdminArticlesPage() {
     }
   };
 
+  // Add this function to toggle sort order
+  const toggleSortOrder = () => {
+    const newOrder = sortDirection === 'asc' ? 'desc' : 'asc';
+    setSortDirection(newOrder);
+    
+    // Sort the posts based on date
+    const sortedPosts = [...posts].sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return newOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+    
+    setPosts(sortedPosts);
+  };
+
+  // Modify your useEffect or fetch function to apply the initial sort
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('posts')
+          .select('*');
+          
+        if (error) throw error;
+        
+        // Sort posts by date based on current sortOrder
+        const sortedPosts = data.sort((a, b) => {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+        });
+        
+        setPosts(sortedPosts);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+      }
+    };
+    
+    fetchPosts();
+  }, [sortDirection]);
+
   if (loading) {
     return <div className="container mx-auto px-4 py-8">Loading...</div>;
   }
@@ -754,6 +805,23 @@ export default function AdminArticlesPage() {
           className="px-3 py-1 border rounded ml-2 disabled:opacity-50"
         >
           Next
+        </button>
+      </div>
+
+      {/* Add this to your UI */}
+      <div className="flex justify-center mt-6">
+        <button 
+          onClick={toggleSortOrder}
+          className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm flex items-center"
+        >
+          날짜 정렬: {sortDirection === 'asc' ? '오래된순' : '최신순'} 
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {sortDirection === 'asc' ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            )}
+          </svg>
         </button>
       </div>
     </div>
