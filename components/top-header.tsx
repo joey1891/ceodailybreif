@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, UserPlus, LogOut } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getAdminUser, signOutAdmin } from "@/lib/admin-auth";
@@ -53,73 +53,60 @@ export function TopHeader() {
     setIsLoggedIn(false);
     setIsAdmin(false);
   };
-
-  return (
-    <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 bg-black border-b border-gray-200">
-      <div className="flex justify-between py-2 text-sm">
-        {/* 왼쪽 영역: Home, About, Contact */}
-        <div className="flex items-center space-x-4 select-none justify-center">
-          <Link
-            href="/"
-            className="text-white font-bold hover:text-gray-300 inline-flex items-center select-none"
-          >
-            Home
+ 
+   return (
+     <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 bg-white border-b border-gray-200">
+       <div className="flex justify-between py-2 text-sm">
+         {/* 왼쪽 영역: Home, Contact */}
+         <div className="flex items-center space-x-4 select-none justify-center">
+           <Link
+             href="/"
+             className="text-black hover:text-gray-700 inline-flex items-center select-none"
+           >
+             Home
           </Link>
-          {/* <Link
-            href="/about"
-            className="text-white font-bold hover:text-gray-300 inline-flex items-center select-none"
-          >
-            About Me
-          </Link> */}
-          <a
-            href="mailto:wjshin2450@gmail.com"
-            className="text-white font-bold hover:text-gray-300 inline-flex items-center select-none"
-          >
-            Contact
+           <a
+             href="mailto:wjshin2450@gmail.com"
+             className="text-black hover:text-gray-700 inline-flex items-center select-none"
+           >
+             Contact
           </a>
         </div>
 
-        {/* 오른쪽 영역: 회원가입, 로그인, 날짜 */}
+        {/* 오른쪽 영역: 로그인, 날짜 */}
         <div className="flex items-center space-x-4 select-none">
           {!isLoggedIn ? (
-            <>
-              <Link
-                href="/signup"
-                className="text-white font-bold hover:text-gray-300 inline-flex items-center"
-              >
-                <UserPlus className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">회원가입</span>
-              </Link>
-              <Link
-                href="/login"
-                className="text-white font-bold hover:text-gray-300 inline-flex items-center"
-              >
-                <LogIn className="h-4 w-4 mr-1" />
+             <>
+               <Link
+                 href="/login"
+                 className="text-black hover:text-gray-700 inline-flex items-center"
+               >
+                 <LogIn className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">로그인</span>
               </Link>
             </>
           ) : (
             <>
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  className="text-white hover:text-white inline-flex items-center font-bold"
-                >
-                  관리자 페이지
+               {isAdmin && (
+                 <Link
+                   href="/admin"
+                   className="text-black hover:text-gray-700 inline-flex items-center"
+                 >
+                   관리자 페이지
                 </Link>
               )}
-              <button
-                onClick={handleLogout}
-                className="text-white hover:text-white inline-flex items-center font-bold"
-              >
-                <LogOut className="h-4 w-4 mr-1" />
+               <button
+                 onClick={handleLogout}
+                 className="text-black hover:text-gray-700 inline-flex items-center"
+               >
+                 <LogOut className="h-4 w-4 mr-1" />
                 로그아웃
               </button>
-            </>
-          )}
-          <span className="text-white hidden md:inline">{currentDate}</span>
-        </div>
-      </div>
+             </>
+           )}
+           <span className="text-black hidden md:inline">{currentDate}</span>
+         </div>
+       </div>
     </div>
   );
 }

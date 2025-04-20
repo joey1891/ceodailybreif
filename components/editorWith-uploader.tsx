@@ -36,6 +36,9 @@ import Superscript from '@tiptap/extension-superscript';
 import { common, createLowlight } from 'lowlight';
 import { supabase } from "@/lib/supabase";
 import { Node } from '@tiptap/core';
+import BulletList from '@tiptap/extension-bullet-list';
+import OrderedList from '@tiptap/extension-ordered-list';
+import ListItem from '@tiptap/extension-list-item';
 // import CKEditorCloud from "./CKEditorCloud";
 
 // lowlight 인스턴스 생성
@@ -152,6 +155,125 @@ const tableStyles = `
   }
 `;
 
+// sanitizeHtml 함수 수정
+const sanitizeHtml = (html: string) => {
+  // 빈 내용이면 빈 문자열 반환
+  if (!html || html === '<p></p>') return '';
+  
+  // div.editor-content 제거: 이 클래스를 추가하지 않고 직접 HTML 반환
+  return html;
+};
+
+// 에디터 공통 스타일에 !important 추가하여 우선순위 높임
+export const editorGlobalStyles = `
+  /* 기본 단락 스타일 */
+  p {
+    margin: 0.75em 0 !important;
+  }
+  
+  /* 빈 단락 (줄바꿈) 유지 */
+  p:empty {
+    min-height: 1em !important;
+    margin: 0.75em 0 !important;
+    display: block !important;
+  }
+  
+  /* 목록 스타일 */
+  ul {
+    list-style-type: disc !important;
+    padding-left: 2em !important;
+    margin: 1em 0 !important;
+  }
+  
+  ol {
+    list-style-type: decimal !important;
+    padding-left: 2em !important;
+    margin: 1em 0 !important;
+  }
+  
+  /* 중첩 목록 스타일 */
+  ul ul,
+  ol ol,
+  ul ol,
+  ol ul {
+    margin: 0.25em 0 0.5em 0 !important;
+  }
+  
+  /* 목록 항목 스타일 */
+  li p {
+    margin: 0.25em 0 !important;
+  }
+  
+  /* 이미지 스타일 */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 1em auto !important;
+  }
+  
+  /* 체크리스트 스타일 */
+  ul[data-type="taskList"] {
+    list-style-type: none !important;
+    padding-left: 0.5em !important;
+  }
+  
+  li[data-type="taskItem"] {
+    display: flex !important;
+    align-items: flex-start !important;
+    margin-bottom: 0.5em !important;
+  }
+  
+  li[data-type="taskItem"] > label {
+    display: flex !important;
+    align-items: center !important;
+  }
+  
+  li[data-type="taskItem"] > label > input {
+    margin-right: 0.5em !important;
+  }
+  
+  /* 기타 스타일 */
+  blockquote {
+    border-left: 3px solid #ddd !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1em !important;
+    color: #666 !important;
+  }
+  
+  strong {
+    font-weight: bold !important;
+  }
+`;
+
+// Bullet 목록 확장 설정 수정
+const BulletListWithSpacing = BulletList.extend({
+  parseHTML() {
+    return [
+      {
+        tag: 'ul'
+      }
+    ]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['ul', { ...HTMLAttributes, class: 'spaced-list' }, 0]
+  }
+});
+
+// 목록 항목 확장 설정 수정
+const ListItemWithSpacing = ListItem.extend({
+  parseHTML() {
+    return [
+      {
+        tag: 'li'
+      }
+    ]
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['li', { ...HTMLAttributes, class: 'spaced-list-item' }, 0]
+  }
+});
+
 export default function EditorWithUploader({ 
   value, 
   onChangeAction, 
@@ -162,13 +284,6 @@ export default function EditorWithUploader({
   const [linkUrl, setLinkUrl] = useState('');
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [editorData, setEditorData] = useState(value);
-
-  // HTML 출력을 정제하는 함수 추가
-  const sanitizeHtml = (html: string) => {
-    // 빈 내용이면 빈 문자열 반환
-    if (!html || html === '<p></p>') return '';
-    return html;
-  };
 
   // 에디터 설정
   const editor = useEditor({
@@ -206,18 +321,32 @@ export default function EditorWithUploader({
       }),
       Subscript,
       Superscript,
+      BulletListWithSpacing.configure({
+        keepMarks: true,
+        keepAttributes: true,
+      }),
+      OrderedList.configure({
+        keepMarks: true,
+        keepAttributes: true,
+      }),
+      ListItemWithSpacing.configure({
+        HTMLAttributes: {
+          class: 'list-item-with-spacing',
+        }
+      }),
     ],
     content: value,
     onUpdate: ({ editor }) => {
       try {
-        // HTML을 정제하여 전달
+        // HTML 가져오기 (정제 작업 최소화)
         const html = editor.getHTML();
         const sanitizedHtml = sanitizeHtml(html);
+        
+        // editor-content 클래스를 추가하지 않고 HTML만 전달
         setEditorData(sanitizedHtml);
         onChangeAction(sanitizedHtml);
       } catch (error) {
         console.error("에디터 업데이트 오류:", error);
-        // 오류 발생 시 기본 텍스트만 추출하여 전달
         const text = editor.getText();
         setEditorData(`<p>${text}</p>`);
         onChangeAction(`<p>${text}</p>`);
@@ -228,10 +357,9 @@ export default function EditorWithUploader({
   });
 
   // 이미지 업로드 핸들러
-  const handleImageUpload = async (file: File) => {
+  const handleUpload = async (file: File) => {
     try {
-      const fileExt = file.name.split('.').pop() || 'png';
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9_.]/g, '')}`;
       const filePath = `articles/${fileName}`;
       
       const { data, error } = await supabase.storage
@@ -248,6 +376,10 @@ export default function EditorWithUploader({
         .getPublicUrl(filePath);
       
       editor?.chain().focus().setImage({ src: urlData.publicUrl }).run();
+      
+      if (onImageUpload) {
+        onImageUpload(urlData.publicUrl);
+      }
       
       return urlData.publicUrl;
     } catch (error) {
@@ -520,7 +652,7 @@ export default function EditorWithUploader({
             accept="image/*" 
             onChange={(e) => {
               if (e.target.files?.length) {
-                handleImageUpload(e.target.files[0]);
+                handleUpload(e.target.files[0]);
               }
             }}
           />
@@ -634,9 +766,10 @@ export default function EditorWithUploader({
   }, [editor, value]);
 
   useEffect(() => {
-    // CSS 동적 삽입 (클래식한 에디터 스타일)
+    // CSS 동적 삽입 (에디터 스타일)
     const style = document.createElement('style');
     style.innerHTML = `
+      ${editorGlobalStyles}
       .ProseMirror {
         outline: none;
         background-color: #fff;
@@ -768,10 +901,16 @@ export default function EditorWithUploader({
     `;
     document.head.appendChild(style);
     
+    // 글로벌 스타일도 추가
+    const globalStyle = document.createElement('style');
+    globalStyle.innerHTML = editorGlobalStyles;
+    document.head.appendChild(globalStyle);
+    
     setIsMounted(true);
     
     return () => {
       document.head.removeChild(style);
+      document.head.removeChild(globalStyle);
       editor?.destroy();
     };
   }, []);

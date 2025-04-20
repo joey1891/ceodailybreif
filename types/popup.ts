@@ -8,4 +8,7 @@ export interface Popup {
   end_date: string;
   is_active: boolean;
   created_at: string;
-} 
+  size_percentage?: number;
+  position?: number;
+  display_order?: number;
+}

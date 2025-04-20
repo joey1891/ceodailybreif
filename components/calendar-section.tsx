@@ -6,12 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import { parseISO } from "date-fns";
 import { format } from "date-fns";
+import { useAdminSession } from "@/lib/admin-auth";
 
 interface CalendarSectionProps {
   initialView?: "annual" | "monthly" | "both";
 }
 
 export function CalendarSection({ initialView = "both" }: CalendarSectionProps) {
+  const { adminUser, loading } = useAdminSession();
   const [events, setEvents] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<"annual" | "monthly" | "both">(initialView);
   const [targetYear, setTargetYear] = useState<number>(2025); // 기본값으로 2025년 사용
@@ -102,6 +104,11 @@ export function CalendarSection({ initialView = "both" }: CalendarSectionProps) 
   // View logic
   const showAnnual = activeView === "annual" || activeView === "both";
   const showMonthly = activeView === "monthly" || activeView === "both";
+
+  // 관리자가 아닌 경우 또는 로딩 중인 경우 컴포넌트를 렌더링하지 않음
+  if (loading || !adminUser) {
+    return null;
+  }
 
   return (
     <div className="relative border-2 border-primary/50 rounded-lg p-4 space-y-8 mt-6 ">

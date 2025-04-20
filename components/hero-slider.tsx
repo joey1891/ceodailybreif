@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Carousel,
@@ -231,8 +229,14 @@ export function HeroSlider({ slides }: HeroSliderProps) {
           </CarouselContent>
           {slideArticles.length > 1 && (
             <>
-              <CarouselPrevious className="left-4" />
-              <CarouselNext className="right-4" />
+              <CarouselPrevious className="left-8 bg-transparent border-none hover:bg-black/20 h-16 w-16 text-white">
+                <ArrowRight className="absolute top-1/2 -translate-y-1/2 h-10 w-10 stroke-[3]" />
+                <span className="sr-only">Previous slide</span>
+              </CarouselPrevious>
+              <CarouselNext className="right-8 bg-transparent border-none hover:bg-black/20 h-16 w-16 text-white">
+                <ArrowRight className="absolute top-1/2 -translate-y-1/2 h-10 w-10 stroke-[3]" />
+                <span className="sr-only">Next slide</span>
+              </CarouselNext>
             </>
           )}
         </Carousel>
@@ -242,9 +246,9 @@ export function HeroSlider({ slides }: HeroSliderProps) {
               <h2 className="text-xl md:text-3xl font-bold text-white mb-2">
                 {slideArticles[currentSlide]?.title}
               </h2>
-              <p className="text-sm md:text-base text-white/80 line-clamp-2">
+              {/* <p className="text-sm md:text-base text-white/80 line-clamp-2">
                 {slideArticles[currentSlide]?.description}
-              </p>
+              </p> */}
             </div>
           </Link>
         )}

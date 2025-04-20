@@ -7,7 +7,6 @@ import ArticlesManagement from "@/app/admin/articles/page";
 import CalendarManagement from "@/app/admin/calendar/page";
 import ProfileManagement from "@/app/admin/about-me/page"; // 프로필 관리 컴포넌트 import
 import MembersManagement from "@/app/admin/members/page"; // 회원 관리 컴포넌트 import
-import BooksManagement from "@/app/admin/books/page"; // 도서 관리 컴포넌트 import
 import SideMenuManagement from "@/app/admin/sidemenu/page"; // 사이드 메뉴 관리 컴포넌트 import
 import SliderSpeedManagement from "@/app/admin/slider/page"; // 슬라이더 속도 관리 컴포넌트 import
 import PopupManagement from "@/app/admin/popup/page"; // 경로 확인 - 실제 컴포넌트 임포트
@@ -34,7 +33,6 @@ export default function AdminDashboard() {
     "profile",
     "articles",
     "sidemenu",
-    "books",
     "popup",
     "calendar",
     "members",
@@ -47,7 +45,6 @@ export default function AdminDashboard() {
       case "profile": return "프로필 관리";
       case "articles": return "기사 관리";
       case "sidemenu": return "사이드 메뉴 관리";
-      case "books": return "도서 관리";
       case "popup": return "팝업 관리";
       case "calendar": return "일정 관리";
       case "members": return "회원 관리";
@@ -119,7 +116,6 @@ export default function AdminDashboard() {
           {activeTab === "profile" && <ProfileManagement />}
           {activeTab === "articles" && <ArticlesManagement />}
           {activeTab === "sidemenu" && <SideMenuManagement />}
-          {activeTab === "books" && <BooksManagement />}
           {activeTab === "popup" && <PopupManagement />}
           {activeTab === "calendar" && <CalendarManagement />}
           {activeTab === "members" && <MembersManagement />}

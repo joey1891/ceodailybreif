@@ -1,9 +1,23 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css");
 
+/* 강원교육튼튼 폰트 추가 */
+@font-face {
+  font-family: 'GangwonEdu';
+  src: url('/fonts/강원교육튼튼.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --logo-letter-spacing-ceo: 0px; /* CEO 글자 간격 조정 변수 */
+  --logo-letter-spacing-daily: 0px; /* DAILY BRIEF 글자 간격 조정 변수 */
+  --logo-padding-top: 1rem; /* 로고 상단 여백 조정 변수 */
+  --logo-padding-bottom: 0rem; /* 로고 하단 여백 조정 변수 */
+}
 
 @layer base {
   :root {
@@ -209,4 +223,120 @@
       padding-right: 1.5rem;
     }
   }
+}
+
+/* 에디터 콘텐츠 스타일 - 파일 맨 아래에 추가 */
+.prose p:empty {
+  display: block !important;
+  height: 1em !important;
+  margin: 0.75em 0 !important;
+  visibility: visible !important;
+}
+
+.prose ul, 
+.prose ol {
+  list-style-position: outside !important;
+  padding-left: 1.5em !important;
+  margin: 0.75em 0 !important;
+}
+
+.prose ul {
+  list-style-type: disc !important;
+}
+
+.prose ol {
+  list-style-type: decimal !important;
+}
+
+/* 중첩된 목록 스타일 */
+.prose ul ul,
+.prose ol ol,
+.prose ul ol,
+.prose ol ul {
+  margin: 0.25em 0 0.5em 0 !important;
+  padding-left: 1.5em !important;
+}
+
+/* 목록 항목 내 단락 스타일 */
+.prose li > p {
+  margin-top: 0.5em !important;
+  margin-bottom: 0.5em !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* 목록 항목 내 빈 단락(줄바꿈) 스타일 */
+.prose li > p:empty {
+  display: block !important;
+  height: 1em !important;
+  margin: 0.5em 0 !important;
+  visibility: visible !important;
+  
+  /* 디버깅용 시각적 힌트 (나중에 제거 가능) */
+  /* background-color: rgba(240, 240, 240, 0.3) !important; */
+  /* border-top: 1px dashed rgba(200, 200, 200, 0.3) !important; */
+}
+
+/* 이미지 스타일 */
+.prose img {
+  max-width: 100% !important;
+  height: auto !important;
+  margin: 1em auto !important;
+}
+
+/* 체크박스 목록 스타일 */
+.prose ul[data-type="taskList"] {
+  list-style-type: none !important;
+  padding-left: 0.5em !important;
+}
+
+.prose li[data-type="taskItem"] {
+  display: flex !important;
+  align-items: flex-start !important;
+  margin-bottom: 0.5em !important;
+}
+
+.prose li[data-type="taskItem"] > label {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.prose li[data-type="taskItem"] > label > input {
+  margin-right: 0.5em !important;
+}
+
+/* 목록 내 줄바꿈 스타일 강화 */
+.prose li br {
+  display: block !important;
+  content: "" !important;
+  margin-top: 0.5em !important;
+}
+
+/* 목록 내 빈 단락 스타일 강화 */
+.prose li > p:empty {
+  display: block !important;
+  height: 1em !important;
+  margin: 0.5em 0 !important;
+  visibility: visible !important;
+}
+
+/* 목록 항목 간 간격 조정 */
+.prose li {
+  margin-top: 0.25em !important;
+  margin-bottom: 0.25em !important;
+}
+
+/* 목록 내 모든 단락에 여백 적용 */
+.prose li > p {
+  margin: 0.5em 0 !important;
+}
+
+/* 상위 요소에서의 오버플로우 방지 */
+.prose li {
+  overflow: visible !important;
+}
+
+/* 빈 단락 다음에 오는 단락에도 여백 적용 */
+.prose li > p:empty + p {
+  margin-top: 0.5em !important;
 }

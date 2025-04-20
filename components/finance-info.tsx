@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { LineChart, Clock, DollarSign, Percent } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useAdminSession } from "@/lib/admin-auth";
 
 interface FinanceData {
   id: string;
@@ -43,6 +44,7 @@ const INTEREST_RATE_ORDER = ["미국", "유로", "일본", "중국", "한국"];
 const CITY_ORDER = ["뉴욕", "런던", "도쿄", "베이징", "서울"];
 
 export function FinanceInfo() {
+  const { adminUser, loading } = useAdminSession();
   const [indices, setIndices] = useState<MarketIndex[]>([]);
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [interestRates, setInterestRates] = useState<InterestRate[]>([]);
@@ -157,50 +159,58 @@ export function FinanceInfo() {
 
     fetchData();
   }, []);
- return (
+
+  // 관리자가 아닌 경우 또는 로딩 중인 경우 컴포넌트를 렌더링하지 않음
+  if (loading || !adminUser) {
+    return null;
+  }
+
+  return (
     <div className="grid grid-cols-1 gap-4 pt-6">
       {/* 주요 도시 시간 박스 */}
       <div className="relative h-[168px] border-2 border-primary/50 rounded-lg p-4 mt-3">
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
           <div className="flex items-center gap-2 text-gray-500">
             <Clock className="h-4 w-4" />
-            <span className="text-sm font-medium">주요 도시 시간</span>
+            <span className="text-sm max-[300px]:text-[9px] font-medium">주요 도시 시간</span>
           </div>
         </div>
         <div className="mt-1 grid grid-cols-5 gap-4">
           {times.map((city) => (
             <div key={city.name} className="text-center">
-              <div className="text-sm text-gray-500 mb-1 flex items-center justify-center h-full">{city.name}</div>
-              <div className="text-sm font-bold text-gray-700">{city.time}</div>
+              <div className="text-sm max-[300px]:text-[9px] text-gray-500 mb-1 flex items-center justify-center h-full">{city.name}</div>
+              <div className="text-sm max-[300px]:text-[9px] font-bold text-gray-700">{city.time}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* 주요 지수 현황 박스 */}
-      <div className="relative h-[168px] border-2 border-primary/50 rounded-lg p-4">
+      <div className="relative h-[168px] max-[400px]:h-auto border-2 border-primary/50 rounded-lg p-4">
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
           <div className="flex items-center gap-2 text-gray-500">
             <LineChart className="h-4 w-4" />
-            <span className="text-sm font-medium">주요 지수현황</span>
+            <span className="text-sm max-[300px]:text-[9px] font-medium">주요 지수현황</span>
           </div>
         </div>
-        <div className="mt-1 grid grid-cols-5 gap-4">
+        
+        {/* 지수 그리드 - 400px 이하에서는 세로로 표시 */}
+        <div className="mt-1 grid grid-cols-5 max-[400px]:grid-cols-1 gap-4 max-[400px]:gap-2">
           {isLoading ? (
-            <div className="col-span-5 text-center">Loading...</div>
+            <div className="col-span-5 max-[400px]:col-span-1 text-center">Loading...</div>
           ) : error ? (
-            <div className="col-span-5 text-center text-red-500">{error}</div>
+            <div className="col-span-5 max-[400px]:col-span-1 text-center text-red-500">{error}</div>
           ) : (
             indices.map((index) => (
-              <div key={index.name} className="text-center">
-                <div className="whitespace-nowrap text-gray-500 mb-2 flex items-center justify-center h-full">{index.name}</div>
-                <div className="text-sm font-bold text-gray-700">
+              <div key={index.name} className="text-center max-[400px]:text-left max-[400px]:flex max-[400px]:items-center max-[400px]:justify-between">
+                <div className="whitespace-nowrap max-[300px]:text-[9px] text-gray-500 mb-2 max-[400px]:mb-0 flex items-center justify-center max-[400px]:justify-start h-full">{index.name}</div>
+                <div className="text-sm max-[300px]:text-[9px] font-bold text-gray-700">
                   {Math.floor(index.value*10)/10}
                 </div>
                 <div
-                  className={`text-sm ${
+                  className={`text-sm max-[300px]:text-[9px] ${
                     index.change > 0 ? "text-green-500" : "text-red-500"
-                  }`}
+                  } max-[400px]:hidden`}
                 >
                   {/* {index.change > 0 ? "▲" : "▼"}{" "}
                   {Math.abs(index.change).toFixed(2)}% */}
@@ -218,7 +228,7 @@ export function FinanceInfo() {
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
           <div className="flex items-center gap-2 text-gray-500">
             <DollarSign className="h-4 w-4" />
-            <span className="text-sm font-medium">환율</span>
+            <span className="text-sm max-[300px]:text-[9px] font-medium">환율</span>
           </div>
         </div>
         <div className="mt-1 grid grid-cols-5 gap-4">
@@ -229,12 +239,12 @@ export function FinanceInfo() {
           ) : (
             rates.map((rate) => (
               <div key={rate.currency} className="text-center">
-                <div className="text-sm text-gray-500 mb-1 flex items-center justify-center h-full">{rate.currency}</div>
-                <div className="text-sm font-bold text-gray-700">
+                <div className="text-sm max-[300px]:text-[9px] text-gray-500 mb-1 flex items-center justify-center h-full">{rate.currency}</div>
+                <div className="text-sm max-[300px]:text-[9px] font-bold text-gray-700">
                   {Math.floor(rate.rate*10)/10}
                 </div>
                 <div
-                  className={`text-sm ${
+                  className={`text-sm max-[300px]:text-[9px] ${
                     rate.trend === "up" ? "text-green-500" : "text-red-500"
                   }`}
                 >
@@ -251,7 +261,7 @@ export function FinanceInfo() {
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white px-4">
           <div className="flex items-center gap-2 text-gray-500">
             <Percent className="h-4 w-4" />
-            <span className="text-sm font-medium">금리</span>
+            <span className="text-sm max-[300px]:text-[9px] font-medium">금리</span>
           </div>
         </div>
         <div className="mt-1 grid grid-cols-5 gap-4">
@@ -262,8 +272,8 @@ export function FinanceInfo() {
           ) : (
             interestRates.map((rate) => (
               <div key={rate.country} className="text-center">
-                <div className="text-sm text-gray-500 mb-1 flex items-center justify-center h-full">{rate.country}</div>
-                <div className="text-sm font-bold text-gray-700">
+                <div className="text-sm max-[300px]:text-[9px] text-gray-500 mb-1 flex items-center justify-center h-full">{rate.country}</div>
+                <div className="text-sm max-[300px]:text-[9px] font-bold text-gray-700">
                   {rate.rate.toFixed(2)}%
                 </div>
               </div>

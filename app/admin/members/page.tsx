@@ -11,7 +11,10 @@ interface Subscriber {
   email: string;
   created_at: string;
   status?: string;
-  memo?: string;
+  contact_number?: string;
+  workplace?: string;
+  job_title?: string;
+  specialty?: string;
 }
 
 export default function MembersManagement() {
@@ -22,7 +25,15 @@ export default function MembersManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [editingMemo, setEditingMemo] = useState<{id: string, memo: string} | null>(null);
+  const [editingField, setEditingField] = useState<{id: string, field: string, value: string} | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newSubscriber, setNewSubscriber] = useState({
+    email: "",
+    contact_number: "",
+    workplace: "",
+    job_title: "",
+    specialty: "",
+  });
   
   const { adminUser } = useAdminSession();
   const { toast } = useToast();
@@ -41,7 +52,9 @@ export default function MembersManagement() {
       .order(sortField, { ascending: sortDirection === "asc" });
 
     if (searchTerm) {
-      query = query.or(`email.ilike.%${searchTerm}%,memo.ilike.%${searchTerm}%`);
+      query = query.or(
+        `email.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%,workplace.ilike.%${searchTerm}%,job_title.ilike.%${searchTerm}%,specialty.ilike.%${searchTerm}%`
+      );
     }
 
     const { data, error, count } = await query;
@@ -148,7 +161,11 @@ export default function MembersManagement() {
         minute: '2-digit'
       }),
       상태: sub.status === 'active' ? '활성' : 
-           sub.status === 'inactive' ? '비활성' : '대기중'
+           sub.status === 'inactive' ? '비활성' : '대기중',
+      연락처: sub.contact_number || '',
+      직장: sub.workplace || '',
+      직무: sub.job_title || '',
+      특기: sub.specialty || ''
     }));
     
     // 워크시트 생성
@@ -164,18 +181,21 @@ export default function MembersManagement() {
     XLSX.writeFile(workbook, fileName);
   };
 
-  // 메모 업데이트 함수
-  const handleMemoUpdate = async (id: string, memo: string) => {
+  // 필드 업데이트 함수
+  const handleFieldUpdate = async (id: string, field: string, value: string) => {
+    const updateData: any = {};
+    updateData[field] = value;
+
     const { error } = await supabase
       .from("subscribers")
-      .update({ memo })
+      .update(updateData)
       .eq("id", id);
 
     if (error) {
-      console.error("Error updating subscriber memo:", error);
+      console.error(`Error updating subscriber ${field}:`, error);
       toast({
-        title: "메모 업데이트 실패",
-        description: "구독자 메모 업데이트 중 오류가 발생했습니다.",
+        title: "업데이트 실패",
+        description: `구독자 ${fieldDisplayName(field)} 업데이트 중 오류가 발생했습니다.`,
         variant: "destructive",
       });
     } else {
@@ -183,17 +203,136 @@ export default function MembersManagement() {
       setSubscribers(prevSubscribers => 
         prevSubscribers.map(subscriber => 
           subscriber.id === id 
-            ? { ...subscriber, memo } 
+            ? { ...subscriber, [field]: value } 
             : subscriber
         )
       );
       
-      setEditingMemo(null);
+      setEditingField(null);
       
       toast({
-        title: "메모 업데이트 완료",
-        description: "구독자 메모가 업데이트되었습니다.",
+        title: "업데이트 완료",
+        description: `구독자 ${fieldDisplayName(field)}가 업데이트되었습니다.`,
       });
+    }
+  };
+
+  // 새 구독자 추가
+  const handleAddSubscriber = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newSubscriber.email || !newSubscriber.email.includes('@')) {
+      toast({
+        title: "유효하지 않은 이메일",
+        description: "올바른 이메일 주소를 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const { data, error } = await supabase
+      .from("subscribers")
+      .insert([
+        {
+          email: newSubscriber.email,
+          status: "active",
+          contact_number: newSubscriber.contact_number,
+          workplace: newSubscriber.workplace,
+          job_title: newSubscriber.job_title,
+          specialty: newSubscriber.specialty,
+        }
+      ])
+      .select();
+    
+    if (error) {
+      console.error("Error adding subscriber:", error);
+      let errorMessage = "구독자 추가 중 오류가 발생했습니다.";
+      if (error.code === "23505") {
+        errorMessage = "이미 등록된 이메일 주소입니다.";
+      }
+      
+      toast({
+        title: "추가 실패",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "추가 완료",
+        description: "새 구독자가 추가되었습니다.",
+      });
+      
+      // 폼 초기화
+      setNewSubscriber({
+        email: "",
+        contact_number: "",
+        workplace: "",
+        job_title: "",
+        specialty: "",
+      });
+      setShowAddForm(false);
+      
+      // 첫 페이지로 이동하고 데이터 새로고침
+      setCurrentPage(1);
+      fetchSubscribers();
+    }
+  };
+
+  // 필드 이름 표시용
+  const fieldDisplayName = (field: string) => {
+    const displayNames: Record<string, string> = {
+      'contact_number': '연락처',
+      'workplace': '직장',
+      'job_title': '직무',
+      'specialty': '특기'
+    };
+    return displayNames[field] || field;
+  };
+
+  // 입력 필드 렌더링
+  const renderEditableField = (subscriber: Subscriber, field: string) => {
+    const isEditing = editingField?.id === subscriber.id && editingField?.field === field;
+    const value = subscriber[field as keyof Subscriber] as string || '';
+    
+    if (isEditing) {
+      return (
+        <div className="flex items-center">
+          <textarea
+            value={editingField.value}
+            onChange={(e) => setEditingField({...editingField, value: e.target.value})}
+            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={2}
+          />
+          <div className="flex flex-col ml-2 space-y-1">
+            <button
+              onClick={() => handleFieldUpdate(subscriber.id, field, editingField.value)}
+              className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              저장
+            </button>
+            <button
+              onClick={() => setEditingField(null)}
+              className="p-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex items-center group">
+          <div className="whitespace-pre-wrap flex-1 text-sm">
+            {value || "-"}
+          </div>
+          <button
+            onClick={() => setEditingField({id: subscriber.id, field, value})}
+            className="ml-2 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            편집
+          </button>
+        </div>
+      );
     }
   };
 
@@ -201,13 +340,13 @@ export default function MembersManagement() {
     <div className="container mx-auto py-6">
       <h1 className="text-2xl font-bold mb-6">구독자 관리</h1>
 
-      {/* 검색창 및 엑셀 다운로드 버튼 */}
+      {/* 검색창, 구독자 추가 버튼 및 엑셀 다운로드 버튼 */}
       <div className="mb-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
           <div className="flex gap-2 flex-1">
             <input
               type="text"
-              placeholder="이메일 또는 메모로 검색"
+              placeholder="검색어 입력 (이메일, 연락처, 직장 등)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="border p-2 rounded flex-1"
@@ -219,17 +358,99 @@ export default function MembersManagement() {
               검색
             </button>
           </div>
-          <button
-            onClick={downloadExcel}
-            className="ml-4 bg-green-600 text-white px-4 py-2 rounded flex items-center"
-          >
-            <span>엑셀 다운로드</span>
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="bg-green-600 text-white px-4 py-2 rounded flex items-center"
+            >
+              <span>구독자 추가</span>
+            </button>
+            <button
+              onClick={downloadExcel}
+              className="bg-indigo-600 text-white px-4 py-2 rounded flex items-center"
+            >
+              <span>엑셀 다운로드</span>
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* 구독자 추가 폼 */}
+      {showAddForm && (
+        <div className="mb-6 bg-gray-50 p-4 rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-4">새 구독자 추가</h2>
+          <form onSubmit={handleAddSubscriber}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">이메일 *</label>
+                <input
+                  type="email"
+                  required
+                  value={newSubscriber.email}
+                  onChange={(e) => setNewSubscriber({...newSubscriber, email: e.target.value})}
+                  className="w-full p-2 border rounded"
+                  placeholder="example@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">연락처</label>
+                <input
+                  type="text"
+                  value={newSubscriber.contact_number}
+                  onChange={(e) => setNewSubscriber({...newSubscriber, contact_number: e.target.value})}
+                  className="w-full p-2 border rounded"
+                  placeholder="010-0000-0000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">직장</label>
+                <input
+                  type="text"
+                  value={newSubscriber.workplace}
+                  onChange={(e) => setNewSubscriber({...newSubscriber, workplace: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">직무</label>
+                <input
+                  type="text"
+                  value={newSubscriber.job_title}
+                  onChange={(e) => setNewSubscriber({...newSubscriber, job_title: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">특기</label>
+                <input
+                  type="text"
+                  value={newSubscriber.specialty}
+                  onChange={(e) => setNewSubscriber({...newSubscriber, specialty: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="px-4 py-2 border rounded"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-500 text-white rounded"
+              >
+                추가하기
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* 구독자 목록 테이블 */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -252,7 +473,16 @@ export default function MembersManagement() {
                 상태 {sortField === "status" && (sortDirection === "asc" ? "↑" : "↓")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                메모
+                연락처
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                직장
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                직무
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                특기
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 관리
@@ -262,13 +492,13 @@ export default function MembersManagement() {
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center">
+                <td colSpan={8} className="px-6 py-4 text-center">
                   로딩 중...
                 </td>
               </tr>
             ) : subscribers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center">
+                <td colSpan={8} className="px-6 py-4 text-center">
                   구독자가 없습니다.
                 </td>
               </tr>
@@ -296,42 +526,16 @@ export default function MembersManagement() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    {editingMemo?.id === subscriber.id ? (
-                      <div className="flex items-center">
-                        <textarea
-                          value={editingMemo.memo}
-                          onChange={(e) => setEditingMemo({...editingMemo, memo: e.target.value})}
-                          className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          rows={2}
-                        />
-                        <div className="flex flex-col ml-2 space-y-1">
-                          <button
-                            onClick={() => handleMemoUpdate(subscriber.id, editingMemo.memo)}
-                            className="p-1 bg-green-500 text-white rounded hover:bg-green-600"
-                          >
-                            저장
-                          </button>
-                          <button
-                            onClick={() => setEditingMemo(null)}
-                            className="p-1 bg-gray-500 text-white rounded hover:bg-gray-600"
-                          >
-                            취소
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center group">
-                        <div className="whitespace-pre-wrap flex-1 text-sm">
-                          {subscriber.memo || "메모 없음"}
-                        </div>
-                        <button
-                          onClick={() => setEditingMemo({id: subscriber.id, memo: subscriber.memo || ""})}
-                          className="ml-2 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          편집
-                        </button>
-                      </div>
-                    )}
+                    {renderEditableField(subscriber, "contact_number")}
+                  </td>
+                  <td className="px-6 py-4">
+                    {renderEditableField(subscriber, "workplace")}
+                  </td>
+                  <td className="px-6 py-4">
+                    {renderEditableField(subscriber, "job_title")}
+                  </td>
+                  <td className="px-6 py-4">
+                    {renderEditableField(subscriber, "specialty")}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">

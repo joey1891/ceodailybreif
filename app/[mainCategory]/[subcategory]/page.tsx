@@ -50,6 +50,7 @@ export default function SubCategoryPage({
         category={mainCategory}
         subcategories={[subcategoryData]}
         subcategory={subcategory}
+        hideEmptyImageContainer={true}
       />
     </div>
   );

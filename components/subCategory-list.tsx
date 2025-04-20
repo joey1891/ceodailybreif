@@ -13,9 +13,10 @@ interface SubCategoryListProps {
   category: string;
   subcategories: string[] | { id: string; title: { ko: string; en: string; }; slug: string; }[];
   subcategory?: string;
+  hideEmptyImageContainer?: boolean;
 }
 
-export default function SubCategoryList({ category, subcategories, subcategory }: SubCategoryListProps) {
+export default function SubCategoryList({ category, subcategories, subcategory, hideEmptyImageContainer }: SubCategoryListProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -82,37 +83,35 @@ export default function SubCategoryList({ category, subcategories, subcategory }
       {loading ? (
         <p>Loading reports...</p>
       ) : posts.length === 0 ? (
-        <p>No reports available.</p>
+        <div className="col-span-full py-8 text-center">
+          이 카테고리에 게시물이 없습니다.
+        </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {posts.map((post) => (
-            <Link key={post.id} href={`/article/${post.id}`}>
-              <Card className="cursor-pointer hover:shadow-xl transition-shadow">
-                {post.image_url && (
-                  <div className="relative h-48 w-full overflow-hidden">
-                    <img
-                      src={post.image_url}
+            <Link href={`/article/${post.id}`} key={post.id}>
+              <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
+                {post.image_url ? (
+                  <div className="w-full flex justify-center items-center bg-gray-100 p-2" style={{height: "200px"}}>
+                    <img 
+                      src={post.image_url} 
                       alt={post.title}
-                      className="object-cover w-full h-full"
+                      className="max-w-full max-h-[180px] object-contain"
                     />
                   </div>
-                )}
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
+                ) : null}
+                <div className={`p-4 flex-grow flex flex-col ${!post.image_url ? 'justify-center py-5' : ''}`}>
+                  <h3 className={`text-lg font-semibold mb-1 line-clamp-2 ${!post.image_url ? 'text-center' : ''}`}>
                     {post.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground line-clamp-3">
-                    {post.content.replace(/<[^>]+>/g, "").slice(0, 100)}...
-                  </p>
-                </CardContent>
-                <div className="flex items-center text-sm text-muted-foreground p-4 pt-0">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  {new Date(post.updated_at || post.created_at).toLocaleDateString()}
+                  </h3>
+                  <div className={`text-sm text-gray-600 line-clamp-3 ${!post.image_url ? 'text-center' : ''}`}>
+                    {post.content.replace(/<[^>]*>/g, '').substring(0, 100)}...
+                  </div>
+                  <div className={`text-xs text-gray-500 mt-2 ${!post.image_url ? 'text-center' : ''}`}>
+                    {new Date(post.created_at).toLocaleDateString()}
+                  </div>
                 </div>
-              </Card>
+              </div>
             </Link>
           ))}
         </div>

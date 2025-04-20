@@ -14,14 +14,10 @@ import { CategoryItem, CategoryOption } from "@/lib/category-options";
 // import { Editor } from "@/components/editor";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "react-hot-toast";
-
-const EditorWithUploader = dynamic(
-  () => import("@/components/editorWith-uploader"),
-  {
-    ssr: false,
-    loading: () => <p>Loading Editor...</p>,
-  }
-);
+import EditorWithUploader from "./editorWith-uploader";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 interface ArticleFormProps {
   id?: string;
@@ -42,6 +38,12 @@ const extractFirstImage = (htmlContent: string): string | null => {
   const match = htmlContent.match(imgRegex);
   return match ? match[1] : null;
 };
+
+// 이미지 타입 정의
+interface UploadedImage {
+  url: string;
+  timestamp: number;
+}
 
 export default function ArticleForm({ id, post }: ArticleFormProps) {
   const router = useRouter();
@@ -229,6 +231,40 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
     setSubSubCategory("");
   };
 
+  // 업로드된 이미지 목록 상태 추가
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  // 선택된 썸네일 URL 상태 추가
+  const [thumbnailUrl, setThumbnailUrl] = useState<string>(post?.image_url || "");
+
+  // 카테고리 옵션 (실제 데이터로 교체 필요)
+  const mainCategories = ["news", "finance", "company", "market", "tech", "culture"];
+  const subCategories: Record<string, string[]> = {
+    news: ["breaking", "politics", "economy", "international"],
+    // 다른 카테고리의 서브 카테고리 추가
+  };
+
+  // 이미지 업로드 콜백 핸들러
+  const handleImageUpload = (imageUrl: string) => {
+    // 새 이미지를 목록에 추가
+    const newImage = {
+      url: imageUrl,
+      timestamp: Date.now()
+    };
+    
+    setUploadedImages(prev => [...prev, newImage]);
+    
+    // 아직 썸네일이 선택되지 않았다면 첫 이미지를 자동으로 썸네일로 설정
+    if (!thumbnailUrl) {
+      setThumbnailUrl(imageUrl);
+    }
+  };
+
+  // 썸네일 선택 핸들러
+  const handleSelectThumbnail = (url: string) => {
+    setThumbnailUrl(url);
+    toast.success("썸네일 이미지가 선택되었습니다");
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -282,7 +318,7 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
         is_slide: isSlide,
         ...(isSlide && slideOrder !== null ? { slide_order: slideOrder } : {}),
         description: description,
-        image_url: imgUrl.trim() !== "" ? imgUrl.trim() : null, // 이미지 URL 추가
+        image_url: thumbnailUrl.trim() !== "" ? thumbnailUrl.trim() : null, // 이미지 URL 추가
       };
       
       let error;
@@ -311,8 +347,8 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
           .insert([{ ...articleData, user_id: adminUser.id }])
           .select();
         if (insertError) error = insertError;
-        if (newArticle && newArticle.length > 0) {
-          articleId = newArticle[0].id;
+        if (newArticle && Array.isArray(newArticle) && newArticle.length > 0) {
+          articleId = (newArticle as Post[])[0].id;
         }
       }
       if (error) {
@@ -488,13 +524,7 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
                 }
               }
             }}
-            onImageUpload={(imageUrl) => {
-              // 이미 대표 이미지가 없는 경우에만 새로 업로드된 이미지를 대표 이미지로 설정
-              if (!imgUrl) {
-                setImgUrl(imageUrl);
-                console.log("업로드된 이미지를 대표 이미지로 설정:", imageUrl);
-              }
-            }}
+            onImageUpload={handleImageUpload}
           />
         </div>
         <div className="flex items-center space-x-2">
@@ -524,6 +554,50 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
             </div>
           )}
         </div>
+        {/* 업로드된 이미지 목록 표시 */}
+        {uploadedImages.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-lg font-medium mb-3">업로드된 이미지</h3>
+            <p className="text-sm text-gray-500 mb-3">썸네일로 사용할 이미지를 선택하세요</p>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {uploadedImages.map((image, index) => (
+                <div 
+                  key={image.timestamp} 
+                  className={`relative border-2 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity ${
+                    thumbnailUrl === image.url ? 'border-blue-500' : 'border-gray-200'
+                  }`}
+                  onClick={() => handleSelectThumbnail(image.url)}
+                >
+                  <img 
+                    src={image.url} 
+                    alt={`업로드 이미지 ${index + 1}`}
+                    className="w-full h-40 object-cover"
+                  />
+                  {thumbnailUrl === image.url && (
+                    <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                      썸네일
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* 현재 썸네일 표시 (편집 시) */}
+        {id && thumbnailUrl && !uploadedImages.some(img => img.url === thumbnailUrl) && (
+          <div className="mt-4">
+            <h3 className="text-lg font-medium mb-3">현재 썸네일</h3>
+            <div className="w-56 h-40 border-2 border-blue-500 rounded-md overflow-hidden">
+              <img 
+                src={thumbnailUrl} 
+                alt="현재 썸네일"
+                className="w-full h-full object-cover" 
+              />
+            </div>
+          </div>
+        )}
         <div>
           <button
             type="submit"

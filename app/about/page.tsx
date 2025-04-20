@@ -98,7 +98,6 @@ export default function AboutPage() {
               <ul className="space-y-2 select-none">
                 {aboutMeData.career && aboutMeData.career.map((item, index) => (
                   <li key={index} className="flex">
-                    <span className="font-medium min-w-28">{index === 0 ? '현' : '전'}</span>
                     <span>{item}</span>
                   </li>
                 ))}

@@ -31,5 +31,6 @@ export default async function EditArticlePage({
     return <div>Article not found</div>;
   }
 
-  return <ArticleForm post={post} />;
+  // id prop을 명시적으로 전달하도록 수정
+  return <ArticleForm id={id} post={post} />;
 }

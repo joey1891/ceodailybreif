@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import { supabase } from "@/lib/supabase";
 import { Post } from "@/types/supabase";
 import Link from "next/link";
+import { ShareButtons } from "@/components/share-buttons"; // 클라이언트 컴포넌트 임포트
 
 interface Props {
   params: { id: string };
@@ -66,6 +67,7 @@ export default async function ArticlePage({ params }: Props) {
     .from("posts")
     .select("*")
     .eq("category", post.category)
+    .eq("is_deleted", false)
     .neq("id", params.id)
     .order("created_at", { ascending: false })
     .limit(3);
@@ -79,6 +81,8 @@ export default async function ArticlePage({ params }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
         <div className="md:col-span-2">
           <ArticleContent content={post.content} />
+          {/* 클라이언트 컴포넌트 사용 */}
+          <ShareButtons post={post as Post} />
         </div>
         <div className="space-y-8">
           <RelatedArticles articles={related as Post[] || []} />
@@ -97,15 +101,6 @@ function ArticleContent({ content }: { content: string }) {
 function ArticleHeader({ post }: { post: Post }) {
   return (
     <div className="mb-8">
-      {/* {post.image_url && (
-        // <div className="relative w-full h-64 md:h-96 mb-6 overflow-hidden rounded-lg">
-        //   <img 
-        //     src={post.image_url} 
-        //     alt={post.title} 
-        //     className="w-full h-full object-cover"
-        //   />
-        // </div>
-      )} */}
       <h1 className="text-3xl md:text-4xl font-bold mb-4">{post.title}</h1>
       <div className="text-sm text-gray-500">
         {new Date(post.created_at).toLocaleDateString()}

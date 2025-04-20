@@ -43,7 +43,7 @@ const allCategories: CategoryItem[] = [
   marketing as CategoryItem,
   people as CategoryItem,
   mediaReview as CategoryItem,
-  schedule as CategoryItem
+  // schedule as CategoryItem
 ];
 
 // 카테고리 매핑 초기화

@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminSession } from "@/lib/admin-auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Trash, Edit, Eye, Plus, Check, X, Upload } from "lucide-react";
+import { Trash, Edit, Eye, Plus, Check, X, Upload, RefreshCcw } from "lucide-react";
 import { 
   Select,
   SelectContent,
@@ -40,11 +40,12 @@ interface Post {
   is_slide: boolean;
   image_url: string | null;
   slide_order?: number;
+  deleted_at: string | null;
   [key: string]: any;
 }
 
 // formatDate 함수 컴포넌트 내에 정의
-const formatDate = (dateString: string): string => {
+const formatDate = (dateString: string | null): string => {
   if (!dateString) return "-";
   return new Date(dateString).toLocaleDateString("ko-KR");
 };
@@ -65,22 +66,31 @@ const getTitleString = (title: string | { ko: string; en: string }): string => {
 
 export default function AdminArticlesPage() {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [deletedPosts, setDeletedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingTrash, setLoadingTrash] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [currentTrashPage, setCurrentTrashPage] = useState(1);
   const [totalPosts, setTotalPosts] = useState(0);
+  const [totalDeletedPosts, setTotalDeletedPosts] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [trashSearchTerm, setTrashSearchTerm] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [isTrashSearching, setIsTrashSearching] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
   const postsPerPage = 10;
+  const totalPages = Math.ceil(totalPosts / postsPerPage);
   const router = useRouter();
 
   // 필터 상태: 기본값은 "all"
-  const [filterMainCategory, setFilterMainCategory] = useState("all");
-  const [filterSubCategory, setFilterSubCategory] = useState("all");
+  const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
+  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
+  const [mainCategoryOpen, setMainCategoryOpen] = useState(false);
+  const [subCategoryOpen, setSubCategoryOpen] = useState(false);
 
   // 정렬 상태 추가
-  const [sortField, setSortField] = useState<string | null>('category');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<string | null>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const { adminUser } = useAdminSession();
   const { toast: useToastToast } = useToast();
@@ -88,6 +98,33 @@ export default function AdminArticlesPage() {
   // 카테고리 데이터를 저장할 상태 추가
   const [categoriesData, setCategoriesData] = useState<Map<string, any>>(new Map());
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+
+  // 드롭다운 참조 추가
+  const mainCategoryRef = useRef<HTMLDivElement>(null);
+  const subCategoryRef = useRef<HTMLDivElement>(null);
+
+  // 외부 클릭 감지 효과 추가
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      // 메인 카테고리 드롭다운
+      if (mainCategoryRef.current && !mainCategoryRef.current.contains(event.target as Node)) {
+        setMainCategoryOpen(false);
+      }
+      
+      // 서브 카테고리 드롭다운
+      if (subCategoryRef.current && !subCategoryRef.current.contains(event.target as Node)) {
+        setSubCategoryOpen(false);
+      }
+    }
+    
+    // 이벤트 리스너 추가
+    document.addEventListener("mousedown", handleClickOutside);
+    
+    // 클린업 함수
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // 컴포넌트 마운트 시 카테고리 데이터 로드
   useEffect(() => {
@@ -128,18 +165,20 @@ export default function AdminArticlesPage() {
   const getSubCategoryOptions = () => {
     const options: { value: string; label: string }[] = [];
     
-    // 카테고리 데이터가 로드되지 않았거나 메인 카테고리가 선택되지 않았으면 빈 배열 반환
-    if (categoriesData.size === 0 || filterMainCategory === 'all') {
+    // Only show subcategories when exactly one main category is selected
+    if (categoriesData.size === 0 || selectedMainCategories.length !== 1) {
       return options;
     }
     
-    // 선택된 메인 카테고리 찾기
+    const selectedMainCategory = selectedMainCategories[0]; // Get the only selected main category
+    
+    // Find the selected main category data
     for (const [categoryName, categoryData] of categoriesData.entries()) {
       const slug = categoryData.href?.replace(/^\//, '') || '';
       
-      // 현재 선택된 메인 카테고리와 일치하는지 확인
-      if (slug === filterMainCategory && categoryData.items) {
-        // 서브카테고리 추가
+      // Check if this matches the selected main category
+      if (slug === selectedMainCategory && categoryData.items) {
+        // Add all subcategories for this main category
         for (const subCategory of categoryData.items) {
           const title = typeof subCategory.title === 'object' 
             ? subCategory.title.ko 
@@ -277,7 +316,7 @@ export default function AdminArticlesPage() {
   // 필터 조건이나 페이지 변경 시 게시글 다시 조회
   useEffect(() => {
     fetchPosts();
-  }, [currentPage, filterMainCategory, filterSubCategory, sortField, sortDirection]);
+  }, [currentPage, selectedMainCategories, selectedSubCategories, sortField, sortDirection]);
 
   // DB 쿼리 함수 수정
   const fetchPosts = async (page = currentPage, search = searchTerm) => {
@@ -286,24 +325,10 @@ export default function AdminArticlesPage() {
     const end = page * postsPerPage - 1;
     setIsSearching(!!search);
 
-    // 필터링을 위한 카테고리 변환
-    const categoryFilter = filterMainCategory === "all" 
-      ? "all" 
-      : filterMainCategory;
-    
-    const subCategoryFilter = filterSubCategory === "all"
-      ? "all"
-      : filterSubCategory;
-
-    console.log("필터 정보:", {
-      메인카테고리: filterMainCategory,
-      서브카테고리: filterSubCategory,
-      검색어: search
-    });
-
     let query = supabase
       .from("posts")
       .select("*", { count: "exact" })
+      .eq("is_deleted", false)
       .range(start, end);
 
     // 검색어 필터 추가
@@ -311,11 +336,11 @@ export default function AdminArticlesPage() {
       query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
     }
 
-    if (categoryFilter !== "all") {
-      query = query.eq("category", categoryFilter);
+    if (selectedMainCategories.length > 0) {
+      query = query.in("category", selectedMainCategories);
     }
-    if (subCategoryFilter !== "all") {
-      query = query.eq("subcategory", subCategoryFilter);
+    if (selectedSubCategories.length > 0 && selectedMainCategories.length === 1) {
+      query = query.in("subcategory", selectedSubCategories);
     }
 
     const { data, error, count } = await query;
@@ -338,38 +363,122 @@ export default function AdminArticlesPage() {
     setLoading(false);
   };
 
+  // 휴지통 게시글 조회 함수 추가
+  const fetchDeletedPosts = async (page = currentTrashPage, search = trashSearchTerm) => {
+    setLoadingTrash(true);
+    const start = (page - 1) * postsPerPage;
+    const end = page * postsPerPage - 1;
+    setIsTrashSearching(!!search);
+
+    let query = supabase
+      .from("posts")
+      .select("*", { count: "exact" })
+      .eq("is_deleted", true)
+      .order("deleted_at", { ascending: false })
+      .range(start, end);
+
+    // 검색어 필터 추가
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error("Error fetching deleted posts:", error);
+      toast.error("삭제된 게시글을 불러오는데 실패했습니다: " + error.message);
+    } else if (data) {
+      console.log("휴지통 검색 결과:", data.length);
+      
+      // 데이터 전처리 적용
+      const processedData = preprocessData(data);
+      setDeletedPosts(processedData);
+      
+      if (count !== null) {
+        setTotalDeletedPosts(count);
+      }
+    }
+    setLoadingTrash(false);
+  };
+
+  // 휴지통 페이지 변경 시 삭제된 게시글 다시 조회
+  useEffect(() => {
+    fetchDeletedPosts();
+  }, [currentTrashPage]);
+
   const handleEdit = (id: string) => {
     router.push(`/admin/articles/edit/${id}`);
   };
 
-  const handleDelete = async (id: string) => {
-    const confirmDelete = confirm("Are you sure to delete this article?");
-    if (confirmDelete) {
-      const { error } = await supabase.from("posts").delete().eq("id", id);
+  // 게시글 복원 함수
+  const handleRestore = async (id: string) => {
+    const confirmRestore = confirm("이 게시글을 복원하시겠습니까?");
+    if (confirmRestore) {
+      const { error } = await supabase
+        .from("posts")
+        .update({ 
+          is_deleted: false, 
+          deleted_at: null 
+        })
+        .eq("id", id);
+        
       if (error) {
-        console.error("Error deleting post:", error);
-        toast.error("Failed to delete article");
+        console.error("게시글 복원 중 오류:", error);
+        toast.error("게시글 복원에 실패했습니다");
       } else {
-        toast.success("Article deleted successfully");
-        fetchPosts();
+        toast.success("게시글이 복원되었습니다");
+        fetchDeletedPosts();
+        fetchPosts(); // 복원 후 일반 게시글 목록도 업데이트
       }
     }
   };
 
-  const totalPages = Math.ceil(totalPosts / postsPerPage);
+  // 게시글 영구 삭제 함수
+  const handlePermanentDelete = async (id: string) => {
+    const confirmDelete = confirm("이 게시글을 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.");
+    if (confirmDelete) {
+      const { error } = await supabase
+        .from("posts")
+        .delete()
+        .eq("id", id);
+        
+      if (error) {
+        console.error("게시글 영구 삭제 중 오류:", error);
+        toast.error("게시글 영구 삭제에 실패했습니다");
+      } else {
+        toast.success("게시글이 영구적으로 삭제되었습니다");
+        fetchDeletedPosts();
+      }
+    }
+  };
+
+  // 휴지통 검색 핸들러
+  const handleTrashSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentTrashPage(1); // 검색 시 첫 페이지로 이동
+    fetchDeletedPosts(1, trashSearchTerm);
+  };
+
+  // 휴지통 검색 초기화
+  const handleResetTrashSearch = () => {
+    setTrashSearchTerm("");
+    setIsTrashSearching(false);
+    setCurrentTrashPage(1);
+    fetchDeletedPosts(1, "");
+  };
 
   // 메인 카테고리 필터 변경 핸들러
   const handleFilterMainCategoryChange = (
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
     const value = e.target.value;
-    setFilterMainCategory(value);
+    setSelectedMainCategories([value]);
     
     // 디버깅 로그
     console.log("선택된 메인 카테고리:", value);
     
     // 메인 카테고리 변경 시 서브 카테고리 초기화
-    setFilterSubCategory("all");
+    setSelectedSubCategories([]);
     setCurrentPage(1);
   };
 
@@ -377,7 +486,7 @@ export default function AdminArticlesPage() {
   const handleFilterSubCategoryChange = (
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
-    setFilterSubCategory(e.target.value);
+    setSelectedSubCategories([e.target.value]);
     setCurrentPage(1);
   };
 
@@ -561,93 +670,194 @@ export default function AdminArticlesPage() {
     fetchPosts();
   }, [sortDirection]);
 
+  // Add this function to handle toggling main categories
+  const toggleMainCategory = (category: string) => {
+    setSelectedMainCategories(prev => 
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  // Add this function to handle toggling sub categories
+  const toggleSubCategory = (category: string) => {
+    setSelectedSubCategories(prev => 
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  // Add this function to handle moving posts to trash
+  const handleDelete = async (id: string) => {
+    const confirmDelete = confirm("이 게시글을 휴지통으로 이동하시겠습니까?");
+    if (confirmDelete) {
+      const { error } = await supabase
+        .from("posts")
+        .update({ 
+          is_deleted: true, 
+          deleted_at: new Date().toISOString() 
+        })
+        .eq("id", id);
+        
+      if (error) {
+        console.error("게시글 삭제 중 오류:", error);
+        toast.error("게시글을 휴지통으로 이동하는데 실패했습니다");
+      } else {
+        toast.success("게시글이 휴지통으로 이동되었습니다");
+        fetchPosts();
+      }
+    }
+  };
+
   if (loading) {
-    return <div className="container mx-auto px-4 py-8">Loading...</div>;
+    return <div className="container mx-auto px-4 py-8">로딩 중...</div>;
   }
 
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Articles</h1>
-        <button
-          onClick={() => router.push("/admin/articles/create")}
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Create New Article
-        </button>
+        <h1 className="text-3xl font-bold">게시글</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => router.push("/admin/articles/create")}
+            className="bg-blue-500 text-white px-4 py-2 rounded flex items-center gap-1"
+          >
+            <Plus size={16} />
+            새 게시글 작성
+          </button>
+        </div>
       </div>
 
       {/* 필터 섹션 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <label className="block text-sm font-medium mb-1">Main Category</label>
-          <select
-            className="w-full p-2 border rounded"
-            value={filterMainCategory}
-            onChange={handleFilterMainCategoryChange}
-            disabled={isLoadingCategories}
-          >
-            <option value="all">All Categories</option>
-            {getMainCategoryOptions().map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-          {isLoadingCategories && (
-            <p className="text-sm text-gray-500 mt-1">카테고리 로딩 중...</p>
-          )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {/* Main category - multiple selection */}
+        <div ref={mainCategoryRef}>
+          <label className="block text-sm font-medium mb-1">메인 카테고리</label>
+          <div className="relative">
+            <button
+              onClick={() => setMainCategoryOpen(!mainCategoryOpen)}
+              className="w-full p-2 border rounded text-left flex justify-between items-center bg-white"
+              disabled={isLoadingCategories}
+            >
+              {selectedMainCategories.length === 0 
+                ? "모든 카테고리" 
+                : `${selectedMainCategories.length}개 카테고리 선택됨`}
+              <span>▼</span>
+            </button>
+            
+            {mainCategoryOpen && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                <label key="all" className="flex items-center p-2 hover:bg-gray-100 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedMainCategories.length === 0}
+                    onChange={() => {
+                      setSelectedMainCategories([]);
+                      setSelectedSubCategories([]);
+                    }}
+                    className="mr-2"
+                  />
+                  모든 카테고리
+                </label>
+                {getMainCategoryOptions().map(option => (
+                  <label key={option.value} className="flex items-center p-2 hover:bg-gray-100 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedMainCategories.includes(option.value)}
+                      onChange={() => {
+                        toggleMainCategory(option.value);
+                        // When changing main categories, clear subcategories
+                        setSelectedSubCategories([]);
+                      }}
+                      className="mr-2"
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+            )}
+            
+            {isLoadingCategories && (
+              <p className="text-sm text-gray-500 mt-1">카테고리 로딩 중...</p>
+            )}
+          </div>
         </div>
         
-        <div>
-          <label className="block text-sm font-medium mb-1">Sub Category</label>
-          <select
-            className="w-full p-2 border rounded"
-            value={filterSubCategory}
-            onChange={handleFilterSubCategoryChange}
-            disabled={filterMainCategory === "all" || isLoadingCategories}
-          >
-            <option value="all">All Sub Categories</option>
-            {getSubCategoryOptions().map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
+        {/* Subcategory - multiple selection enabled when exactly one main category is selected */}
+        <div ref={subCategoryRef}>
+          <label className="block text-sm font-medium mb-1">서브 카테고리</label>
+          <div className="relative">
+            <button
+              onClick={() => setSubCategoryOpen(!subCategoryOpen)}
+              className="w-full p-2 border rounded text-left flex justify-between items-center bg-white"
+              disabled={selectedMainCategories.length !== 1 || isLoadingCategories}
+            >
+              {selectedMainCategories.length !== 1 
+                ? "메인 카테고리를 1개만 선택하세요" 
+                : selectedSubCategories.length === 0 
+                  ? "모든 서브 카테고리" 
+                  : `${selectedSubCategories.length}개 서브카테고리 선택됨`}
+              <span>▼</span>
+            </button>
+            
+            {subCategoryOpen && selectedMainCategories.length === 1 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
+                <label key="all" className="flex items-center p-2 hover:bg-gray-100 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedSubCategories.length === 0}
+                    onChange={() => setSelectedSubCategories([])}
+                    className="mr-2"
+                  />
+                  모든 서브 카테고리
+                </label>
+                {getSubCategoryOptions().map(option => (
+                  <label key={option.value} className="flex items-center p-2 hover:bg-gray-100 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedSubCategories.includes(option.value)}
+                      onChange={() => toggleSubCategory(option.value)}
+                      className="mr-2"
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 검색 폼 추가 */}
+      {/* Search form moved below category selectors */}
       <div className="mb-6">
-        <form onSubmit={handleSearch} className="flex items-center">
-          <input
+        <label className="block text-sm font-medium mb-1">검색</label>
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <Input
             type="text"
+            placeholder="게시글 검색..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="제목 또는 내용으로 검색..."
-            className="border rounded-l px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full"
           />
-          <button
-            type="submit"
-            className="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600"
-          >
+          <Button type="submit" variant="outline" size="sm">
             검색
-          </button>
+          </Button>
           {isSearching && (
-            <button
-              type="button"
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm"
               onClick={handleResetSearch}
-              className="ml-2 bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
             >
               초기화
-            </button>
+            </Button>
           )}
         </form>
-        {isSearching && (
-          <p className="mt-2 text-sm text-gray-600">
-            "{searchTerm}"에 대한 검색 결과: {totalPosts}개
-          </p>
-        )}
       </div>
 
       {/* 게시글 테이블 */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow mb-8">
         <Table>
           <TableHeader>
             <TableRow>
@@ -655,37 +865,37 @@ export default function AdminArticlesPage() {
                 className="cursor-pointer" 
                 onClick={() => toggleSort("title")}
               >
-                Title {sortField === "title" && (sortDirection === "asc" ? "↑" : "↓")}
+                제목 {sortField === "title" && (sortDirection === "asc" ? "↑" : "↓")}
               </TableHead>
               <TableHead 
                 className="cursor-pointer" 
                 onClick={() => toggleSort("category")}
               >
-                Category {sortField === "category" && (sortDirection === "asc" ? "↑" : "↓")}
+                카테고리 {sortField === "category" && (sortDirection === "asc" ? "↑" : "↓")}
               </TableHead>
               <TableHead 
                 className="cursor-pointer" 
                 onClick={() => toggleSort("subcategory")}
               >
-                SubCategory {sortField === "subcategory" && (sortDirection === "asc" ? "↑" : "↓")}
+                서브 카테고리 {sortField === "subcategory" && (sortDirection === "asc" ? "↑" : "↓")}
               </TableHead>
               <TableHead 
                 className="cursor-pointer" 
                 onClick={() => toggleSort("date")}
               >
-                Date {sortField === "date" && (sortDirection === "asc" ? "↑" : "↓")}
+                날짜 {sortField === "date" && (sortDirection === "asc" ? "↑" : "↓")}
               </TableHead>
               <TableHead className="text-center">슬라이드 표시</TableHead>
               <TableHead className="text-center">슬라이드 사진</TableHead>
               <TableHead className="text-center">슬라이드 순서</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>작업</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center">
-                  Loading...
+                  로딩 중...
                 </TableCell>
               </TableRow>
             ) : posts.length === 0 ? (
@@ -745,42 +955,42 @@ export default function AdminArticlesPage() {
                       {updating === post.id ? (
                         <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
                       ) : (
-                        <Select
-                          disabled={!post.is_slide}
-                          value={post.slide_order?.toString() || ""}
-                          onValueChange={(value) => updateSlideOrder(post.id, parseInt(value))}
+                          <Select
+                            disabled={!post.is_slide}
+                            value={post.slide_order?.toString() || ""}
+                            onValueChange={(value) => updateSlideOrder(post.id, parseInt(value))}
+                          >
+                            <SelectTrigger className="w-16">
+                              <SelectValue placeholder="순서" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1</SelectItem>
+                              <SelectItem value="2">2</SelectItem>
+                              <SelectItem value="3">3</SelectItem>
+                              <SelectItem value="4">4</SelectItem>
+                              <SelectItem value="5">5</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleEdit(post.id)}
+                          className="text-blue-600 hover:text-blue-800"
                         >
-                          <SelectTrigger className="w-16">
-                            <SelectValue placeholder="순서" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1</SelectItem>
-                            <SelectItem value="2">2</SelectItem>
-                            <SelectItem value="3">3</SelectItem>
-                            <SelectItem value="4">4</SelectItem>
-                            <SelectItem value="5">5</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEdit(post.id)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(post.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                          수정
+                        </button>
+                        <button
+                          onClick={() => handleDelete(post.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
               ))
             )}
           </TableBody>
@@ -823,6 +1033,124 @@ export default function AdminArticlesPage() {
             )}
           </svg>
         </button>
+      </div>
+
+      {/* 휴지통 섹션 - 조건부 렌더링 제거 */}
+      <div className="mt-12">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">휴지통</h2>
+          <div className="text-sm text-gray-500">
+            삭제된 게시글: {totalDeletedPosts}개
+          </div>
+        </div>
+
+        {/* 휴지통 검색 */}
+        <div className="mb-6">
+          <form onSubmit={handleTrashSearch} className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="휴지통 내 게시글 검색..."
+              value={trashSearchTerm}
+              onChange={(e) => setTrashSearchTerm(e.target.value)}
+              className="w-full"
+            />
+            <Button type="submit" variant="outline" size="sm">
+              검색
+            </Button>
+            {isTrashSearching && (
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm"
+                onClick={handleResetTrashSearch}
+              >
+                초기화
+              </Button>
+            )}
+          </form>
+        </div>
+
+        {/* 휴지통 테이블 */}
+        <div className="bg-white rounded-lg shadow">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>제목</TableHead>
+                <TableHead>카테고리</TableHead>
+                <TableHead>서브 카테고리</TableHead>
+                <TableHead>날짜</TableHead>
+                <TableHead>삭제 일시</TableHead>
+                <TableHead>작업</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loadingTrash ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center">
+                    로딩 중...
+                  </TableCell>
+                </TableRow>
+              ) : deletedPosts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center">
+                    {isTrashSearching ? "검색 결과가 없습니다." : "휴지통이 비어있습니다."}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                deletedPosts.map((post) => (
+                  <TableRow key={post.id}>
+                    <TableCell className="font-medium">{post.title}</TableCell>
+                    <TableCell>{post.displayMainCategory}</TableCell>
+                    <TableCell>
+                      {post.displaySubCategory || "-"}
+                    </TableCell>
+                    <TableCell>{formatDate(post.date)}</TableCell>
+                    <TableCell>{formatDate(post.deleted_at)}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleRestore(post.id)}
+                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        >
+                          <RefreshCcw size={14} />
+                          복원
+                        </button>
+                        <button
+                          onClick={() => handlePermanentDelete(post.id)}
+                          className="text-red-600 hover:text-red-800 flex items-center gap-1"
+                        >
+                          <Trash size={14} />
+                          영구삭제
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        {/* 휴지통 페이지네이션 */}
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={() => setCurrentTrashPage(p => Math.max(p - 1, 1))}
+            disabled={currentTrashPage === 1}
+            className="px-3 py-1 border rounded mr-2 disabled:opacity-50"
+          >
+            이전
+          </button>
+          <span className="px-3 py-1">
+            {currentTrashPage} / {totalPages || 1} 페이지
+          </span>
+          <button
+            onClick={() => setCurrentTrashPage(p => Math.min(p + 1, totalPages))}
+            disabled={currentTrashPage >= totalPages}
+            className="px-3 py-1 border rounded ml-2 disabled:opacity-50"
+          >
+            다음
+          </button>
+        </div>
       </div>
     </div>
   );

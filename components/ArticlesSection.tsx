@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowRight, Calendar } from "lucide-react";
 import { extractImageUrl } from "@/app/article/[id]/article-content";
+import { useState } from "react";
 
 
 type CategoryOption = {
@@ -28,9 +29,16 @@ export function ArticlesSection({
   mainCategories,
   categoryPosts,
 }: ArticlesSectionProps) {
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  
+  // 처음에는 최대 5개의 카테고리만 표시
+  const displayedCategories = showAllCategories 
+    ? mainCategories 
+    : mainCategories.slice(0, 5);
+
   return (
     <div className="w-full lg:w-2/3 max-w-full overflow-x-hidden">
-      {mainCategories.map((mainCat) => {
+      {displayedCategories.map((mainCat) => {
         const mainPath = mainCat.slug
           ? mainCat.slug
           : mainCat.base
@@ -62,16 +70,17 @@ export function ArticlesSection({
             {latestPost && (
               <Link href={`/article/${latestPost.id}`} className="mb-6 block max-w-full">
                 <Card className="flex flex-col sm:flex-row items-center bg-white border-transparent shadow-lg hover:shadow-xl transition-shadow max-w-full">
-                  {latestPost.content && (
-                    <div className="relative h-36 w-full sm:h-56 sm:w-[49%] overflow-hidden rounded-md">
+                  {/* Latest Post 이미지 - 이미지가 있을 때만 표시 */}
+                  {(latestPost.image_url || extractImageUrl(latestPost.content)) && (
+                    <div className="w-full sm:w-[49%] flex justify-center items-center bg-gray-100 p-2 rounded-md" style={{ height: "200px" }}>
                       <img
-                        src={extractImageUrl(latestPost.content) || ""}
+                        src={latestPost.image_url || extractImageUrl(latestPost.content) || ""}
                         alt={latestPost.title}
-                        className="object-cover w-full h-full object-center"
+                        className="max-w-full max-h-[180px] object-contain"
                       />
                     </div>
                   )}
-                  <div className="w-full p-4 sm:w-[51%]">
+                  <div className={`w-full p-4 ${(latestPost.image_url || extractImageUrl(latestPost.content)) ? 'sm:w-[51%]' : 'text-center h-24 sm:h-36 flex flex-col justify-center'}`}>
                     <CardHeader className="p-0 max-w-full">
                       <CardTitle className="line-clamp-2 text-lg md:text-xl font-semibold break-words">
                         {latestPost.title}
@@ -83,9 +92,6 @@ export function ArticlesSection({
                           latestPost.updated_at || latestPost.created_at
                         ).toLocaleDateString()}
                       </div>
-                      <div className="text-muted-foreground line-clamp-3 prose prose-sm max-w-full mt-2 break-words select-none">
-                        {latestPost.content.replace(/<[^>]*>/gi, "").substring(0, 150) + "..."}
-                      </div>
                     </CardContent>
                   </div>
                 </Card>
@@ -96,17 +102,18 @@ export function ArticlesSection({
             <div className="grid gap-6 sm:grid-cols-2">
               {remainingPosts.map((post) => (
                 <Link key={post.id} href={`/article/${post.id}`}>
-                  <Card className="flex flex-row items-center bg-white border-transparent shadow-lg hover:shadow-xl transition-shadow">
-                    {post.content && (
-                      <div className="relative h-20 w-1/3 sm:h-32 sm:w-1/3 overflow-hidden rounded-md">
+                  <Card className="flex flex-row items-center bg-white border-transparent shadow-lg hover:shadow-xl transition-shadow h-full" style={{ minHeight: "150px" }}>
+                    {/* Remaining Posts 이미지 - 이미지가 있을 때만 표시 */}
+                    {(post.image_url || extractImageUrl(post.content)) && (
+                      <div className="w-1/3 flex justify-center items-center bg-gray-100 p-2 rounded-md" style={{ height: "150px" }}>
                         <img
-                          src={extractImageUrl(post.content) || ""}
+                          src={post.image_url || extractImageUrl(post.content) || ""}
                           alt={post.title}
-                          className="object-cover w-full h-full"
+                          className="max-w-full max-h-[130px] object-contain"
                         />
                       </div>
                     )}
-                    <div className="w-2/3 p-2 sm:p-4">
+                    <div className={`p-2 sm:p-4 flex flex-col justify-center ${(post.image_url || extractImageUrl(post.content)) ? 'w-2/3' : 'w-full text-center'}`} style={{ minHeight: "150px" }}>
                       <CardHeader className="p-0">
                         <CardTitle className="line-clamp-2 text-base sm:text-lg font-semibold break-words">
                           {post.title}
@@ -118,12 +125,6 @@ export function ArticlesSection({
                             post.updated_at || post.created_at
                           ).toLocaleDateString()}
                         </div>
-                        <div
-                          className="text-muted-foreground line-clamp-2 sm:line-clamp-3 prose prose-sm max-w-full mt-1 sm:mt-2 break-words select-none"
-                          dangerouslySetInnerHTML={{
-                            __html: post.content.replace(/<[^>]*>/gi, "").substring(0, 100) + "...",
-                          }}
-                        />
                       </CardContent>
                     </div>
                   </Card>
@@ -143,6 +144,18 @@ export function ArticlesSection({
           </div>
         );
       })}
+      
+      {/* View All Categories 버튼 - 카테고리가 5개 이상일 때만 표시 */}
+      {mainCategories.length > 5 && (
+        <div className="flex justify-center my-8">
+          <Button 
+            onClick={() => setShowAllCategories(!showAllCategories)}
+            className="px-6 py-2 bg-gradient-to-r from-gray-600 to-gray-800 text-white hover:from-gray-700 hover:to-gray-900"
+          >
+            {showAllCategories ? "간략히 보기" : "전체 카테고리 보기"} <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

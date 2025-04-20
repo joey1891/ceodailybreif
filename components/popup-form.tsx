@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import Image from "next/image";
+import { Slider } from "@/components/ui/slider";
 
 interface PopupFormProps {
   popupId?: string;
@@ -30,6 +31,9 @@ export default function PopupForm({ popupId }: PopupFormProps) {
     start_date: new Date().toISOString().slice(0, 10),
     end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
     is_active: true,
+    size_percentage: 80,
+    position: 0,
+    display_order: 1,
   });
 
   const isEditMode = !!popupId;
@@ -106,6 +110,15 @@ export default function PopupForm({ popupId }: PopupFormProps) {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPopup(prev => ({ ...prev, [name]: parseInt(value, 10) }));
+  };
+  
+  const handleSizeChange = (value: number[]) => {
+    setPopup(prev => ({ ...prev, size_percentage: value[0] }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -237,6 +250,48 @@ export default function PopupForm({ popupId }: PopupFormProps) {
             onCheckedChange={handleSwitchChange} 
           />
           <Label htmlFor="is_active">활성화</Label>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="size_percentage">팝업 크기 (%)</Label>
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <Slider
+                id="size_percentage"
+                min={10}
+                max={100}
+                step={1}
+                value={[popup.size_percentage || 80]}
+                onValueChange={handleSizeChange}
+              />
+            </div>
+            <span className="w-12 text-right">{popup.size_percentage || 80}%</span>
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="position">팝업 가로 위치 (px 단위, 0 = 왼쪽 기준)</Label>
+          <Input
+            id="position"
+            name="position"
+            type="number"
+            value={popup.position || 0}
+            onChange={handleNumberChange}
+          />
+          <p className="text-xs text-gray-500">양수값은 왼쪽에서 떨어진 거리(px)를 의미합니다. 중앙 정렬은 -1을 입력하세요.</p>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="display_order">표시 순서</Label>
+          <Input
+            id="display_order"
+            name="display_order"
+            type="number"
+            min="1"
+            value={popup.display_order || 1}
+            onChange={handleNumberChange}
+          />
+          <p className="text-xs text-gray-500">낮은 숫자가 먼저 표시됩니다</p>
         </div>
         
         <div className="flex justify-end space-x-2 pt-4">

@@ -35,25 +35,29 @@ export default function Home() {
     let allPosts: Post[] = [];
 
     // 각 카테고리별 게시물 가져오기
-    for (const category of mainCategories) {
-      try {
-        const { data } = await supabase
-          .from("posts")
-          .select("*")
-          .eq("category", category.id)
-          .order("updated_at", { ascending: false })
-          .limit(7);
-        
-        if (data) {
-          posts[category.slug] = data;
-          allPosts = [...allPosts, ...data];
-        }
-      } catch (error) {
-        console.error(`Error fetching posts for category ${category.id}:`, error);
-      }
-    }
-
-    return { posts, allPosts };
+    const fetchPromises = mainCategories.map(category => {
+      return supabase
+        .from("posts")
+        .select("*")
+        .eq("category", category.id)
+        .eq("is_deleted", false) // 삭제된 게시물 제외
+        .order("updated_at", { ascending: false })
+        .limit(7)
+        .then(({ data }) => {
+          if (data) {
+            posts[category.slug] = data;
+            allPosts = [...allPosts, ...data];
+          }
+        })
+        .then(undefined, error => {
+          console.error(`Error fetching posts for category ${category.id}:`, error);
+        });
+    });
+    
+    // 모든 프로미스가 완료될 때까지 기다림
+    return Promise.all(fetchPromises).then(() => {
+      return { posts, allPosts };
+    });
   };
 
   useEffect(() => {
@@ -64,6 +68,7 @@ export default function Home() {
           .from('posts')
           .select('id, title, image_url, description, slide_order')
           .eq('is_slide', true)
+          .eq('is_deleted', false) // 삭제된 슬라이드 제외
           .order('slide_order', { ascending: true });
         
         if (error) throw error;

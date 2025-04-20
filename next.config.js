@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false, // Strict Mode 비활성화 (테스트 목적)
+  reactStrictMode: true, // Strict Mode 활성화
   eslint: {
     ignoreDuringBuilds: true,
   },

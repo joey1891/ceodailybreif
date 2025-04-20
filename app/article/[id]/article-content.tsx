@@ -8,6 +8,7 @@ import { Post } from "@/types/supabase";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar";
 import { format } from "date-fns";
+import { editorGlobalStyles } from '@/components/editorWith-uploader';
 
 function extractImageUrl(html: string | undefined): string | null {
   if (!html) return null;
@@ -24,18 +25,27 @@ export function ArticleContent({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     const fetchPost = async () => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("id", params.id)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from("posts")
+          .select("*, categories(*)")
+          .eq("id", params.id)
+          .eq("is_deleted", false)
+          .single();
 
-      if (error) {
+        if (error) {
+          console.error("Error fetching post:", error);
+          alert("기사를 불러오는 중 오류가 발생했습니다.");
+        } else {
+          console.log("Post data loaded:", data);
+          setPost(data);
+        }
+        setLoading(false);
+      } catch (error) {
         console.error("Error fetching post:", error);
-      } else {
-        setPost(data);
+        alert("기사를 불러오는 중 오류가 발생했습니다.");
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchPost();
@@ -76,6 +86,28 @@ export function ArticleContent({ params }: { params: { id: string } }) {
     // Cleanup function to clear interval on component unmount
     return () => clearInterval(intervalId);
   }, []); // Empty dependency array ensures this runs only once on mount
+
+  useEffect(() => {
+    if (post) {
+      console.log("포스트 데이터:", {
+        title: !!post.title,
+        content: !!post.content,
+        image_url: !!post.image_url,
+        all_conditions_met: !!(post.title && post.content && post.image_url)
+      });
+    }
+  }, [post]);
+
+  useEffect(() => {
+    console.log("Post data:", post);
+    console.log("Kakao initialized:", isKakaoInitialized);
+    
+    // DOM에 버튼이 추가되었는지 확인
+    setTimeout(() => {
+      const shareButtons = document.querySelectorAll('.share-buttons-container button');
+      console.log("Share buttons found:", shareButtons.length);
+    }, 1000);
+  }, [post, isKakaoInitialized]);
 
   const handleShare = useCallback((platform: string) => {
     const url = window.location.href;
@@ -131,105 +163,183 @@ export function ArticleContent({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="container max-w-7xl mx-auto px-4 py-8">
-      <div className="flex flex-col lg:flex-row gap-8">
-        <div className="w-full lg:w-2/3">
-          {/* Back Button */}
-          <Button variant="ghost" asChild className="mb-8">
-            <Link href="/" className="text-primary hover:text-primary/80">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              홈으로
-            </Link>
-          </Button>
+    <>
+      <style jsx global>{`
+        /* 가장 직접적인 셀렉터 사용 */
+        .prose p:empty {
+          display: block !important;
+          min-height: 1em !important;
+          margin: 1em 0 !important;
+        }
 
-          {/* Article Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-4 select-none">{post.title}</h1>
-            <div className="flex items-center gap-4 text-sm text-gray-500 mb-8 select-none">
-              <time>{format(new Date(post.created_at), 'yyyy년 MM월 dd일')}</time>
-              <div>조회수: {post.viewcnt || 0}</div>
+        /* 중첩 목록 스타일 */
+        .prose ul ul,
+        .prose ol ol,
+        .prose ul ol,
+        .prose ol ul {
+          list-style-type: inherit !important;
+          padding-left: 1.5em !important;
+          margin: 0.5em 0 !important;
+        }
+
+        /* 기본 목록 스타일 강제 적용 */
+        .prose ul {
+          list-style-type: disc !important;
+          padding-left: 1.5em !important;
+          margin: 0.5em 0 !important;
+        }
+        
+        .prose ol {
+          list-style-type: decimal !important;
+          padding-left: 1.5em !important;
+          margin: 0.5em 0 !important;
+        }
+        
+        /* 목록 항목 내 단락 여백 조정 */
+        .prose li > p {
+          margin: 0.25em 0 !important;
+          padding: 0 !important;
+        }
+        
+        /* 빈 단락 강제 표시 */
+        .prose li > p:empty {
+          height: 1em !important;
+          min-height: 1em !important;
+          display: block !important;
+          margin: 0.5em 0 !important;
+        }
+        
+        /* Tailwind의 prose 오버라이드 */
+        .prose {
+          max-width: none;
+        }
+        
+        /* 이미지 스타일 */
+        .prose img {
+          max-width: 100% !important;
+          height: auto !important;
+          margin: 1em auto !important;
+        }
+      `}</style>
+      <div className="container max-w-7xl mx-auto px-4 py-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="w-full lg:w-2/3">
+            {/* Back Button */}
+            <Button variant="ghost" asChild className="mb-8">
+              <Link href="/" className="text-primary hover:text-primary/80">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                홈으로
+              </Link>
+            </Button>
+
+            {/* Article Header */}
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold mb-4 select-none">{post.title}</h1>
+              <div className="flex items-center gap-4 text-sm text-gray-500 mb-8 select-none">
+                <time>{format(new Date(post.created_at), 'yyyy년 MM월 dd일')}</time>
+                <div>조회수: {post.viewcnt || 0}</div>
+              </div>
             </div>
-          </div>
 
-          {/* Featured Image */}
-          {post.image_url && (
-            <div className="relative w-full h-[400px] mb-8 rounded-lg overflow-hidden">
-              <img
-                src={post.image_url}
-                alt={post.title}
-                className="object-cover w-full h-full"
-              />
+            {/* Featured Image */}
+            {post.image_url && (
+              <div className="w-full flex justify-center items-center bg-gray-100 p-2 rounded-lg" style={{ minHeight: "250px", maxHeight: "400px" }}>
+                <img
+                  src={post.image_url}
+                  alt={post.title}
+                  className="max-w-full max-h-[380px] object-contain"
+                />
+              </div>
+            )}
+
+            {/* Article Content - 스타일 방식 수정 */}
+            <div className="prose prose-lg max-w-none mb-8">
+              {post?.content && (
+                <div 
+                  className="mt-6 select-none" 
+                  dangerouslySetInnerHTML={{ __html: post.content }}
+                />
+              )}
             </div>
-          )}
 
-          {/* Article Content */}
-          <div className="prose prose-lg max-w-none mb-8">
-            <div 
-              className="mt-6 select-none" 
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
-          </div>
-
-          {/* Share Buttons */}
-          <div className="mt-8 pt-8 border-t select-none">
-            <div className="flex items-center gap-2 mb-4">
-              <Share2 className="h-4 w-4" />
-              <span className="font-medium">이 기사 공유하기</span>
-            </div>
-            <div className="flex gap-4">
-              <Button variant="outline" onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                alert("링크가 복사되었습니다.");
-              }}>
-                링크 복사
-              </Button>
-              <Button variant="outline" onClick={() => {
-                if (isKakaoInitialized && window.Kakao) {
-                  window.Kakao.Share.sendDefault({
-                    objectType: 'feed',
-                    content: {
-                      title: post?.title || '',
-                      description: post?.content || '',
-                      imageUrl: post?.image_url || '',
-                      link: {
-                        mobileWebUrl: window.location.href,
-                        webUrl: window.location.href,
-                      },
-                    },
-                    buttons: [
-                      {
-                        title: '자세히 보기',
-                        link: {
-                          mobileWebUrl: window.location.href,
-                          webUrl: window.location.href,
+            {/* Share Buttons */}
+            <div className="mt-8 pt-8 border-t select-none share-buttons-container">
+              <div className="flex items-center gap-2 mb-4">
+                <Share2 className="h-4 w-4" />
+                <span className="font-medium">이 기사 공유하기</span>
+              </div>
+              
+              {/* 단순화된 조건으로 변경 & 인라인 스타일 추가 */}
+              <div className="flex flex-wrap gap-2" style={{display: 'flex !important'}}>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    alert("링크가 복사되었습니다.");
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: '1px solid #ccc',
+                    borderRadius: '0.375rem',
+                    backgroundColor: 'white',
+                    color: '#333',
+                    fontWeight: '500',
+                    display: 'block'
+                  }}
+                >
+                  링크 복사
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    if (window.Kakao?.Share) {
+                      window.Kakao.Share.sendDefault({
+                        objectType: 'feed',
+                        content: {
+                          title: post?.title || '기사 제목',
+                          description: post?.description || '',
+                          imageUrl: post?.image_url || 'https://your-default-image.jpg',
+                          link: {
+                            mobileWebUrl: window.location.href,
+                            webUrl: window.location.href,
+                          },
                         },
-                      },
-                    ],
-                  });
-                } else {
-                  alert("카카오톡 공유 기능 초기화에 실패했습니다.");
-                }
-              }} disabled={!isKakaoInitialized}>
-                카카오톡
-              </Button>
-              <Button variant="outline" onClick={() => handleShare('twitter')}>
-                Twitter
-              </Button>
-              <Button variant="outline" onClick={() => handleShare('facebook')}>
-                Facebook
-              </Button>
-              <Button variant="outline" onClick={() => handleShare('linkedin')}>
-                LinkedIn
-              </Button>
+                        buttons: [
+                          {
+                            title: '웹으로 보기',
+                            link: {
+                              mobileWebUrl: window.location.href,
+                              webUrl: window.location.href,
+                            },
+                          },
+                        ],
+                      });
+                    } else {
+                      console.error("Kakao SDK not initialized");
+                      alert("카카오 SDK가 초기화되지 않았습니다.");
+                    }
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: '1px solid #ccc',
+                    borderRadius: '0.375rem',
+                    backgroundColor: 'white',
+                    color: '#333',
+                    fontWeight: '500',
+                    display: 'block'
+                  }}
+                >
+                  카카오톡
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Sidebar */}
-        <div className="w-full lg:w-1/3">
-          <Sidebar recentPosts={[]} popularPosts={[]} />
+          {/* Sidebar */}
+          <div className="w-full lg:w-1/3">
+            <Sidebar recentPosts={[]} popularPosts={[]} />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

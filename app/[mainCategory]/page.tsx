@@ -44,11 +44,12 @@ export default function CategoryPage({
       setLoading(true);
       console.log(`Fetching posts for category: ${category.id}`);
       
-      // 메인 카테고리 글 가져오기 (서브카테고리 유무 관계없이 모두 가져옴)
+      // 메인 카테고리 글 가져오기 (is_deleted 필터 추가)
       const { data: mainCategoryPosts, error: mainError } = await supabase
         .from("posts")
         .select("*")
         .eq("category", category.id)
+        .eq("is_deleted", false)
         .order("updated_at", { ascending: false });
       
       if (mainError) {
@@ -61,7 +62,7 @@ export default function CategoryPage({
       // 하위 카테고리 ID 목록
       const subcategories = category.subcategories || [];
       
-      // 각 하위 카테고리별 글 가져오기
+      // 각 하위 카테고리별 글 가져오기 (is_deleted 필터 추가)
       const subcatPostsObj: Record<string, Post[]> = {};
       
       for (const subcategory of subcategories) {
@@ -69,6 +70,7 @@ export default function CategoryPage({
           .from("posts")
           .select("*")
           .eq("subcategory", subcategory.id)
+          .eq("is_deleted", false)
           .order("updated_at", { ascending: false });
           
         if (subError) {
@@ -102,41 +104,51 @@ export default function CategoryPage({
         {posts.map((post) => (
           <Link key={post.id} href={`/article/${post.id}`}>
             <Card className="cursor-pointer hover:shadow-xl transition-shadow h-full flex flex-col">
-              <div className="relative h-48 w-full overflow-hidden">
-                <img
-                  src={post.image_url || "https://mblogthumb-phinf.pstatic.net/MjAxODAzMDNfMTky/MDAxNTIwMDQxODU1OTY0.MZsSmhugRX-R3f6ASTwd3oTAtFvsh_NEHrV2SpVHk_Ag.9vP6o2DWWIr6-QJXR8Ydt9g53VijyckSbVp6HMgDfvkg.PNG.osy2201/3_%2860%ED%8D%BC%EC%84%BC%ED%8A%B8_%ED%9A%8C%EC%83%89%29_%ED%9A%8C%EC%83%89_%EB%8B%A8%EC%83%89_%EB%B0%B0%EA%B2%BD%ED%99%94%EB%A9%B4_180303.png?type=w800"}
-                  alt={post.title}
-                  className="object-cover w-full h-full"
-                />
-              </div>
-              
-              {/* 제목 */}
-              <CardHeader className="pb-1 pt-3">
-                <CardTitle className="text-lg font-bold leading-tight">
-                  {post.title}
-                </CardTitle>
-              </CardHeader>
-              
-              {/* 텍스트 콘텐츠 */}
-              <CardContent className="py-2 flex-grow">
-                <div className="text-gray-700 text-sm min-h-[3.6rem]">
-                  {post.content ? (
-                    <p className="line-clamp-3">
-                      {post.content.replace(/<[^>]+>/g, "").slice(0, 150)}...
-                    </p>
-                  ) : (
-                    <p className="italic">내용 없음</p>
-                  )}
+              {post.image_url ? (
+                <div className="relative w-full bg-gray-100" style={{ minHeight: "150px", maxHeight: "250px" }}>
+                  <div className="w-full flex justify-center items-center bg-gray-100 p-2" style={{ height: "200px" }}>
+                    <img
+                      src={post.image_url}
+                      alt={post.title}
+                      className="max-w-full max-h-[180px] object-contain"
+                    />
+                  </div>
                 </div>
-              </CardContent>
+              ) : null}
               
-              <div className="flex items-center text-sm text-muted-foreground p-4 pt-2 mt-auto border-t">
-                <Calendar className="mr-2 h-4 w-4" />
-                {new Date(post.updated_at || post.created_at).toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+              <div className={`flex flex-col flex-grow ${!post.image_url ? 'justify-between' : ''}`}>
+                {/* 텍스트 콘텐츠 컨테이너 - 상단 영역을 세로 가운데 정렬 */}
+                <div className={`flex flex-col ${!post.image_url ? 'justify-center flex-grow' : ''}`}>
+                  {/* 제목 */}
+                  <CardHeader className={`pb-1 pt-3 ${!post.image_url ? 'text-center' : ''}`}>
+                    <CardTitle className="text-lg font-bold leading-tight">
+                      {post.title}
+                    </CardTitle>
+                  </CardHeader>
+                  
+                  {/* 텍스트 콘텐츠 - 여백 줄임 및 높이 조정 */}
+                  <CardContent className={`py-1 ${!post.image_url ? 'text-center' : ''}`}>
+                    <div className="text-gray-700 text-sm">
+                      {post.content ? (
+                        <p className="line-clamp-3 max-h-[4.5em]">
+                          {post.content.replace(/<[^>]+>/g, "").slice(0, 150)}...
+                        </p>
+                      ) : (
+                        <p className="italic">내용 없음</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </div>
+                
+                {/* 날짜 표시 영역 - 항상 하단에 고정 */}
+                <div className="flex items-center text-sm text-muted-foreground p-4 pt-2 mt-auto border-t">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {new Date(post.updated_at || post.created_at).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </div>
               </div>
             </Card>
           </Link>
@@ -246,13 +258,15 @@ export default function CategoryPage({
                             <Link key={post.id} href={`/article/${post.id}`}>
                               <div className="border rounded hover:shadow-md transition-shadow cursor-pointer">
                                 {/* 이미지 표시 영역 - 높이 증가 */}
-                                <div className="h-32 w-full overflow-hidden">
-                                  <img
-                                    src={post.image_url || "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&q=80&w=2087"}
-                                    alt={post.title}
-                                    className="object-cover w-full h-full"
-                                  />
-                                </div>
+                                {post.image_url ? (
+                                  <div className="w-full flex justify-center items-center bg-gray-100 p-2" style={{ height: "150px" }}>
+                                    <img
+                                      src={post.image_url}
+                                      alt={post.title}
+                                      className="max-w-full max-h-[130px] object-contain"
+                                    />
+                                  </div>
+                                ) : null}
                                 
                                 {/* 텍스트 콘텐츠 - 높이 증가 및 여백 조정 */}
                                 <div className="p-3">
@@ -338,13 +352,15 @@ export default function CategoryPage({
                                   <Link key={post.id} href={`/article/${post.id}`}>
                                     <div className="border rounded hover:shadow-md transition-shadow cursor-pointer">
                                       {/* 이미지 표시 영역 - 높이 증가 */}
-                                      <div className="h-32 w-full overflow-hidden">
-                                        <img
-                                          src={post.image_url || "https://mblogthumb-phinf.pstatic.net/MjAxODAzMDNfMTky/MDAxNTIwMDQxODU1OTY0.MZsSmhugRX-R3f6ASTwd3oTAtFvsh_NEHrV2SpVHk_Ag.9vP6o2DWWIr6-QJXR8Ydt9g53VijyckSbVp6HMgDfvkg.PNG.osy2201/3_%2860%ED%8D%BC%EC%84%BC%ED%8A%B8_%ED%9A%8C%EC%83%89%29_%ED%9A%8C%EC%83%89_%EB%8B%A8%EC%83%89_%EB%B0%B0%EA%B2%BD%ED%99%94%EB%A9%B4_180303.png?type=w800"}
-                                          alt={post.title}
-                                          className="object-cover w-full h-full"
-                                        />
-                                      </div>
+                                      {post.image_url ? (
+                                        <div className="w-full flex justify-center items-center bg-gray-100 p-2" style={{ height: "150px" }}>
+                                          <img
+                                            src={post.image_url}
+                                            alt={post.title}
+                                            className="max-w-full max-h-[130px] object-contain"
+                                          />
+                                        </div>
+                                      ) : null}
                                       
                                       {/* 텍스트 콘텐츠 - 높이 증가 및 여백 조정 */}
                                       <div className="p-3">

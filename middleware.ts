@@ -8,12 +8,19 @@ export function middleware(request: NextRequest) {
   const pathname = url.pathname;
   
   // 특정 패턴은 제외
+  // 특정 패턴은 제외
   if (
     pathname.startsWith('/api') || 
-    pathname.startsWith('/_next') || 
-    pathname === '/favicon.ico'
+    pathname.startsWith('/_next') 
+    // Note: /api and /_next requests are allowed to pass through by returning NextResponse.next()
   ) {
-    return NextResponse.next();
+    return NextResponse.next(); 
+  }
+
+  // Block specific unwanted paths like favicon.ico and __vite_ping
+  if (pathname === '/favicon.ico' || pathname === '/__vite_ping') {
+    // Return a 204 No Content response to stop processing
+    return new Response(null, { status: 204 }); 
   }
   
   // URL 디코딩
@@ -64,4 +71,4 @@ export const config = {
     '/',
     '/((?!api|_next/static|_next/image|favicon.ico).*)'
   ],
-}; 
+};

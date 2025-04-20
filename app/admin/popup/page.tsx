@@ -112,6 +112,17 @@ export default function PopupManagement() {
     }
   }
 
+  // 위치 표시 함수 수정
+  const getPositionDisplay = (position: number | null | undefined) => {
+    if (position === -1) {
+      return "중앙";
+    } else if (position !== null && position !== undefined) {
+      return `왼쪽에서 ${position}px`;
+    } else {
+      return "기본값";
+    }
+  };
+
   return (
     <div className="p-4 bg-white rounded shadow">
       <div className="flex justify-between items-center mb-6">
@@ -133,6 +144,9 @@ export default function PopupManagement() {
             <TableRow>
               <TableHead>제목</TableHead>
               <TableHead>표시 기간</TableHead>
+              <TableHead className="text-center">순서</TableHead>
+              <TableHead className="text-center">크기</TableHead>
+              <TableHead className="text-center">위치</TableHead>
               <TableHead className="text-center">상태</TableHead>
               <TableHead className="text-right">관리</TableHead>
             </TableRow>
@@ -143,6 +157,11 @@ export default function PopupManagement() {
                 <TableCell className="font-medium">{popup.title}</TableCell>
                 <TableCell>
                   {formatDate(popup.start_date)} ~ {formatDate(popup.end_date)}
+                </TableCell>
+                <TableCell className="text-center">{popup.display_order || 1}</TableCell>
+                <TableCell className="text-center">{popup.size_percentage || 100}%</TableCell>
+                <TableCell className="px-4 py-2">
+                  {getPositionDisplay(popup.position)}
                 </TableCell>
                 <TableCell className="text-center">
                   <Switch
@@ -157,8 +176,8 @@ export default function PopupManagement() {
                       수정
                     </Button>
                   </Link>
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
                     size="sm"
                     onClick={() => deletePopup(popup.id)}
                   >

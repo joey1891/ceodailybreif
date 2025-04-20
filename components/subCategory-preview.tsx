@@ -75,49 +75,56 @@ export default function SubCategoryPreview({
   }
 
   return (
-    <div>
-      {/* 게시물이 1개 이상 있을 때만, 그리고 shouldShowViewAll가 true일 때만 버튼 표시 */}
-      {shouldShowViewAll && showViewAll && (
-        <div className="mb-2 text-right">
+    <div className="my-8">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-bold">
+          {typeof subcategoryData?.title === 'string' 
+            ? subcategoryData.title 
+            : subcategoryData?.title?.ko || subCategory}
+        </h2>
+        {shouldShowViewAll && showViewAll && (
           <Link
             href={getCategoryUrl(mainCategory, subCategory)}
-            className="text-blue-500 hover:underline"
+            className="text-blue-500 text-sm font-medium hover:underline"
           >
             View All
           </Link>
-        </div>
-      )}
-
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {posts.map((post) => (
-          <Link key={post.id} href={`/article/${post.id}`}>
-            <Card className="cursor-pointer hover:shadow-xl transition-shadow">
-              {post.image_url && (
-                <div className="relative h-48 w-full overflow-hidden">
-                  <img
-                    src={post.image_url}
-                    alt={post.title}
-                    className="object-cover w-full h-full"
-                  />
+        )}
+      </div>
+      
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {posts.length > 0 ? (
+          posts.map((post) => (
+            <Link href={`/article/${post.id}`} key={post.id}>
+              <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
+                {post.image_url ? (
+                  <div className="w-full flex justify-center items-center bg-gray-100 p-2" style={{ height: "200px" }}>
+                    <img
+                      src={post.image_url}
+                      alt={post.title}
+                      className="max-w-full max-h-[180px] object-contain"
+                    />
+                  </div>
+                ) : null}
+                <div className={`p-4 flex-grow flex flex-col ${!post.image_url ? 'justify-center py-5' : ''}`}>
+                  <h3 className={`text-lg font-semibold mb-1 line-clamp-2 ${!post.image_url ? 'text-center' : ''}`}>
+                    {post.title}
+                  </h3>
+                  <div className={`text-sm text-gray-600 line-clamp-3 ${!post.image_url ? 'text-center' : ''}`}>
+                    {post.content.replace(/<[^>]*>/g, '').substring(0, 100)}...
+                  </div>
+                  <div className={`text-xs text-gray-500 mt-2 ${!post.image_url ? 'text-center' : ''}`}>
+                    {new Date(post.created_at).toLocaleDateString()}
+                  </div>
                 </div>
-              )}
-              <CardHeader>
-                <CardTitle className="line-clamp-2 text-lg md:text-xl">
-                  {post.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground line-clamp-3">
-                  {post.content.replace(/<[^>]+>/g, "").slice(0, 100)}...
-                </p>
-              </CardContent>
-              <div className="flex items-center text-sm text-muted-foreground p-4 pt-0">
-                <Calendar className="mr-2 h-4 w-4" />
-                {new Date(post.updated_at || post.created_at).toLocaleDateString()}
               </div>
-            </Card>
-          </Link>
-        ))}
+            </Link>
+          ))
+        ) : (
+          <div className="col-span-full py-8 text-center">
+            이 카테고리에 게시물이 없습니다.
+          </div>
+        )}
       </div>
     </div>
   );
