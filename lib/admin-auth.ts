@@ -1,12 +1,91 @@
+"use client";
+
 import { supabase } from "./supabase";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
-// Add this type definition
+// 관리자 사용자 타입 정의
 type AdminUser = User & {
   role?: string;
   name?: string | null;
+  isSuperAdmin?: boolean;
+  isSubAdmin?: boolean;
 };
+
+// ✅ 관리자 로그인 여부 확인 및 세션 유지를 위한 훅
+export function useAdminSession() {
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 세션 상태 변경 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("Auth state changed:", event, session);
+        
+        // 세션이 있으면 관리자 정보 확인
+        if (session?.user) {
+          await checkAdminUser(session.user);
+        } else {
+          setAdminUser(null);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    // 초기 세션 확인
+    async function initialize() {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("Initial session:", session);
+      
+      if (session?.user) {
+        await checkAdminUser(session.user);
+      }
+      
+      setLoading(false);
+    }
+
+    // 관리자 테이블에서 사용자 정보 확인
+    async function checkAdminUser(user: User) {
+      try {
+        console.log("Checking admin for user:", user.id);
+        const { data: adminData, error: adminError } = await supabase
+          .from("admin_users")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+        
+        console.log("Admin data:", adminData, "Error:", adminError);
+        
+        if (adminData) {
+          // 관리자인 경우 정보 설정
+          setAdminUser({
+            ...user,
+            role: adminData.role,
+            name: adminData.name,
+            isSuperAdmin: adminData.role === 'super_admin',
+            isSubAdmin: adminData.role === 'sub_admin',
+          });
+        } else {
+          setAdminUser(null);
+        }
+      } catch (error) {
+        console.error("Admin check error:", error);
+        setAdminUser(null);
+      }
+    }
+
+    initialize();
+
+    // 클린업 함수
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  return { adminUser, loading };
+}
 
 // ✅ 관리자 로그인 여부 확인 및 세션 유지
 export async function getAdminUser(): Promise<AdminUser | null> {
@@ -50,59 +129,9 @@ export async function getAdminUser(): Promise<AdminUser | null> {
   return adminUser;
 }
 
-// ✅ 관리자 인증 확인 함수 개선
-export async function isAdmin() {
-  try {
-    // 현재 세션 확인 - 이미 로그인된 사용자가 있는지 확인
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    // 세션이 있으면 관리자 여부만 확인하고 반환
-    if (session?.user) {
-      return await getAdminUser();
-    }
-    
-    // 세션이 없으면 null 반환
-    return null;
-  } catch (error) {
-    console.error("Admin authentication error:", error);
-    return null;
-  }
-}
-
 // ✅ 관리자 로그아웃
 export async function signOutAdmin() {
   await supabase.auth.signOut();
-}
-
-// ✅ React Hook으로 관리자 세션 유지 & 로그인 상태 감지
-export function useAdminSession() {
-  const [adminUser, setAdminUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function checkAdminSession() {
-      const user = await getAdminUser();
-      setAdminUser(user);
-      setLoading(false);
-    }
-
-    checkAdminSession();
-
-    // Supabase Auth 상태 변화 감지 (로그인/로그아웃 시 자동 업데이트)
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        getAdminUser().then(setAdminUser);
-      } else {
-        setAdminUser(null);
-      }
-    });
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  return { adminUser, loading };
 }
 
 // ✅ 슈퍼 관리자 확인 함수 개선

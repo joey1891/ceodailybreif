@@ -12,6 +12,11 @@ const nextConfig = {
         hostname: 'www.yoonsupchoi.com',
         pathname: '/wp-content/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'wiziqvkwkwjpvretcisz.supabase.co',
+        pathname: '/storage/v1/object/public/images/articles/**',
+      },
     ],
   },
   async redirects() {

@@ -14,6 +14,15 @@ export async function generateStaticParams() {
   }));
 }
 
+// 폼 제출 전 콘텐츠 정리 함수 간소화
+const sanitizeContent = (content: string) => {
+  // 콘텐츠가 없으면 빈 문자열 반환
+  if (!content) return '';
+  
+  // 기본 정리만 수행하고 원본 유지
+  return content;
+};
+
 export default async function EditArticlePage({
   params,
 }: {

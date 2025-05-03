@@ -28,6 +28,7 @@ export default function Home() {
   const [recentPosts, setRecentPosts] = useState<Post[]>([]);
   const [popularPosts, setPopularPosts] = useState<Post[]>([]);
   const [slides, setSlides] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // 로딩 상태 추가
 
   // 기존 카테고리 게시물 가져오는 로직
   const fetchCategoryPosts = async () => {
@@ -100,46 +101,69 @@ export default function Home() {
       });
     };
     
-    fetchSlides();
-    fetchPosts();
+    const fetchData = async () => {
+      setIsLoading(true); // 데이터 로딩 시작 시 로딩 상태 true 설정
+      try {
+        await Promise.all([
+          fetchSlides(),
+          fetchPosts()
+        ]);
+      } catch (error) {
+        console.error('데이터 로딩 중 오류 발생:', error);
+      } finally {
+        setIsLoading(false); // 데이터 로딩 완료 시 로딩 상태 false 설정
+      }
+    };
+
+    fetchData();
   }, [mainCategories]);
 
   return (
     <>
       <PopupDisplay />
       <main className="min-h-screen bg-white overflow-x-hidden max-w-full overflow-guard">
-        {/* Hero Slider - 슬라이드 데이터 전달 */}
-        <section className="mb-12 w-full max-w-full overflow-x-hidden">
-          <HeroSlider slides={slides} />
-        </section>
-        
-        {/* 나머지 섹션들에 max-width 제약 추가 */}
-        <section className="mb-12 container-mobile max-w-full">
-          <div className="flex flex-col lg:flex-row gap-6 md:gap-8 max-w-full">
-            {/* Main Content */}
-            <ArticlesSection
-              mainCategories={mainCategories}
-              categoryPosts={categoryPosts}
-            />
-
-            {/* Sidebar */}
-            <div className="w-full lg:w-1/3">
-              <Sidebar 
-                recentPosts={recentPosts} 
-                popularPosts={popularPosts}
-              />
-            </div>
+        {isLoading ? (
+          // 로딩 중일 때 표시할 UI (예: 스피너 또는 로딩 메시지)
+          <div className="flex justify-center items-center h-screen">
+            <p>로딩 중...</p> {/* 간단한 로딩 메시지 */}
           </div>
-        </section>
+        ) : (
+          // 로딩 완료 시 실제 콘텐츠 표시
+          <>
+            {/* Hero Slider - 슬라이드 데이터 전달 */}
+            <section className="mb-12 w-full max-w-full overflow-x-hidden">
+              <HeroSlider slides={slides} />
+            </section>
 
-        {/* Finance & Calendar 섹션도 동일하게 제약 추가 */}
-        <section className="mb-12 container-mobile max-w-full">
-          <FinanceInfo />
-        </section>
+            {/* 나머지 섹션들에 max-width 제약 추가 */}
+            <section className="mb-12 container-mobile max-w-full">
+              <div className="flex flex-col lg:flex-row gap-6 md:gap-8 max-w-full">
+                {/* Main Content */}
+                <ArticlesSection
+                  mainCategories={mainCategories}
+                  categoryPosts={categoryPosts}
+                />
 
-        <section className="container-mobile max-w-full">
-          <CalendarSection />
-        </section>
+                {/* Sidebar */}
+                <div className="w-full lg:w-1/3">
+                  <Sidebar
+                    recentPosts={recentPosts}
+                    popularPosts={popularPosts}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Finance & Calendar 섹션도 동일하게 제약 추가 */}
+            <section className="mb-12 container-mobile max-w-full">
+              <FinanceInfo />
+            </section>
+
+            <section className="container-mobile max-w-full">
+              <CalendarSection />
+            </section>
+          </>
+        )}
       </main>
     </>
   );

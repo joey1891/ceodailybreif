@@ -290,22 +290,23 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
             <Image
               src={aboutMeData?.profile_image_url || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
               alt="신원종"
-              width={250}
-              height={250}
-              className="rounded-full"
+              width={300}
+              height={300}
+              // 모서리 둥글기 조절: rounded-sm, rounded-md, rounded-lg, rounded-xl, rounded-2xl, rounded-3xl 등 사용 가능
+              className="rounded-xl shadow-3xl mb-5 cursor-pointer" 
             />
           </Link>
         </CardHeader>
         <CardContent className="p-6 pt-0 text-center">
-          <h3 className="text-lg font-medium mb-2">{aboutMeData?.name || "신원종"}</h3>
-          <p className="text-sm text-gray-600 mb-3">{aboutMeData?.title || "블로그 운영자"}</p>
-          <p className="text-sm text-gray-500 leading-relaxed">
+          {/* <h3 className="text-lg font-medium mb-2">{aboutMeData?.name || "신원종"}</h3> */}
+          {/* <p className="text-sm text-gray-600 mb-3">{aboutMeData?.title || "블로그 운영자"}</p> */}
+          {/* <p className="text-sm text-gray-500 leading-relaxed">
             {aboutMeData?.introduction ? 
               (aboutMeData.introduction.length > 100 ? 
                 `${aboutMeData.introduction.substring(0, 100)}...` : 
                 aboutMeData.introduction) : 
               "프로필을 방문하여 더 자세한 정보를 확인하세요."}
-          </p>
+          </p> */}
         </CardContent>
       </Card>
 

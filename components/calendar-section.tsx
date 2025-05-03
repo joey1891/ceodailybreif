@@ -6,18 +6,42 @@ import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import { parseISO } from "date-fns";
 import { format } from "date-fns";
-import { useAdminSession } from "@/lib/admin-auth";
 
 interface CalendarSectionProps {
   initialView?: "annual" | "monthly" | "both";
 }
 
 export function CalendarSection({ initialView = "both" }: CalendarSectionProps) {
-  const { adminUser, loading } = useAdminSession();
+  const [adminUser, setAdminUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<"annual" | "monthly" | "both">(initialView);
   const [targetYear, setTargetYear] = useState<number>(2025); // 기본값으로 2025년 사용
   const [targetMonth, setTargetMonth] = useState<number>(2); // 기본값으로 3월(인덱스 2) 사용
+
+  useEffect(() => {
+    async function checkAdmin() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          const { data: adminData } = await supabase
+            .from("admin_users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+          
+          setAdminUser(adminData);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Admin check error:", error);
+        setLoading(false);
+      }
+    }
+    
+    checkAdmin();
+  }, []);
 
   useEffect(() => {
     const fetchEvents = async () => {

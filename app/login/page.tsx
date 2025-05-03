@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { isAdmin } from '@/lib/admin-auth';
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
@@ -16,7 +15,7 @@ export default function LoginPage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  const [showDebug, setShowDebug] = useState(true);
+  const [showDebug, setShowDebug] = useState(true); // 디버그 섹션 표시 여부
   const router = useRouter();
 
   // Load saved email from localStorage on component mount
@@ -154,7 +153,7 @@ export default function LoginPage() {
         <Button onClick={handleLogin} className="w-full" disabled={isLoggingIn}>Login</Button>
       </div>
       
-      {/* 디버그 섹션 토글 버튼
+      {/* 디버그 섹션 토글 버튼 */}
       <div className="mt-4 text-center">
         <button 
           onClick={() => setShowDebug(!showDebug)} 
@@ -162,9 +161,9 @@ export default function LoginPage() {
         >
           {showDebug ? "디버그 숨기기" : "디버그 표시"}
         </button>
-      </div> */}
+      </div>
       
-      {/* 디버그 섹션
+      {/* 디버그 섹션 */}
       {showDebug && (
         <div className="mt-8">
           <div className="flex space-x-2 mb-4">
@@ -189,7 +188,7 @@ export default function LoginPage() {
             ))}
           </div>
         </div>
-      )} */}
+      )}
     </div>
   );
 }

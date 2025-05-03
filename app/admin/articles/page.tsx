@@ -41,6 +41,9 @@ interface Post {
   image_url: string | null;
   slide_order?: number;
   deleted_at: string | null;
+  video_url?: string | null;
+  video_thumbnail_url?: string | null;
+  has_links?: boolean;
   [key: string]: any;
 }
 
@@ -932,9 +935,23 @@ export default function AdminArticlesPage() {
                             <div className="w-10 h-10 overflow-hidden rounded">
                               <img 
                                 src={post.image_url} 
-                                alt="슬라이드 이미지" 
+                                alt="이미지" 
                                 className="w-full h-full object-cover"
                               />
+                            </div>
+                          )}
+                          {post.video_thumbnail_url && !post.image_url && (
+                            <div className="w-10 h-10 overflow-hidden rounded relative">
+                              <img 
+                                src={post.video_thumbnail_url} 
+                                alt="비디오 썸네일" 
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-6 h-6">
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </div>
                             </div>
                           )}
                           <Button 

@@ -13,13 +13,13 @@ import { editorGlobalStyles } from '@/components/editorWith-uploader';
 function extractImageUrl(html: string | undefined): string | null {
   if (!html) return null;
   const imgTag = html.match(/<img[^>]+src="?([^">]+)"?/);
-  return imgTag ? imgTag[1] : null;
+  return imgTag ? imgTag[1] : null;;
 }
 
 export { extractImageUrl };
 
 export function ArticleContent({ params }: { params: { id: string } }) {
-  const [post, setPost] = useState<Post | null>(null);
+   const [post,setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [isKakaoInitialized, setIsKakaoInitialized] = useState(false);
 

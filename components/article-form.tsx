@@ -22,6 +22,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 interface ArticleFormProps {
   id?: string;
   post?: Post;
+  defaultCategory?: string;
 }
 
 // 한글 카테고리를 영문으로 변환하는 매핑 추가
@@ -45,21 +46,81 @@ interface UploadedImage {
   timestamp: number;
 }
 
-export default function ArticleForm({ id, post }: ArticleFormProps) {
+// 유튜브 링크 감지 함수
+const detectYouTubeLink = (content: string) => {
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = content.match(youtubeRegex);
+  return match ? match[1] : null; // 유튜브 비디오 ID 반환
+};
+
+// 비메오 링크 감지 함수
+const detectVimeoLink = (content: string) => {
+  const vimeoRegex = /(?:https?:\/\/)?(?:www\.)?(?:vimeo\.com\/)([0-9]+)/;
+  const match = content.match(vimeoRegex);
+  return match ? match[1] : null; // 비메오 비디오 ID 반환
+};
+
+// 썸네일 URL 생성 함수
+const getVideoThumbnail = (videoType: 'youtube' | 'vimeo', videoId: string) => {
+  if (videoType === 'youtube') {
+    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  } else if (videoType === 'vimeo') {
+    // 비메오는 API 호출이 필요하지만 여기서는 간단한 예시로 대체
+    return `https://vumbnail.com/${videoId}.jpg`;
+  }
+  return null;
+};
+
+// 링크 sanitize 함수 - 특수 문자 등을 적절히 처리
+const sanitizeContent = (content: string) => {
+  // 에디터에서 이미 HTML을 생성한다고 가정하고, 여기서는 기본적인 HTML 이스케이프를 제거합니다.
+  // 필요한 경우 XSS 방지를 위해 DOMPurify와 같은 라이브러리를 사용하는 것을 고려할 수 있습니다.
+  let sanitized = content;
+  
+  // 에디터에서 이미 링크를 처리한다고 가정하고, 여기서는 URL을 clickable 링크로 변환하는 로직 제거
+  // const urlRegex = /(https?:\/\/[^\s]+)/g;
+  // sanitized = sanitized.replace(urlRegex, (url) => {
+  //   return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+  // });
+  
+  return sanitized;
+};
+
+export default function ArticleForm({ 
+  id, 
+  post,
+  defaultCategory 
+}: { 
+  id?: string;
+  post?: Post;
+  defaultCategory?: string;
+}) {
   const router = useRouter();
   const { toast: useToastToast } = useToast();
   const { adminUser, loading: adminLoading } = useAdminSession();
 
-  const [title, setTitle] = useState(post?.title || "");
-  const [mainCategory, setMainCategory] = useState(post?.category || "");
-  const [subCategory, setSubCategory] = useState<string>("");
-  const [subSubCategory, setSubSubCategory] = useState("");
-  const [content, setContent] = useState(post?.content || "");
-  const [imgUrl, setImgUrl] = useState(post?.image_url || "");
-  const [description, setDescription] = useState(post?.description || "");
+  const [formData, setFormData] = useState({
+    title: post?.title || "",
+    content: post?.content || "",
+    category: post?.category || defaultCategory || "",
+    subcategory: post?.subcategory || "",
+    subsubcategory: post?.subsubcategory || "",
+    description: post?.description || "",
+    image_url: post?.image_url || "",
+    is_slide: post?.is_slide || false,
+    slide_order: post?.slide_order || null,
+  });
+
+  const [title, setTitle] = useState(formData.title);
+  const [mainCategory, setMainCategory] = useState(formData.category);
+  const [subCategory, setSubCategory] = useState(formData.subcategory);
+  const [subSubCategory, setSubSubCategory] = useState(formData.subsubcategory);
+  const [content, setContent] = useState(formData.content);
+  const [imgUrl, setImgUrl] = useState(formData.image_url);
+  const [description, setDescription] = useState(formData.description);
   const [loading, setLoading] = useState(false);
-  const [isSlide, setIsSlide] = useState(post?.is_slide || false);
-  const [slideOrder, setSlideOrder] = useState<number | null>(post?.slide_order || null);
+  const [isSlide, setIsSlide] = useState(formData.is_slide);
+  const [slideOrder, setSlideOrder] = useState<number | null>(formData.slide_order);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 서브카테고리 옵션
@@ -202,16 +263,17 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
         router.push("/admin/articles");
         return;
       }
-      setTitle(data.title);
-      setContent(data.content);
-      // Main Category는 posts.category, Sub Category는 posts.subcategory
-      if (data.category) setMainCategory(data.category);
-      if (data.subcategory) setSubCategory(data.subcategory);
-      if (data.subsubcategory) setSubSubCategory(data.subsubcategory);
-      if (data.category === "Report" || data.category === "report") {
-        setImgUrl(data.image_url || "");
-        setDescription(data.description || "");
-      }
+      setFormData({
+        title: data.title,
+        content: data.content,
+        category: data.category || "",
+        subcategory: data.subcategory || "",
+        subsubcategory: data.subsubcategory || "",
+        description: data.description || "",
+        image_url: data.image_url || "",
+        is_slide: data.is_slide || false,
+        slide_order: data.slide_order || null,
+      });
     }
     fetchArticle();
   }, [id, router, useToastToast]);
@@ -234,7 +296,7 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
   // 업로드된 이미지 목록 상태 추가
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   // 선택된 썸네일 URL 상태 추가
-  const [thumbnailUrl, setThumbnailUrl] = useState<string>(post?.image_url || "");
+  const [thumbnailUrl, setThumbnailUrl] = useState<string>(formData.image_url || "");
 
   // 카테고리 옵션 (실제 데이터로 교체 필요)
   const mainCategories = ["news", "finance", "company", "market", "tech", "culture"];
@@ -265,156 +327,239 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
     toast.success("썸네일 이미지가 선택되었습니다");
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      if (!adminUser) {
-        useToastToast({
-          title: "Error",
-          description:
-            "You must be logged in as admin to save articles.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 유효성 검사 추가
-      if (!title) {
-        useToastToast({
-          title: "Error",
-          description: "Title is required.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      if (!mainCategory) {
-        useToastToast({
-          title: "Error",
-          description: "Main Category is required.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      if (!content) {
-        useToastToast({
-          title: "Error",
-          description: "Content is required.",
-          variant: "destructive",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      let articleData: any = {
-        title,
-        category: mainCategory,
-        subcategory: subCategory || "",
-        subsubcategory: subSubCategory,
-        content,
-        date: new Date().toISOString().split("T")[0],
-        is_slide: isSlide,
-        ...(isSlide && slideOrder !== null ? { slide_order: slideOrder } : {}),
-        description: description,
-        image_url: thumbnailUrl.trim() !== "" ? thumbnailUrl.trim() : null, // 이미지 URL 추가
-      };
-      
-      let error;
-      let articleId = id;
-      
-      if (id) {
-        const { error: updateError, count } = await supabase
-          .from("posts")
-          .update(articleData)
-          .eq("id", id)
-          
-          //.eq("user_id", adminUser.id);
-        if (updateError) error = updateError;
-        else if (count === 0) {
-          alert("You are not the author of this article.");
-          useToastToast({
-            title: "Warning",
-            description: "You are not the logged in user.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else {
-       const { error: insertError, data: newArticle } = await supabase
-          .from("posts")
-          .insert([{ ...articleData, user_id: adminUser.id }])
-          .select();
-        if (insertError) error = insertError;
-        if (newArticle && Array.isArray(newArticle) && newArticle.length > 0) {
-          articleId = (newArticle as Post[])[0].id;
-        }
-      }
-      if (error) {
-        useToastToast({
-          title: "Error",
-          description: `Failed to ${id ? "update" : "create"} article`,
-          variant: "destructive",
-        });
-      } else {
-        useToastToast({
-          title: "Success",
-          description: `Article ${id ? "updated" : "created"} successfully`,
-        });
-        
-        // Generate category URL and redirect
-        let categoryUrl = '/';
-        
-        if (mainCategory) {
-          // 1. 메인 카테고리만 있는 경우
-          categoryUrl = `/${mainCategory}`;
-          
-          // 2. 하위 카테고리까지 있는 경우
-          if (subCategory) {
-            categoryUrl = `/${mainCategory}/${subCategory}`;
-          }
-        }
-        
-        router.push(categoryUrl);
-      }
-    } catch (err) {
-      console.error("Unexpected error:", err);
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  console.log("--- Entering handleSubmit ---"); // Add this log
+  e.preventDefault();
+  console.log("handleSubmit 시작"); // Added log
+  setIsSubmitting(true);
+  try {
+    console.log("Checking admin user..."); // Add log
+    if (!adminUser) {
+      console.log("Validation failed: adminUser not found."); // Add log
       useToastToast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description:
+          "You must be logged in as admin to save articles.",
         variant: "destructive",
       });
-    } finally {
       setIsSubmitting(false);
+      return;
     }
-  };
+    console.log("Validation passed: adminUser found."); // Add log
 
-  if (adminLoading) {
-    return <div>Loading...</div>;
+    // 유효성 검사 추가
+    console.log("Checking title..."); // Add log
+    if (!title) {
+      console.log("Validation failed: title is empty."); // Add log
+      useToastToast({
+        title: "Error",
+        description: "Title is required.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    console.log("Validation passed: title is not empty."); // Add log
+
+    console.log("Checking main category..."); // Add log
+    if (!mainCategory) {
+      console.log("Validation failed: mainCategory is empty."); // Add log
+      useToastToast({
+        title: "Error",
+        description: "Main Category is required.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    console.log("Validation passed: mainCategory is not empty."); // Add log
+
+    console.log("Checking content..."); // Add log
+    if (!content) {
+      console.log("Validation failed: content is empty."); // Add log
+      useToastToast({
+        title: "Error",
+        description: "Content is required.",
+        variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+    console.log("Validation passed: content is not empty."); // Add log
+
+
+    // 콘텐츠 sanitize 처리
+    const sanitizedContent = sanitizeContent(content);
+    console.log("Content sanitized."); // Add log
+
+    // 유튜브 링크 감지 및 처리
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const youtubeMatch = sanitizedContent.match(youtubeRegex);
+    console.log("YouTube link detection result:", youtubeMatch); // Add log
+
+    // 썸네일 설정
+    let thumbnailUrl = imgUrl;  // 기존 이미지 URL 사용
+
+    // YouTube 링크가 있고 이미지를 따로 설정하지 않은 경우 YouTube 썸네일 사용
+    if (youtubeMatch && youtubeMatch[1] && !thumbnailUrl) {
+      thumbnailUrl = `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg`;
+      console.log("YouTube 썸네일 자동 설정:", thumbnailUrl);
+    }
+    console.log("Final thumbnail URL:", thumbnailUrl); // Add log
+
+
+    // 데이터베이스에 저장할 데이터
+    const finalData = {
+      title,
+      content: sanitizedContent,
+      category: mainCategory,
+      subcategory: subCategory || "",
+      subsubcategory: subSubCategory || "",
+      description: description || "",
+      image_url: thumbnailUrl,
+      is_slide: isSlide,
+      ...(isSlide && slideOrder !== null ? { slide_order: slideOrder } : {}),
+      // 추가된 필드들
+      video_url: youtubeMatch ? `https://www.youtube.com/watch?v=${youtubeMatch[1]}` : null,
+      video_thumbnail_url: youtubeMatch ? `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg` : null,
+      has_links: sanitizedContent.includes('http') || sanitizedContent.includes('www.'),
+    };
+
+    let error = null; // Initialize error to null
+    let articleId = id;
+
+    // slide_order를 finalData에 조건부로 추가
+    const dataToSave = {
+      title,
+      content: sanitizedContent,
+      category: mainCategory,
+      subcategory: subCategory || "",
+      subsubcategory: subSubCategory || "",
+      description: description || "",
+      image_url: thumbnailUrl,
+      is_slide: isSlide,
+      video_url: youtubeMatch ? `https://www.youtube.com/watch?v=${youtubeMatch[1]}` : null,
+      video_thumbnail_url: youtubeMatch ? `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg` : null,
+      has_links: sanitizedContent.includes('http') || sanitizedContent.includes('www.'),
+    };
+
+    if (isSlide && slideOrder !== null) {
+      (dataToSave as any).slide_order = slideOrder;
+    } else {
+       // is_slide가 false이거나 slideOrder가 null이면 slide_order를 명시적으로 null로 설정
+       (dataToSave as any).slide_order = null;
+    }
+
+
+    console.log("Attempting to save article data:", dataToSave); // Log data before saving
+
+    // Supabase 호출 전 로그
+    console.log("Calling Supabase to save article...");
+
+    let supabaseResponse;
+    if (id) {
+      console.log("Updating existing article with ID:", id); // Log update attempt
+      supabaseResponse = await supabase
+        .from("posts")
+        .update(dataToSave)
+        .eq("id", id)
+        //.eq("user_id", adminUser.id); // Consider if user_id check is needed here
+
+      // Supabase 업데이트 호출 후 로그
+      console.log("Supabase update call finished. Response:", supabaseResponse);
+
+      if (supabaseResponse.error) {
+        error = supabaseResponse.error;
+        console.error("Supabase update error:", error); // Log update error (corrected variable name)
+      } else if (supabaseResponse.count === 0) {
+        // This case might indicate the article wasn't found or user_id didn't match if uncommented
+        console.warn("Supabase update affected 0 rows. Article ID:", id);
+        alert("You are not the author of this article or article not found.");
+        useToastToast({
+          title: "Warning",
+          description: "You are not the logged in user or article not found.",
+          variant: "destructive",
+        });
+        // Instead of returning, throw an error to be caught by the catch block
+        throw new Error("You are not the logged in user or article not found.");
+      } else {
+        console.log("Supabase update successful. Count:", supabaseResponse.count); // Log update success
+      }
+    } else {
+      console.log("Inserting new article."); // Log insert attempt
+     supabaseResponse = await supabase
+        .from("posts")
+        .insert([{ ...dataToSave, user_id: adminUser.id }])
+        .select();
+
+      // Supabase 삽입 호출 후 로그
+      console.log("Supabase insert call finished. Response:", supabaseResponse);
+
+      if (supabaseResponse.error) {
+        error = supabaseResponse.error;
+        console.error("Supabase insert error:", supabaseResponse.error); // Log insert error
+      } else if (supabaseResponse.data && Array.isArray(supabaseResponse.data) && supabaseResponse.data.length > 0) {
+        articleId = (supabaseResponse.data as Post[])[0].id;
+        console.log("Supabase insert successful. New article ID:", articleId); // Log insert success
+      } else {
+         console.warn("Supabase insert returned no data."); // Log if insert returns no data
+         // Depending on Supabase version/config, this might be an error
+         error = new Error("Supabase insert returned no data.");
+      }
+    }
+
+    if (error) {
+      console.error("Article save failed:", error); // Log overall failure
+      useToastToast({
+        title: "Error",
+        description: `Failed to ${id ? "update" : "create"} article: ${error.message || error.toString()}`, // Include error message
+        variant: "destructive",
+      });
+    } else {
+      console.log("Article saved successfully. Redirecting..."); // Log overall success
+      useToastToast({
+        title: "Success",
+        description: `Article ${id ? "updated" : "created"} successfully`,
+      });
+
+      // Generate category URL and redirect
+      let categoryUrl = '/';
+
+      if (mainCategory) {
+        // 1. 메인 카테고리만 있는 경우
+        categoryUrl = `/${mainCategory}`;
+
+        // 2. 하위 카테고리까지 있는 경우
+        if (subCategory) {
+          categoryUrl = `/${mainCategory}/${subCategory}`;
+        }
+      }
+      console.log("Redirecting to:", categoryUrl); // Add log
+      router.push(categoryUrl);
+    }
+  } catch (err: any) { // Catch any type of error
+    console.error("Unexpected error during article save:", err); // Log unexpected error
+    // catch 블록 내부 로그
+    console.log("Caught an error in handleSubmit:", err);
+    useToastToast({
+      title: "Error",
+      description: `An unexpected error occurred: ${err.message || err.toString()}`, // Include error message
+      variant: "destructive",
+    });
+  } finally {
+    // Ensure isSubmitting is always set to false here
+    // finally 블록 내부 로그
+    console.log("Finally block reached. Setting isSubmitting to false.");
+    setIsSubmitting(false);
   }
-
-  // Replace the incorrect categoryOptions references with categoriesData
-  const currentCategory = mainCategory ? 
-    Array.from(categoriesData.entries())
-      .find(([_, data]) => data.href?.replace(/^\//, '') === mainCategory)?.[1] as CategoryOption | undefined
-    : null;
-    
-  const currentSubCategoryData = mainCategory && subCategory && currentCategory?.items && Array.isArray(currentCategory.items) ?
-    currentCategory.items.find((item: CategoryItem) => item.slug === subCategory) : null;
-  
-  // Check if the subcategory has items
-  const hasSubSubCategories = currentSubCategoryData && 
-    'items' in currentSubCategoryData && 
-    currentSubCategoryData.items && 
-    currentSubCategoryData.items.length > 0;
+};
 
   return (
     <div className="w-full min-h-screen flex flex-col items-center justify-start bg-white px-4 py-4">
       <h1 className="text-3xl font-bold mb-6">
         {id ? "Edit" : "New"} Article
       </h1>
-      <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-3xl">
+      <form onSubmit={(e) => { console.log("Form onSubmit event triggered."); handleSubmit(e); }} className="space-y-4 w-full max-w-3xl">
         {/* Title */}
         <div>
           <label
@@ -510,11 +655,12 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
         </div>
         {/* Content */}
         <div>
-          <EditorWithUploader 
-            value={content} 
+          <EditorWithUploader
+            value={content}
             onChangeAction={(newContent) => {
               setContent(newContent);
-              
+              console.log('Editor new content:', newContent); // Added log
+
               // 콘텐츠가 변경될 때마다 첫 번째 이미지 추출하여 image_url 설정
               if (!imgUrl) {
                 const firstImage = extractFirstImage(newContent);
@@ -536,7 +682,7 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
           <label htmlFor="slide-switch" className="text-sm font-medium">
             메인 슬라이드에 표시
           </label>
-          
+
           {isSlide && (
             <div className="ml-4">
               <select
@@ -559,18 +705,18 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
           <div className="mt-8">
             <h3 className="text-lg font-medium mb-3">업로드된 이미지</h3>
             <p className="text-sm text-gray-500 mb-3">썸네일로 사용할 이미지를 선택하세요</p>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {uploadedImages.map((image, index) => (
-                <div 
-                  key={image.timestamp} 
+                <div
+                  key={image.timestamp}
                   className={`relative border-2 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity ${
                     thumbnailUrl === image.url ? 'border-blue-500' : 'border-gray-200'
                   }`}
                   onClick={() => handleSelectThumbnail(image.url)}
                 >
-                  <img 
-                    src={image.url} 
+                  <img
+                    src={image.url}
                     alt={`업로드 이미지 ${index + 1}`}
                     className="w-full h-40 object-cover"
                   />
@@ -584,16 +730,16 @@ export default function ArticleForm({ id, post }: ArticleFormProps) {
             </div>
           </div>
         )}
-        
+
         {/* 현재 썸네일 표시 (편집 시) */}
         {id && thumbnailUrl && !uploadedImages.some(img => img.url === thumbnailUrl) && (
           <div className="mt-4">
             <h3 className="text-lg font-medium mb-3">현재 썸네일</h3>
             <div className="w-56 h-40 border-2 border-blue-500 rounded-md overflow-hidden">
-              <img 
-                src={thumbnailUrl} 
+              <img
+                src={thumbnailUrl}
                 alt="현재 썸네일"
-                className="w-full h-full object-cover" 
+                className="w-full h-full object-cover"
               />
             </div>
           </div>

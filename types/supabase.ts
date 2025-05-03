@@ -4,15 +4,19 @@ export type Post = {
   content: string;
   category: string;
   subcategory?: string | null;
+  subsubcategory?: string;
   created_at: string;
   updated_at: string;
   author_id: string | null;
   image_url?: string | null;
+  video_url?: string | null;
+  video_thumbnail_url?: string | null;
   date?: string;
   viewcnt?: number;
   is_slide?: boolean;
   slide_order?: number | null;
   description?: string | null;
+  has_links?: boolean;
 };
 
 export type Profile = {

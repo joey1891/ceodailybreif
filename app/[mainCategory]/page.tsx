@@ -8,38 +8,62 @@ import { Post } from "@/types/supabase";
 import Link from "next/link";
 import { getCategoryById } from "@/lib/category-loader";
 import { notFound } from "next/navigation";
+import { useAdminSession } from "@/lib/admin-auth";
+
+// 서브카테고리 타입 정의 추가
+interface Subcategory {
+  id: string;
+  title: string | { ko: string; en: string };
+  slug: string;
+}
 
 export default function CategoryPage({
   params,
 }: {
   params: { mainCategory: string };
 }) {
+  // 관리자 인증 상태를 클라이언트 훅으로 관리
+  const { adminUser, loading: adminLoading } = useAdminSession();
+  
   const [mainPosts, setMainPosts] = useState<Post[]>([]);
   const [subcategoryPosts, setSubcategoryPosts] = useState<Record<string, Post[]>>({});
   const [loading, setLoading] = useState(true);
   const [showMoreMain, setShowMoreMain] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   
+  // Category state
+  const [category, setCategory] = useState<any>(null);
+  const [categoryTitle, setCategoryTitle] = useState("");
+  const [notFoundError, setNotFoundError] = useState(false);
+  
   // Post display configuration
   const postsPerInitialView = 3;
   const postsPerExpandedView = 9;
   const postsPerPage = 9;
   
-  // 슬러그로 카테고리 찾기
-  const category = getCategoryById(params.mainCategory);
-  console.log("Category data:", category);
-
-  if (!category) {
-    console.error("Category not found:", params.mainCategory);
+  // 카테고리 로딩
+  useEffect(() => {
+    const cat = getCategoryById(params.mainCategory);
+    
+    if (!cat) {
+      console.error("Category not found:", params.mainCategory);
+      setNotFoundError(true);
+      return;
+    }
+    
+    setCategory(cat);
+    setCategoryTitle(typeof cat.title === "string" ? cat.title : cat.title.ko);
+  }, [params.mainCategory]);
+  
+  // 카테고리가 없으면 404
+  if (notFoundError) {
     return notFound();
   }
   
-  // 카테고리 제목 처리 (한글 우선)
-  const categoryTitle = typeof category.title === "string" 
-    ? category.title 
-    : category.title.ko;
-  
+  // 포스트 로딩
   useEffect(() => {
+    if (!category) return;
+    
     const fetchPosts = async () => {
       setLoading(true);
       console.log(`Fetching posts for category: ${category.id}`);
@@ -86,7 +110,7 @@ export default function CategoryPage({
     };
 
     fetchPosts();
-  }, [category.id, category.subcategories]);
+  }, [category]);
 
   // 페이지네이션 계산
   const totalMainPosts = mainPosts.length;
@@ -188,14 +212,39 @@ export default function CategoryPage({
     );
   };
 
+  if (!category) {
+    return <div className="container mx-auto px-4 py-8">로딩 중...</div>;
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       {loading ? (
         <p>콘텐츠를 불러오는 중...</p>
       ) : (
         <>
-          {/* 메인 카테고리 섹션 */}
-          <h1 className="text-4xl font-bold mb-8">{categoryTitle}</h1>
+          {/* 메인 카테고리 섹션 - 제목과 관리자 버튼을 함께 배치 */}
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-4xl font-bold">{categoryTitle}</h1>
+            
+            {/* 관리자인 경우에만 새 게시글 작성 버튼 표시 */}
+            {adminUser && (
+              <Link
+                href={`/admin/articles/create?category=${category.id}`}
+                className="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm transition-colors"
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-4 w-4 mr-1"
+                  viewBox="0 0 20 20" 
+                  fill="currentColor"
+                >
+                  <path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" />
+                </svg>
+                새 게시글 작성
+              </Link>
+            )}
+          </div>
+          
           {renderPostCards(visibleMainPosts)}
           
           {/* 더보기 버튼 및 페이지네이션 */}
@@ -223,7 +272,7 @@ export default function CategoryPage({
               
               {/* 모바일에서만 세로로 표시 */}
               <div className="md:hidden flex flex-col space-y-8 mb-6 px-4 sm:px-6">
-                {category.subcategories.map((subcategory) => {
+                {category.subcategories.map((subcategory: Subcategory) => {
                   const subTitle = typeof subcategory.title === "string" 
                     ? subcategory.title 
                     : subcategory.title.ko;
@@ -319,7 +368,7 @@ export default function CategoryPage({
                     
                     {/* 게시글들 - 각 카테고리 버튼 아래 열에 맞춰 배치 */}
                     <div className="flex space-x-4">
-                      {category.subcategories.map((subcategory, index) => {
+                      {category.subcategories.map((subcategory: Subcategory, index: number) => {
                         const subTitle = typeof subcategory.title === "string" 
                           ? subcategory.title 
                           : subcategory.title.ko;

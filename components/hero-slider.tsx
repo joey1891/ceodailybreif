@@ -221,24 +221,12 @@ export function HeroSlider({ slides }: HeroSliderProps) {
                         : 'linear-gradient(to right, #4f46e5, #818cf8)' 
                     }}
                   >
-                    <div className="absolute inset-0 bg-black/50" />
+                    <div className="absolute inset-0" />
                   </div>
                 </div>
               </CarouselItem>
             ))}
           </CarouselContent>
-          {slideArticles.length > 1 && (
-            <>
-              <CarouselPrevious className="left-8 bg-transparent border-none hover:bg-black/20 h-16 w-16 text-white">
-                <ArrowRight className="absolute top-1/2 -translate-y-1/2 h-10 w-10 stroke-[3]" />
-                <span className="sr-only">Previous slide</span>
-              </CarouselPrevious>
-              <CarouselNext className="right-8 bg-transparent border-none hover:bg-black/20 h-16 w-16 text-white">
-                <ArrowRight className="absolute top-1/2 -translate-y-1/2 h-10 w-10 stroke-[3]" />
-                <span className="sr-only">Next slide</span>
-              </CarouselNext>
-            </>
-          )}
         </Carousel>
         {slideArticles.length > 0 && (
           <Link href={`/article/${slideArticles[currentSlide]?.id}`}>

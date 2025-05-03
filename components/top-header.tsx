@@ -15,7 +15,7 @@ export function TopHeader() {
   useEffect(() => {
     // 현재 날짜 포맷팅 (THURSDAY 06TH FEBRUARY 2025 형식)
     const today = new Date();
-    const formattedDate = format(today, "EEEE do MMMM yyyy").toUpperCase();
+    const formattedDate = format(today, "yyyy-MM-dd").toUpperCase();
     setCurrentDate(formattedDate);
 
     const checkUser = async () => {
@@ -55,22 +55,22 @@ export function TopHeader() {
   };
  
    return (
-     <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 bg-white border-b border-gray-200">
+     <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 bg-white border-b border-transparent">
        <div className="flex justify-between py-2 text-sm">
          {/* 왼쪽 영역: Home, Contact */}
          <div className="flex items-center space-x-4 select-none justify-center">
-           <Link
+           {/* <Link
              href="/"
              className="text-black hover:text-gray-700 inline-flex items-center select-none"
            >
              Home
-          </Link>
-           <a
+          </Link> */}
+           {/* <a
              href="mailto:wjshin2450@gmail.com"
              className="text-black hover:text-gray-700 inline-flex items-center select-none"
            >
              Contact
-          </a>
+          </a> */}
         </div>
 
         {/* 오른쪽 영역: 로그인, 날짜 */}
@@ -92,7 +92,7 @@ export function TopHeader() {
                    href="/admin"
                    className="text-black hover:text-gray-700 inline-flex items-center"
                  >
-                   관리자 페이지
+                   관리자
                 </Link>
               )}
                <button

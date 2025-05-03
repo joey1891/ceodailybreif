@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { LineChart, Clock, DollarSign, Percent } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useAdminSession } from "@/lib/admin-auth";
 
 interface FinanceData {
   id: string;
@@ -44,14 +43,15 @@ const INTEREST_RATE_ORDER = ["미국", "유로", "일본", "중국", "한국"];
 const CITY_ORDER = ["뉴욕", "런던", "도쿄", "베이징", "서울"];
 
 export function FinanceInfo() {
-  const { adminUser, loading } = useAdminSession();
+  const [adminUser, setAdminUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [indices, setIndices] = useState<MarketIndex[]>([]);
   const [rates, setRates] = useState<ExchangeRate[]>([]);
   const [interestRates, setInterestRates] = useState<InterestRate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-    const [times, setTimes] = useState<CityTime[]>([
+  const [times, setTimes] = useState<CityTime[]>([
     { name: "뉴욕", time: "" },
     { name: "런던", time: "" },
     { name: "도쿄", time: "" },
@@ -59,30 +59,30 @@ export function FinanceInfo() {
     { name: "서울", time: "" }
   ].sort((a, b) => CITY_ORDER.indexOf(a.name) - CITY_ORDER.indexOf(b.name)));
 
-    const updateTimes = () => {
-      const newTimes = times.map(city => ({
-        name: city.name,
-        time: new Date().toLocaleTimeString("ko-KR", {
-          timeZone: getTimeZone(city.name),
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true
-        })
-      }));
-      setTimes(newTimes);
-    };
+  const updateTimes = () => {
+    const newTimes = times.map(city => ({
+      name: city.name,
+      time: new Date().toLocaleTimeString("ko-KR", {
+        timeZone: getTimeZone(city.name),
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true
+      })
+    }));
+    setTimes(newTimes);
+  };
 
-    useEffect(() => {
-      updateTimes();
-      
-      // 시간 업데이트를 위한 타이머 설정 (선택적)
-      const timer = setInterval(updateTimes, 60000); // 1분마다 업데이트
-      
-      // 클린업 함수
-      return () => clearInterval(timer);
-    }, []); // 빈 의존성 배열
+  useEffect(() => {
+    updateTimes();
+    
+    // 시간 업데이트를 위한 타이머 설정 (선택적)
+    const timer = setInterval(updateTimes, 60000); // 1분마다 업데이트
+    
+    // 클린업 함수
+    return () => clearInterval(timer);
+  }, []); // 빈 의존성 배열
 
-    function getTimeZone(city: string): string {
+  function getTimeZone(city: string): string {
     const zones: Record<string, string> = {
       "뉴욕": "America/New_York",
       "런던": "Europe/London",
@@ -93,6 +93,31 @@ export function FinanceInfo() {
     return zones[city] || "Asia/Seoul";
   }
 
+  useEffect(() => {
+    async function checkAdmin() {
+      try {
+        // 현재 세션 확인
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // 관리자 테이블에서 사용자 정보 조회
+          const { data: adminData } = await supabase
+            .from("admin_users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+          
+          setAdminUser(adminData);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Admin check error:", error);
+        setLoading(false);
+      }
+    }
+    
+    checkAdmin();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {

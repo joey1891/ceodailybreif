@@ -61,7 +61,7 @@ export function ArticlesSection({
 </h2>
 <Button variant="outline" asChild className="px-4 py-2 mb-2">
                 <Link href={`/${mainPath}`}>
-                  View All <ArrowRight className="ml-2 h-4 w-4" />
+                  View All 
                 </Link>
               </Button>
             </div>
@@ -152,7 +152,7 @@ export function ArticlesSection({
             onClick={() => setShowAllCategories(!showAllCategories)}
             className="px-6 py-2 bg-gradient-to-r from-gray-600 to-gray-800 text-white hover:from-gray-700 hover:to-gray-900"
           >
-            {showAllCategories ? "간략히 보기" : "전체 카테고리 보기"} <ArrowRight className="ml-2 h-4 w-4" />
+            {showAllCategories ? "간략히 보기" : "전체 카테고리 보기"} 
           </Button>
         </div>
       )}

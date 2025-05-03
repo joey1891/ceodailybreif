@@ -46,7 +46,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <div className="min-h-screen flex flex-col overflow-x-hidden max-w-full">
               <header>
                 <TopHeader />
-                <div className="border-b">
+                <div className="">
                   {/* 헤더 영역을 flex로 만들어 왼쪽에 타이틀+메뉴, 오른쪽에 검색 바 배치 */}
                   <div className="container max-w-[1400px] mx-auto px-4 lg:px-8 flex items-center justify-between">
                     <div style={{ flex: 1 }}>
@@ -55,7 +55,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                           {/* 로고 텍스트 박스 */}
                           <div
                             style={{
-                              width: '190px', // 로고 너비 (조정 가능)
+                              width: '250px', // 로고 너비 (조정 가능)
                               textAlign: 'center', // 텍스트 가운데 정렬
                               paddingLeft: '10px', // 좌측 간격 (조정 가능)
                               paddingRight: '10px', // 우측 간격 (조정 가능)
@@ -65,7 +65,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                             {/* 첫 번째 줄: CEO */}
                             <span
                               style={{
-                                fontSize: '3rem', // 첫 줄 폰트 크기 (조정 가능) - 대략 100px 높이에 맞춤
+                                fontSize: '5rem', // 첫 줄 폰트 크기 (조정 가능) - 대략 100px 높이에 맞춤
                                 lineHeight: '1', // 줄 간격 최소화
                                 fontWeight: 'bold', // 굵은 글씨
                                 display: 'block', // 블록 요소로 만들어 너비 차지
@@ -80,7 +80,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                             {/* 두 번째 줄: DAILY BRIEF */}
                             <span
                               style={{
-                                fontSize: '1rem', // 두 번째 줄 폰트 크기 (조정 가능) - 대략 37px 높이에 맞춤
+                                fontSize: '1.7rem', // 두 번째 줄 폰트 크기 (조정 가능) - 대략 37px 높이에 맞춤
                                 lineHeight: '1', // 줄 간격 최소화
                                 fontWeight: 'normal', // 일반 굵기
                                 display: 'block', // 블록 요소로 만들어 너비 차지
