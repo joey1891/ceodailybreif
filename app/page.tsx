@@ -68,7 +68,9 @@ export default function Home() {
   useEffect(() => {
     // 슬라이드 데이터 가져오기
     const fetchSlides = async () => {
+      console.log("[fetchSlides] Starting fetchSlides..."); // Added log
       try {
+        console.log("[fetchSlides] Calling Supabase for slides..."); // Added log
         const { data, error } = await supabase
           .from('posts')
           .select('id, title, image_url, description, slide_order')
@@ -76,28 +78,36 @@ export default function Home() {
           .eq('is_deleted', false) // 삭제된 슬라이드 제외
           .order('slide_order', { ascending: true });
         
+        console.log("[fetchSlides] Supabase call finished. Error:", error); // Added log
         if (error) throw error;
         setSlides(data || []);
+        console.log(`[fetchSlides] Successfully fetched ${data?.length || 0} slides.`); // Added log
       } catch (error: any) {
-        console.error('슬라이더 데이터를 가져오는 중 오류 발생:', error);
+        console.error('[fetchSlides] Error fetching slides:', error); // Added log
         // 에러 객체의 더 자세한 정보 로깅
-        console.error('에러 세부 정보:', {
+        console.error('[fetchSlides] Error details:', { // Added log
           message: error.message || 'Unknown error',
           stack: error.stack || 'No stack trace',
           name: error.name || 'Unknown error type'
         });
         setSlides([]);
+      } finally {
+        console.log("[fetchSlides] fetchSlides finished."); // Added log
       }
     };
     
     // 기사 데이터 가져오기 - Promise 체이닝 사용
     const fetchPosts = async () => {
+      console.log("[fetchPosts] Starting fetchPosts..."); // Added log
       try {
+        console.log("[fetchPosts] Calling fetchCategoryPosts..."); // Added log
         const { posts, allPosts } = await fetchCategoryPosts();
+        console.log("[fetchPosts] fetchCategoryPosts finished."); // Added log
         setCategoryPosts(posts);
         
         // 안전한 데이터 처리를 위한 보호 코드 추가
         try {
+          console.log("[fetchPosts] Processing recent posts..."); // Added log
           // 최신글 5개 추출 - 날짜 처리 강화
           const recent = [...allPosts]
             .filter(post => post && post.created_at) // 날짜가 없는 항목 필터링
@@ -108,46 +118,97 @@ export default function Home() {
                 const dateB = parseDate(b.created_at);
                 return dateB - dateA;
               } catch (err) {
-                console.warn("날짜 파싱 오류:", err, { a: a.created_at, b: b.created_at });
+                console.warn("[fetchPosts] 날짜 파싱 오류:", err, { a: a.created_at, b: b.created_at }); // Added log
                 return 0; // 비교 불가능한 경우 순서 유지
               }
             })
             .slice(0, 5);
           setRecentPosts(recent);
+          console.log(`[fetchPosts] Processed ${recent.length} recent posts.`); // Added log
         } catch (sortError: any) {
-          console.error('최신글 정렬 중 오류:', sortError);
+          console.error('[fetchPosts] 최신글 정렬 중 오류:', sortError); // Added log
           setRecentPosts([]);
         }
         
         try {
+          console.log("[fetchPosts] Processing popular posts..."); // Added log
           // 인기글 5개 추출
           const popular = [...allPosts]
             .sort((a, b) => ((b.viewcnt || 0) - (a.viewcnt || 0)))
             .slice(0, 5);
           setPopularPosts(popular);
+          console.log(`[fetchPosts] Processed ${popular.length} popular posts.`); // Added log
         } catch (sortError: any) {
-          console.error('인기글 정렬 중 오류:', sortError);
+          console.error('[fetchPosts] 인기글 정렬 중 오류:', sortError); // Added log
           setPopularPosts([]);
         }
       } catch (error: any) {
-        console.error('기사 데이터를 가져오는 중 오류 발생:', error);
+        console.error('[fetchPosts] Error fetching posts:', error); // Added log
         // 에러 발생 시 빈 배열로 상태 설정
         setCategoryPosts({});
         setRecentPosts([]);
         setPopularPosts([]);
+      } finally {
+        console.log("[fetchPosts] fetchPosts finished."); // Added log
       }
     };
     
+    // 기존 카테고리 게시물 가져오는 로직
+    const fetchCategoryPosts = async () => {
+      console.log("[fetchCategoryPosts] Starting fetchCategoryPosts..."); // Added log
+      const posts: Record<string, Post[]> = {};
+      let allPosts: Post[] = [];
+
+      try {
+        // 각 카테고리별 게시물 가져오기
+        console.log(`[fetchCategoryPosts] Fetching posts for ${mainCategories.length} categories...`); // Added log
+        const fetchPromises = mainCategories.map(category => {
+          console.log(`[fetchCategoryPosts] Calling Supabase for category: ${category.id || category.slug}`); // Added log
+          return supabase
+            .from("posts")
+            .select("*")
+            .eq("category", category.id)
+            .eq("is_deleted", false)
+            .order("updated_at", { ascending: false })
+            .limit(7)
+            .then(({ data, error }) => {
+              console.log(`[fetchCategoryPosts] Supabase call finished for category: ${category.id || category.slug}. Error:`, error); // Added log
+              if (error) throw error;
+              if (data) {
+                posts[category.slug] = data;
+                allPosts = [...allPosts, ...data];
+                console.log(`[fetchCategoryPosts] Fetched ${data.length} posts for category: ${category.id || category.slug}`); // Added log
+              }
+              return data;
+            });
+        });
+        
+        // 모든 프로미스가 완료될 때까지 기다림
+        console.log("[fetchCategoryPosts] Waiting for all category fetch promises..."); // Added log
+        await Promise.all(fetchPromises);
+        console.log("[fetchCategoryPosts] All category fetch promises resolved."); // Added log
+        return { posts, allPosts };
+      } catch (error) {
+        console.error("[fetchCategoryPosts] Error fetching category posts:", error); // Added log
+        // 에러가 발생해도 빈 데이터를 반환하여 UI가 렌더링되도록 함
+        return { posts: {}, allPosts: [] };
+      } finally {
+        console.log("[fetchCategoryPosts] fetchCategoryPosts finished."); // Added log
+      }
+    };
+
     const fetchData = async () => {
+      console.log("--- Starting fetchData ---"); // Added log
       setIsLoading(true);
       try {
         // 각 fetch 함수를 개별적으로 실행하고 에러 처리
+        console.log("[fetchData] Calling fetchSlides..."); // Added log
         try {
           await fetchSlides();
         } catch (slideError: any) {
-          console.error('슬라이드 로딩 중 오류:', slideError);
+          console.error('[fetchData] 슬라이드 로딩 중 오류:', slideError); // Added log
           // 에러 객체의 더 자세한 정보 로깅
-          console.error('에러 세부 정보:', {
+          console.error('[fetchData] 에러 세부 정보:', { // Added log
             message: slideError.message || 'Unknown error',
             stack: slideError.stack || 'No stack trace',
             name: slideError.name || 'Unknown error type'
@@ -155,11 +216,12 @@ export default function Home() {
           setSlides([]);
         }
         
+        console.log("[fetchData] Calling fetchPosts..."); // Added log
         try {
           await fetchPosts();
         } catch (postsError: any) {
-          console.error('게시물 로딩 중 오류:', postsError);
-          console.error('에러 세부 정보:', {
+          console.error('[fetchData] 게시물 로딩 중 오류:', postsError); // Added log
+          console.error('[fetchData] 에러 세부 정보:', { // Added log
             message: postsError.message || 'Unknown error',
             stack: postsError.stack || 'No stack trace', 
             name: postsError.name || 'Unknown error type'
@@ -167,9 +229,10 @@ export default function Home() {
         }
       } catch (error: any) {
         // 최후의 에러 처리
-        console.error('데이터 로딩 중 치명적 오류:', error);
+        console.error('[fetchData] 데이터 로딩 중 치명적 오류:', error); // Added log
       } finally {
         // 항상 로딩 상태 해제
+        console.log("--- fetchData finished. Setting isLoading to false ---"); // Added log
         setIsLoading(false);
       }
     };

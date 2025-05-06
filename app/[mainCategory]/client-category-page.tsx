@@ -60,12 +60,13 @@ export default function ClientCategoryPage({
       setLoading(true);
       console.log(`Fetching posts for category: ${category.id}`);
       
-      // 메인 카테고리 글 가져오기 (is_deleted 필터 추가)
+      // 메인 카테고리 글 가져오기 (is_deleted, is_draft 필터 추가)
       const { data: mainCategoryPosts, error: mainError } = await supabase
         .from("posts")
         .select("*")
         .eq("category", category.id)
         .eq("is_deleted", false)
+        .eq("is_draft", false)
         .order("updated_at", { ascending: false });
       
       if (mainError) {
@@ -84,6 +85,7 @@ export default function ClientCategoryPage({
             .select("*")
             .eq("subcategory", subcat.id)
             .eq("is_deleted", false)
+            .eq("is_draft", false)
             .order("updated_at", { ascending: false })
             .limit(3);
           

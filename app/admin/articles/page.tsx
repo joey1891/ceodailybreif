@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminSession } from "@/lib/admin-auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Trash, Edit, Eye, Plus, Check, X, Upload, RefreshCcw } from "lucide-react";
+import { Trash, Edit, Eye, Plus, Check, X, Upload, RefreshCcw, FileText, CheckCircle } from "lucide-react";
 import { 
   Select,
   SelectContent,
@@ -22,6 +22,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRef } from "react";
+
+// Add this constant at the top of the file
+const PAGE_SIZE = 10; // or whatever number of items you want per page
 
 // 포스트 타입 정의
 interface Post {
@@ -91,9 +94,9 @@ export default function AdminArticlesPage() {
   const [mainCategoryOpen, setMainCategoryOpen] = useState(false);
   const [subCategoryOpen, setSubCategoryOpen] = useState(false);
 
-  // 정렬 상태 추가
-  const [sortField, setSortField] = useState<string | null>('date');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  // 정렬 상태 추가 - 타입 명시
+  const [sortField, setSortField] = useState("updated_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const { adminUser } = useAdminSession();
   const { toast: useToastToast } = useToast();
@@ -332,7 +335,7 @@ export default function AdminArticlesPage() {
       .from("posts")
       .select("*", { count: "exact" })
       .eq("is_deleted", false)
-      .range(start, end);
+      .eq("is_draft", false);
 
     // 검색어 필터 추가
     if (search) {
@@ -345,6 +348,12 @@ export default function AdminArticlesPage() {
     if (selectedSubCategories.length > 0 && selectedMainCategories.length === 1) {
       query = query.in("subcategory", selectedSubCategories);
     }
+
+    // 정렬 적용 - 항상 정렬 필드와 방향 적용
+    query = query.order(sortField, { ascending: sortDirection === 'asc' });
+    
+    // 페이지네이션 적용
+    query = query.range(start, end);
 
     const { data, error, count } = await query;
 
@@ -413,6 +422,11 @@ export default function AdminArticlesPage() {
     router.push(`/admin/articles/edit/${id}`);
   };
 
+  // 임시저장 게시글 편집 함수도 동일한 경로 사용
+  const handleEditDraft = (id: string) => {
+    router.push(`/admin/articles/edit/${id}`);
+  };
+
   // 게시글 복원 함수
   const handleRestore = async (id: string) => {
     const confirmRestore = confirm("이 게시글을 복원하시겠습니까?");
@@ -431,7 +445,7 @@ export default function AdminArticlesPage() {
       } else {
         toast.success("게시글이 복원되었습니다");
         fetchDeletedPosts();
-        fetchPosts(); // 복원 후 일반 게시글 목록도 업데이트
+        fetchPosts(currentPage, searchTerm); // 현재 페이지와 검색어로 다시 조회
       }
     }
   };
@@ -503,6 +517,9 @@ export default function AdminArticlesPage() {
       setSortField(field);
       setSortDirection('asc');
     }
+    
+    // 정렬 시에도 항상 is_deleted와 is_draft 필터링 유지
+    fetchPosts(currentPage, searchTerm);
   };
 
   // 검색 핸들러
@@ -713,12 +730,175 @@ export default function AdminArticlesPage() {
     }
   };
 
+  // 임시저장 게시글 관련 상태 추가
+  const [drafts, setDrafts] = useState<Post[]>([]);
+  const [loadingDrafts, setLoadingDrafts] = useState(false);
+  const [totalDrafts, setTotalDrafts] = useState(0);
+  const [currentDraftPage, setCurrentDraftPage] = useState(1);
+  const [totalDraftPages, setTotalDraftPages] = useState(1);
+  const [draftSearchTerm, setDraftSearchTerm] = useState("");
+  const [isDraftSearching, setIsDraftSearching] = useState(false);
+  
+  // 임시저장 게시글 불러오기 함수
+  const fetchDrafts = async (page = 1, search = "") => {
+    setLoadingDrafts(true);
+    setIsDraftSearching(!!search);
+    
+    try {
+      // 카운트 쿼리
+      let countQuery = supabase
+        .from("posts")
+        .select("id", { count: "exact" })
+        .eq("is_draft", true)
+        .eq("is_deleted", false);
+        
+      if (search) {
+        countQuery = countQuery.ilike("title", `%${search}%`);
+      }
+      
+      const { count: totalCount, error: countError } = await countQuery;
+      
+      if (countError) {
+        console.error("임시저장 게시글 수 조회 실패:", countError);
+        return;
+      }
+      
+      setTotalDrafts(totalCount || 0);
+      setTotalDraftPages(Math.ceil((totalCount || 0) / PAGE_SIZE));
+      
+      // 데이터 쿼리
+      let query = supabase
+        .from("posts")
+        .select("*")
+        .eq("is_draft", true)
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false })
+        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+        
+      if (search) {
+        query = query.ilike("title", `%${search}%`);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error("임시저장 게시글 로드 실패:", error);
+        return;
+      }
+      
+      // 메인 카테고리와 서브 카테고리 표시 이름 추가
+      const draftsWithDisplay = data?.map((draft) => ({
+        ...draft,
+        displayMainCategory: getMainCategoryTitle(draft.category),
+        displaySubCategory: draft.subcategory 
+          ? getSubCategoryTitle(draft.category, draft.subcategory) 
+          : null
+      })) || [];
+      
+      setDrafts(draftsWithDisplay);
+    } catch (error) {
+      console.error("임시저장 게시글 로드 중 오류:", error);
+    } finally {
+      setLoadingDrafts(false);
+    }
+  };
+
+  // 컴포넌트 마운트 시 임시저장 게시글 로드
+  useEffect(() => {
+    fetchDrafts();
+  }, []);
+  
+  // 임시저장 페이지 변경 시 데이터 다시 로드
+  useEffect(() => {
+    fetchDrafts(currentDraftPage, draftSearchTerm);
+  }, [currentDraftPage]);
+  
+  // 임시저장 검색 핸들러
+  const handleDraftSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentDraftPage(1);
+    fetchDrafts(1, draftSearchTerm);
+  };
+  
+  // 임시저장 검색 초기화
+  const handleResetDraftSearch = () => {
+    setDraftSearchTerm("");
+    setIsDraftSearching(false);
+    setCurrentDraftPage(1);
+    fetchDrafts(1, "");
+  };
+  
+  // 임시저장 게시글 발행 함수
+  const handlePublishDraft = async (id: string) => {
+    const confirmPublish = confirm("이 임시저장 게시글을 발행하시겠습니까?");
+    if (confirmPublish) {
+      try {
+        const { error } = await supabase
+          .from("posts")
+          .update({ 
+            is_draft: false,
+            status: "published",
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", id);
+          
+        if (error) {
+          console.error("게시글 발행 중 오류:", error);
+          toast.error("게시글 발행에 실패했습니다");
+        } else {
+          toast.success("게시글이 성공적으로 발행되었습니다");
+          fetchDrafts(currentDraftPage, draftSearchTerm);
+          fetchPosts(currentPage, searchTerm); // 현재 페이지와 검색어로 다시 조회
+        }
+      } catch (error) {
+        console.error("게시글 발행 중 오류:", error);
+        toast.error("게시글 발행에 실패했습니다");
+      }
+    }
+  };
+  
+  // 임시저장 게시글 삭제 함수
+  const handleDeleteDraft = async (id: string) => {
+    const confirmDelete = confirm("이 임시저장 게시글을 삭제하시겠습니까?");
+    if (confirmDelete) {
+      try {
+        const { error } = await supabase
+          .from("posts")
+          .update({ 
+            is_deleted: true,
+            deleted_at: new Date().toISOString()
+          })
+          .eq("id", id);
+          
+        if (error) {
+          console.error("임시저장 게시글 삭제 중 오류:", error);
+          toast.error("임시저장 게시글 삭제에 실패했습니다");
+        } else {
+          toast.success("임시저장 게시글이 삭제되었습니다");
+          fetchDrafts(currentDraftPage, draftSearchTerm);
+        }
+      } catch (error) {
+        console.error("임시저장 게시글 삭제 중 오류:", error);
+        toast.error("임시저장 게시글 삭제에 실패했습니다");
+      }
+    }
+  };
+
+  // 1. 페이지 로드 시 실행되는 초기 게시글 로드 함수 수정
+  useEffect(() => {
+    if (adminUser) {
+      fetchPosts(1, ""); // 페이지 첫 로드 시 게시글 가져오기
+      fetchDeletedPosts(); // 삭제된 게시글도 가져오기
+      fetchDrafts(); // 임시저장 게시글 가져오기
+    }
+  }, [adminUser]);
+
   if (loading) {
     return <div className="container mx-auto px-4 py-8">로딩 중...</div>;
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">게시글</h1>
         <div className="flex gap-2">
@@ -908,110 +1088,112 @@ export default function AdminArticlesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              posts.map((post) => (
-                <TableRow key={post.id}>
-                  <TableCell className="font-medium flex items-center">
-                    {post.is_deleted && <Trash size={14} className="mr-2 text-red-500" />} {/* 휴지통 아이콘 조건부 추가 */}
-                    {post.title}
-                  </TableCell>
-                  <TableCell>{getMainCategoryTitle(post.category)}</TableCell>
-                  <TableCell>
-                    {post.subcategory ? getSubCategoryTitle(post.category, post.subcategory) : "-"}
-                  </TableCell>
-                  <TableCell>{formatDate(post.date)}</TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center items-center">
-                      <Checkbox 
-                        checked={post.is_slide}
-                        onCheckedChange={() => toggleSlideStatus(post.id, post.is_slide)}
-                        className={post.is_slide ? "data-[state=checked]:bg-blue-500" : ""}
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center items-center">
-                      {updating === post.id ? (
-                        <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          {post.image_url && (
-                            <div className="w-10 h-10 overflow-hidden rounded">
-                              <img 
-                                src={post.image_url} 
-                                alt="이미지" 
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
-                          {post.video_thumbnail_url && !post.image_url && (
-                            <div className="w-10 h-10 overflow-hidden rounded relative">
-                              <img 
-                                src={post.video_thumbnail_url} 
-                                alt="비디오 썸네일" 
-                                className="w-full h-full object-cover"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-6 h-6">
-                                  <path d="M8 5v14l11-7z" />
-                                </svg>
+              posts
+                .filter(post => !post.is_deleted && !post.is_draft)
+                .map((post) => (
+                  <TableRow key={post.id}>
+                    <TableCell className="font-medium flex items-center">
+                      {post.is_deleted && <Trash size={14} className="mr-2 text-red-500" />} {/* 휴지통 아이콘 조건부 추가 */}
+                      {post.title}
+                    </TableCell>
+                    <TableCell>{getMainCategoryTitle(post.category)}</TableCell>
+                    <TableCell>
+                      {post.subcategory ? getSubCategoryTitle(post.category, post.subcategory) : "-"}
+                    </TableCell>
+                    <TableCell>{formatDate(post.date)}</TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center items-center">
+                        <Checkbox 
+                          checked={post.is_slide}
+                          onCheckedChange={() => toggleSlideStatus(post.id, post.is_slide)}
+                          className={post.is_slide ? "data-[state=checked]:bg-blue-500" : ""}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center items-center">
+                        {updating === post.id ? (
+                          <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            {post.image_url && (
+                              <div className="w-10 h-10 overflow-hidden rounded">
+                                <img 
+                                  src={post.image_url} 
+                                  alt="이미지" 
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
-                            </div>
-                          )}
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleImageUpload(post.id)}
-                            className="flex items-center gap-1"
-                          >
-                            <Upload size={14} />
-                            <span>업로드</span>
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center items-center">
-                      {updating === post.id ? (
-                        <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
-                      ) : (
-                          <Select
-                            disabled={!post.is_slide}
-                            value={post.slide_order?.toString() || ""}
-                            onValueChange={(value) => updateSlideOrder(post.id, parseInt(value))}
-                          >
-                            <SelectTrigger className="w-16">
-                              <SelectValue placeholder="순서" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">1</SelectItem>
-                              <SelectItem value="2">2</SelectItem>
-                              <SelectItem value="3">3</SelectItem>
-                              <SelectItem value="4">4</SelectItem>
-                              <SelectItem value="5">5</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            )}
+                            {post.video_thumbnail_url && !post.image_url && (
+                              <div className="w-10 h-10 overflow-hidden rounded relative">
+                                <img 
+                                  src={post.video_thumbnail_url} 
+                                  alt="비디오 썸네일" 
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-6 h-6">
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleImageUpload(post.id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Upload size={14} />
+                              <span>업로드</span>
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(post.id)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          수정
-                        </button>
-                        <button
-                          onClick={() => handleDelete(post.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex justify-center items-center">
+                        {updating === post.id ? (
+                          <div className="animate-spin h-5 w-5 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+                        ) : (
+                            <Select
+                              disabled={!post.is_slide}
+                              value={post.slide_order?.toString() || ""}
+                              onValueChange={(value) => updateSlideOrder(post.id, parseInt(value))}
+                            >
+                              <SelectTrigger className="w-16">
+                                <SelectValue placeholder="순서" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1</SelectItem>
+                                <SelectItem value="2">2</SelectItem>
+                                <SelectItem value="3">3</SelectItem>
+                                <SelectItem value="4">4</SelectItem>
+                                <SelectItem value="5">5</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEdit(post.id)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={() => handleDelete(post.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </TableCell>
                   </TableRow>
-              ))
+                ))
             )}
           </TableBody>
         </Table>
@@ -1055,6 +1237,143 @@ export default function AdminArticlesPage() {
         </button>
       </div>
 
+      {/* 임시저장 섹션 - 게시글과 휴지통 사이에 추가 */}
+      <div className="mt-12">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">임시저장 게시글</h2>
+          <div className="flex items-center space-x-4">
+            <div className="text-sm text-gray-500">
+              임시저장 게시글: {totalDrafts}개
+            </div>
+            <Link 
+              href="/article/new" 
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+            >
+              새 게시글 작성
+            </Link>
+          </div>
+        </div>
+        
+        {/* 임시저장 검색 */}
+        <div className="mb-6">
+          <form onSubmit={handleDraftSearch} className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="임시저장 게시글 검색..."
+              value={draftSearchTerm}
+              onChange={(e) => setDraftSearchTerm(e.target.value)}
+              className="w-full"
+            />
+            <Button type="submit" variant="outline" size="sm">
+              검색
+            </Button>
+            {isDraftSearching && (
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm"
+                onClick={handleResetDraftSearch}
+              >
+                초기화
+              </Button>
+            )}
+          </form>
+        </div>
+        
+        {/* 임시저장 테이블 */}
+        <div className="bg-white rounded-lg shadow">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>제목</TableHead>
+                <TableHead>카테고리</TableHead>
+                <TableHead>서브 카테고리</TableHead>
+                <TableHead>작성일</TableHead>
+                <TableHead>작업</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loadingDrafts ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">
+                    로딩 중...
+                  </TableCell>
+                </TableRow>
+              ) : drafts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">
+                    {isDraftSearching ? "검색 결과가 없습니다." : "임시저장된 게시글이 없습니다."}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                drafts.map((draft) => (
+                  <TableRow key={draft.id}>
+                    <TableCell className="font-medium flex items-center">
+                      <FileText size={14} className="mr-2 text-gray-500" /> {/* 문서 아이콘 추가 */}
+                      {draft.title || "(제목 없음)"}
+                    </TableCell>
+                    <TableCell>{draft.displayMainCategory || "-"}</TableCell>
+                    <TableCell>
+                      {draft.displaySubCategory || "-"}
+                    </TableCell>
+                    <TableCell>{formatDate(draft.created_at)}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleEditDraft(draft.id)}
+                          className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                          title="수정"
+                        >
+                          <Edit size={14} />
+                          수정
+                        </button>
+                        <button
+                          onClick={() => handlePublishDraft(draft.id)}
+                          className="text-green-600 hover:text-green-800 flex items-center gap-1"
+                          title="발행"
+                        >
+                          <CheckCircle size={14} />
+                          발행
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDraft(draft.id)}
+                          className="text-red-600 hover:text-red-800 flex items-center gap-1"
+                          title="삭제"
+                        >
+                          <Trash size={14} />
+                          삭제
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        {/* 임시저장 페이지네이션 */}
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={() => setCurrentDraftPage(p => Math.max(p - 1, 1))}
+            disabled={currentDraftPage === 1}
+            className="px-3 py-1 border rounded mr-2 disabled:opacity-50"
+          >
+            이전
+          </button>
+          <span className="px-3 py-1">
+            {currentDraftPage} / {totalDraftPages || 1} 페이지
+          </span>
+          <button
+            onClick={() => setCurrentDraftPage(p => Math.min(p + 1, totalDraftPages))}
+            disabled={currentDraftPage >= totalDraftPages}
+            className="px-3 py-1 border rounded ml-2 disabled:opacity-50"
+          >
+            다음
+          </button>
+        </div>
+      </div>
+      
       {/* 휴지통 섹션 - 조건부 렌더링 제거 */}
       <div className="mt-12">
         <div className="flex justify-between items-center mb-6">

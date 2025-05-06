@@ -68,12 +68,13 @@ export default function CategoryPage({
       setLoading(true);
       console.log(`Fetching posts for category: ${category.id}`);
       
-      // 메인 카테고리 글 가져오기 (is_deleted 필터 추가)
+      // 메인 카테고리 글 가져오기 (is_deleted, is_draft 필터 추가)
       const { data: mainCategoryPosts, error: mainError } = await supabase
         .from("posts")
         .select("*")
         .eq("category", category.id)
         .eq("is_deleted", false)
+        .eq("is_draft", false)
         .order("updated_at", { ascending: false });
       
       if (mainError) {
@@ -86,7 +87,7 @@ export default function CategoryPage({
       // 하위 카테고리 ID 목록
       const subcategories = category.subcategories || [];
       
-      // 각 하위 카테고리별 글 가져오기 (is_deleted 필터 추가)
+      // 각 하위 카테고리별 글 가져오기 (is_deleted, is_draft 필터 추가)
       const subcatPostsObj: Record<string, Post[]> = {};
       
       for (const subcategory of subcategories) {
@@ -95,6 +96,7 @@ export default function CategoryPage({
           .select("*")
           .eq("subcategory", subcategory.id)
           .eq("is_deleted", false)
+          .eq("is_draft", false)
           .order("updated_at", { ascending: false });
           
         if (subError) {

@@ -17,6 +17,7 @@ export type Post = {
   slide_order?: number | null;
   description?: string | null;
   has_links?: boolean;
+  is_draft?: boolean;
 };
 
 export type Profile = {

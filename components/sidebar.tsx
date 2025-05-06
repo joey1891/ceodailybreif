@@ -73,21 +73,22 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 사이드바 설정 가져오기
-        const { data: settingsData, error: settingsError } = await supabase
-          .from("sidebar_settings")
-          .select("*")
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .single();
+        // 사이드바 설정 가져오기 (sidebar_settings 테이블이 필요하지 않다면 이 부분을 주석 처리하거나 제거합니다)
+        // const { data: settingsData, error: settingsError } = await supabase
+        //   .from("sidebar_settings")
+        //   .select("*")
+        //   .order("updated_at", { ascending: false })
+        //   .limit(1)
+        //   .single();
           
-        if (!settingsError && settingsData) {
-          setSidebarSettings({
-            profile_description: settingsData.profile_description,
-            youtube_link: settingsData.youtube_link,
-            youtube_thumbnail_url: settingsData.youtube_thumbnail_url
-          });
-        }
+        // if (!settingsError && settingsData) {
+        //   setSidebarSettings({
+        //     profile_description: settingsData.profile_description,
+        //     youtube_link: settingsData.youtube_link,
+        //     youtube_thumbnail_url: settingsData.youtube_thumbnail_url
+        //   });
+        // }
+        console.log("Sidebar settings fetch code commented out."); // Added log
 
         // 피처드(조회수 순위) 게시물 가져오기
         const { data: featuredData, error: featuredError } = await supabase

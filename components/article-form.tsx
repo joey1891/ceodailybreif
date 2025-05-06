@@ -370,232 +370,317 @@ export default function ArticleForm({
     toast.success("썸네일 이미지가 선택되었습니다");
   };
 
-const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  console.log("--- Entering handleSubmit ---"); // Add this log
-  e.preventDefault();
-  console.log("handleSubmit 시작"); // Added log
-  setIsSubmitting(true);
-  try {
-    console.log("Checking admin user..."); // Add log
-    if (!adminUser) {
-      console.log("Validation failed: adminUser not found."); // Add log
-      useToastToast({
-        title: "Error",
-        description:
-          "You must be logged in as admin to save articles.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-    console.log("Validation passed: adminUser found."); // Add log
+  // 임시 저장 상태 추가
+  const [isDraft, setIsDraft] = useState(post?.is_draft || false);
 
-    // 유효성 검사 추가
-    console.log("Checking title..."); // Add log
-    if (!title) {
-      console.log("Validation failed: title is empty."); // Add log
-      useToastToast({
-        title: "Error",
-        description: "Title is required.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-    console.log("Validation passed: title is not empty."); // Add log
-
-    console.log("Checking main category..."); // Add log
-    if (!mainCategory) {
-      console.log("Validation failed: mainCategory is empty."); // Add log
-      useToastToast({
-        title: "Error",
-        description: "Main Category is required.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-    console.log("Validation passed: mainCategory is not empty."); // Add log
-
-    console.log("Checking content..."); // Add log
-    if (!content) {
-      console.log("Validation failed: content is empty."); // Add log
-      useToastToast({
-        title: "Error",
-        description: "Content is required.",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);
-      return;
-    }
-    console.log("Validation passed: content is not empty."); // Add log
-
-
-    // 콘텐츠 sanitize 처리
-    const sanitizedContent = sanitizeContent(content);
-    console.log("Content sanitized."); // Add log
-
-    // 유튜브 링크 감지 및 처리
-    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const youtubeMatch = sanitizedContent.match(youtubeRegex);
-    console.log("YouTube link detection result:", youtubeMatch); // Add log
-
-    // 썸네일 URL이 없는 경우 컨텐츠에서 자동으로 추출
-    let finalThumbnailUrl = thumbnailUrl;
-    if (!finalThumbnailUrl || finalThumbnailUrl.trim() === "") {
-      const extractedImage = extractFirstImage(content);
-      if (extractedImage) {
-        finalThumbnailUrl = extractedImage;
-        console.log("컨텐츠에서 추출한 썸네일:", finalThumbnailUrl);
-      }
-    }
-
-    // 데이터베이스에 저장할 데이터
-    const finalData = {
-      title,
-      content: sanitizedContent,
-      category: mainCategory,
-      subcategory: subCategory || "",
-      subsubcategory: subSubCategory || "",
-      description: description || "",
-      image_url: finalThumbnailUrl && finalThumbnailUrl.trim() !== "" ? finalThumbnailUrl.trim() : null,
-      is_slide: isSlide,
-      ...(isSlide && slideOrder !== null ? { slide_order: slideOrder } : {}),
-      // 추가된 필드들
-      video_url: youtubeMatch ? `https://www.youtube.com/watch?v=${youtubeMatch[1]}` : null,
-      video_thumbnail_url: youtubeMatch ? `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg` : null,
-      has_links: sanitizedContent.includes('http') || sanitizedContent.includes('www.'),
-    };
-
-    let error = null; // Initialize error to null
-    let articleId = id;
-
-    // slide_order를 finalData에 조건부로 추가
-    const dataToSave = {
-      title,
-      content: sanitizedContent,
-      category: mainCategory,
-      subcategory: subCategory || "",
-      subsubcategory: subSubCategory || "",
-      description: description || "",
-      image_url: finalThumbnailUrl && finalThumbnailUrl.trim() !== "" ? finalThumbnailUrl.trim() : null,
-      is_slide: isSlide,
-      video_url: youtubeMatch ? `https://www.youtube.com/watch?v=${youtubeMatch[1]}` : null,
-      video_thumbnail_url: youtubeMatch ? `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg` : null,
-      has_links: sanitizedContent.includes('http') || sanitizedContent.includes('www.'),
-      date: formData.date, // Include the date from formData
-    };
-
-    if (isSlide && slideOrder !== null) {
-      (dataToSave as any).slide_order = slideOrder;
-    } else {
-       // is_slide가 false이거나 slideOrder가 null이면 slide_order를 명시적으로 null로 설정
-       (dataToSave as any).slide_order = null;
-    }
-
-
-    console.log("Attempting to save article data:", dataToSave); // Log data before saving
-
-    // Supabase 호출 전 로그
-    console.log("Calling Supabase to save article...");
-
-    let supabaseResponse;
-    if (id) {
-      console.log("Updating existing article with ID:", id); // Log update attempt
-      supabaseResponse = await supabase
-        .from("posts")
-        .update(dataToSave)
-        .eq("id", id)
-        //.eq("user_id", adminUser.id); // Consider if user_id check is needed here
-
-      // Supabase 업데이트 호출 후 로그
-      console.log("Supabase update call finished. Response:", supabaseResponse);
-
-      if (supabaseResponse.error) {
-        error = supabaseResponse.error;
-        console.error("Supabase update error:", error); // Log update error (corrected variable name)
-      } else if (supabaseResponse.count === 0) {
-        // This case might indicate the article wasn't found or user_id didn't match if uncommented
-        console.warn("Supabase update affected 0 rows. Article ID:", id);
-        alert("You are not the author of this article or article not found.");
+  // 임시 저장 함수 추가
+  const handleSaveDraft = async () => {
+    setIsSubmitting(true);
+    try {
+      if (!adminUser) {
         useToastToast({
-          title: "Warning",
-          description: "You are not the logged in user or article not found.",
+          title: "Error",
+          description: "You must be logged in as admin to save drafts.",
           variant: "destructive",
         });
-        // Instead of returning, throw an error to be caught by the catch block
-        throw new Error("You are not the logged in user or article not found.");
-      } else {
-        console.log("Supabase update successful. Count:", supabaseResponse.count); // Log update success
+        return;
       }
-    } else {
-      console.log("Inserting new article."); // Log insert attempt
-     supabaseResponse = await supabase
-        .from("posts")
-        .insert([{ ...dataToSave, user_id: adminUser.id }])
-        .select();
 
-      // Supabase 삽입 호출 후 로그
-      console.log("Supabase insert call finished. Response:", supabaseResponse);
-
-      if (supabaseResponse.error) {
-        error = supabaseResponse.error;
-        console.error("Supabase insert error:", supabaseResponse.error); // Log insert error
-      } else if (supabaseResponse.data && Array.isArray(supabaseResponse.data) && supabaseResponse.data.length > 0) {
-        articleId = (supabaseResponse.data as Post[])[0].id;
-        console.log("Supabase insert successful. New article ID:", articleId); // Log insert success
-      } else {
-         console.warn("Supabase insert returned no data."); // Log if insert returns no data
-         // Depending on Supabase version/config, this might be an error
-         error = new Error("Supabase insert returned no data.");
-      }
-    }
-
-    if (error) {
-      console.error("Article save failed:", error); // Log overall failure
-      useToastToast({
-        title: "Error",
-        description: `Failed to ${id ? "update" : "create"} article: ${error.message || error.toString()}`, // Include error message
-        variant: "destructive",
-      });
-    } else {
-      console.log("Article saved successfully. Redirecting..."); // Log overall success
-      useToastToast({
-        title: "Success",
-        description: `Article ${id ? "updated" : "created"} successfully`,
-      });
-
-      // Generate category URL and redirect
-      let categoryUrl = '/';
-
-      if (mainCategory) {
-        // 1. 메인 카테고리만 있는 경우
-        categoryUrl = `/${mainCategory}`;
-
-        // 2. 하위 카테고리까지 있는 경우
-        if (subCategory) {
-          categoryUrl = `/${mainCategory}/${subCategory}`;
+      // 현재 컨텐츠에서 첫 번째 이미지 추출
+      let finalThumbnailUrl = thumbnailUrl;
+      if (!finalThumbnailUrl || finalThumbnailUrl.trim() === "") {
+        const extractedImage = extractFirstImage(content);
+        if (extractedImage) {
+          finalThumbnailUrl = extractedImage;
         }
       }
-      console.log("Redirecting to:", categoryUrl); // Add log
-      router.push(categoryUrl);
+
+      let draftData: any = {
+        title: title || "제목 없음 (임시)",
+        category: mainCategory || "draft",
+        subcategory: subCategory || "",
+        subsubcategory: subSubCategory,
+        content: content || "",
+        date: new Date().toISOString().split("T")[0],
+        is_slide: false, // 임시저장은 슬라이드에 표시하지 않음
+        description: description,
+        image_url: finalThumbnailUrl && finalThumbnailUrl.trim() !== "" ? finalThumbnailUrl.trim() : null,
+        is_draft: true, // 임시저장 표시
+        status: "draft" // status 필드도 draft로 설정
+      };
+      
+      let error;
+      let draftId = id;
+      
+      if (id) {
+        const { error: updateError, count } = await supabase
+          .from("posts")
+          .update(draftData)
+          .eq("id", id);
+        if (updateError) error = updateError;
+      } else {
+        const { error: insertError, data: newDraft } = await supabase
+          .from("posts")
+          .insert([{ ...draftData, user_id: adminUser.id }])
+          .select();
+        if (insertError) error = insertError;
+        if (newDraft && Array.isArray(newDraft) && newDraft.length > 0) {
+          draftId = (newDraft as Post[])[0].id;
+        }
+      }
+      
+      if (error) {
+        useToastToast({
+          title: "Error",
+          description: `Failed to save draft`,
+          variant: "destructive",
+        });
+      } else {
+        useToastToast({
+          title: "Success",
+          description: `Draft saved successfully`,
+        });
+        
+        // 임시저장 목록으로 리다이렉트
+        router.push("/admin/articles");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      useToastToast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (err: any) { // Catch any type of error
-    console.error("Unexpected error during article save:", err); // Log unexpected error
-    // catch 블록 내부 로그
-    console.log("Caught an error in handleSubmit:", err);
-    useToastToast({
-      title: "Error",
-      description: `An unexpected error occurred: ${err.message || err.toString()}`, // Include error message
-      variant: "destructive",
-    });
-  } finally {
-    // Ensure isSubmitting is always set to false here
-    // finally 블록 내부 로그
-    console.log("Finally block reached. Setting isSubmitting to false.");
-    setIsSubmitting(false);
-  }
-};
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    console.log("--- Entering handleSubmit ---"); // Add this log
+    e.preventDefault();
+    console.log("handleSubmit 시작"); // Added log
+    setIsSubmitting(true);
+    try {
+      console.log("Checking admin user..."); // Add log
+      if (!adminUser) {
+        console.log("Validation failed: adminUser not found."); // Add log
+        useToastToast({
+          title: "Error",
+          description:
+            "You must be logged in as admin to save articles.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      console.log("Validation passed: adminUser found."); // Add log
+
+      // 유효성 검사 추가
+      console.log("Checking title..."); // Add log
+      if (!title) {
+        console.log("Validation failed: title is empty."); // Add log
+        useToastToast({
+          title: "Error",
+          description: "Title is required.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      console.log("Validation passed: title is not empty."); // Add log
+
+      console.log("Checking main category..."); // Add log
+      if (!mainCategory) {
+        console.log("Validation failed: mainCategory is empty."); // Add log
+        useToastToast({
+          title: "Error",
+          description: "Main Category is required.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      console.log("Validation passed: mainCategory is not empty."); // Add log
+
+      console.log("Checking content..."); // Add log
+      if (!content) {
+        console.log("Validation failed: content is empty."); // Add log
+        useToastToast({
+          title: "Error",
+          description: "Content is required.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      console.log("Validation passed: content is not empty."); // Add log
+
+
+      // 콘텐츠 sanitize 처리
+      const sanitizedContent = sanitizeContent(content);
+      console.log("Content sanitized."); // Add log
+
+      // 유튜브 링크 감지 및 처리
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const youtubeMatch = sanitizedContent.match(youtubeRegex);
+      console.log("YouTube link detection result:", youtubeMatch); // Add log
+
+      // 썸네일 URL이 없는 경우 컨텐츠에서 자동으로 추출
+      let finalThumbnailUrl = thumbnailUrl;
+      if (!finalThumbnailUrl || finalThumbnailUrl.trim() === "") {
+        const extractedImage = extractFirstImage(content);
+        if (extractedImage) {
+          finalThumbnailUrl = extractedImage;
+          console.log("컨텐츠에서 추출한 썸네일:", finalThumbnailUrl);
+        }
+      }
+
+      // 데이터베이스에 저장할 데이터
+      let articleData: any = {
+        title,
+        category: mainCategory,
+        subcategory: subCategory || "",
+        subsubcategory: subSubCategory,
+        content: sanitizedContent,
+        date: new Date().toISOString().split("T")[0],
+        is_slide: isSlide,
+        ...(isSlide && slideOrder !== null ? { slide_order: slideOrder } : {}),
+        description: description,
+        image_url: finalThumbnailUrl && finalThumbnailUrl.trim() !== "" ? finalThumbnailUrl.trim() : null,
+        is_draft: false, // 게시 시 임시저장 상태 해제
+        status: "published" // status 필드도 published로 설정
+      };
+
+      let error = null; // Initialize error to null
+      let articleId = id;
+
+      // slide_order를 finalData에 조건부로 추가
+      const dataToSave = {
+        title,
+        content: sanitizedContent,
+        category: mainCategory,
+        subcategory: subCategory || "",
+        subsubcategory: subSubCategory || "",
+        description: description || "",
+        image_url: finalThumbnailUrl && finalThumbnailUrl.trim() !== "" ? finalThumbnailUrl.trim() : null,
+        is_slide: isSlide,
+        video_url: youtubeMatch ? `https://www.youtube.com/watch?v=${youtubeMatch[1]}` : null,
+        video_thumbnail_url: youtubeMatch ? `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg` : null,
+        has_links: sanitizedContent.includes('http') || sanitizedContent.includes('www.'),
+        date: formData.date, // Include the date from formData
+      };
+
+      if (isSlide && slideOrder !== null) {
+        (dataToSave as any).slide_order = slideOrder;
+      } else {
+         // is_slide가 false이거나 slideOrder가 null이면 slide_order를 명시적으로 null로 설정
+         (dataToSave as any).slide_order = null;
+      }
+
+
+      console.log("Attempting to save article data:", dataToSave); // Log data before saving
+
+      // Supabase 호출 전 로그
+      console.log("Calling Supabase to save article...");
+
+      let supabaseResponse;
+      if (id) {
+        console.log(`[Supabase Update] Starting update for ID: ${id}`); // Added detailed log
+        supabaseResponse = await supabase
+          .from("posts")
+          .update(dataToSave)
+          .eq("id", id)
+          //.eq("user_id", adminUser.id); // Consider if user_id check is needed here
+
+        // Supabase 업데이트 호출 후 로그
+        console.log(`[Supabase Update] Update call finished. Response:`, supabaseResponse); // Added detailed log
+
+        if (supabaseResponse.error) {
+          error = supabaseResponse.error;
+          console.error(`[Supabase Update] Error during update:`, error); // Added detailed log
+        } else if (supabaseResponse.count === 0) {
+          // This case might indicate the article wasn't found or user_id didn't match if uncommented
+          console.warn(`[Supabase Update] Update affected 0 rows. Article ID: ${id}`); // Added detailed log
+          alert("You are not the author of this article or article not found.");
+          useToastToast({
+            title: "Warning",
+            description: "You are not the logged in user or article not found.",
+            variant: "destructive",
+          });
+          // Instead of returning, throw an error to be caught by the catch block
+          throw new Error("You are not the logged in user or article not found.");
+        } else {
+          console.log(`[Supabase Update] Update successful. Count: ${supabaseResponse.count}`); // Added detailed log
+        }
+      } else {
+        console.log("[Supabase Insert] Starting insert for new article."); // Added detailed log
+       supabaseResponse = await supabase
+          .from("posts")
+          .insert([{ ...dataToSave, user_id: adminUser.id }])
+          .select();
+
+        // Supabase 삽입 호출 후 로그
+        console.log("[Supabase Insert] Insert call finished. Response:", supabaseResponse); // Added detailed log
+
+        if (supabaseResponse.error) {
+          error = supabaseResponse.error;
+          console.error("[Supabase Insert] Error during insert:", supabaseResponse.error); // Added detailed log
+        } else if (supabaseResponse.data && Array.isArray(supabaseResponse.data) && supabaseResponse.data.length > 0) {
+          articleId = (supabaseResponse.data as Post[])[0].id;
+          console.log(`[Supabase Insert] Insert successful. New article ID: ${articleId}`); // Added detailed log
+        } else {
+           console.warn("[Supabase Insert] Insert returned no data."); // Added detailed log
+           // Depending on Supabase version/config, this might be an error
+           error = new Error("Supabase insert returned no data.");
+        }
+      }
+
+      if (error) {
+        console.error("Article save failed:", error); // Log overall failure
+        useToastToast({
+          title: "Error",
+          description: `Failed to ${id ? "update" : "create"} article: ${error.message || error.toString()}`, // Include error message
+          variant: "destructive",
+        });
+      } else {
+        console.log("Article saved successfully. Redirecting..."); // Log overall success
+        useToastToast({
+          title: "Success",
+          description: `Article ${id ? "updated" : "created"} successfully`,
+        });
+
+        // Generate category URL and redirect
+        let categoryUrl = '/';
+
+        if (mainCategory) {
+          // 1. 메인 카테고리만 있는 경우
+          categoryUrl = `/${mainCategory}`;
+
+          // 2. 하위 카테고리까지 있는 경우
+          if (subCategory) {
+            categoryUrl = `/${mainCategory}/${subCategory}`;
+          }
+        }
+        console.log("Redirecting to:", categoryUrl); // Add log
+        router.push(categoryUrl);
+      }
+    } catch (err: any) { // Catch any type of error
+      console.error("Unexpected error during article save:", err); // Log unexpected error
+      // catch 블록 내부 로그
+      console.log("Caught an error in handleSubmit:", err);
+      useToastToast({
+        title: "Error",
+        description: `An unexpected error occurred: ${err.message || err.toString()}`, // Include error message
+        variant: "destructive",
+      });
+    } finally {
+      // Ensure isSubmitting is always set to false here
+      // finally 블록 내부 로그
+      console.log("Finally block reached. Setting isSubmitting to false.");
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="w-full min-h-screen flex flex-col items-center justify-start bg-white px-4 py-4">
@@ -809,11 +894,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
             </div>
           </div>
         )}
-        <div>
+        <div className="flex space-x-4 mt-6">
           <button
-            type="submit"
+            type="button"
+            onClick={handleSaveDraft}
             disabled={isSubmitting}
-            className="bg-blue-500 text-white p-2 rounded w-full"
+            className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded flex-1"
           >
             {isSubmitting ? (
               <>
@@ -821,9 +907,22 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 처리 중...
               </>
             ) : (
-              id
-                ? "Update Article"
-                : "Create Article"
+              "임시 저장"
+            )}
+          </button>
+          
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded flex-1"
+          >
+            {isSubmitting ? (
+              <>
+                <span className="inline-block animate-spin mr-2">⟳</span>
+                처리 중...
+              </>
+            ) : (
+              id ? "게시글 업데이트" : "게시글 발행"
             )}
           </button>
         </div>

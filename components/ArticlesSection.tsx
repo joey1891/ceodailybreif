@@ -47,7 +47,10 @@ export function ArticlesSection({
             ? mainCat.title.toLowerCase().replace(/\s+/g, "-")
             : mainCat.title.ko.toLowerCase().replace(/\s+/g, "-");
 
-        const posts = categoryPosts[mainPath] || [];
+        // 임시저장 게시글 필터링 추가
+        const allPosts = categoryPosts[mainPath] || [];
+        const posts = allPosts.filter(post => !post.is_draft);
+        
         const latestPost = posts.length > 0 ? posts[0] : null;
         const remainingPosts = posts.slice(1, 5);
 
