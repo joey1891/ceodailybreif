@@ -109,6 +109,7 @@ export default function ArticleForm({
     image_url: post?.image_url || "",
     is_slide: post?.is_slide || false,
     slide_order: post?.slide_order || null,
+    date: post?.date || new Date().toISOString().split('T')[0], // Add date with default to today
   });
 
   const [title, setTitle] = useState(formData.title);
@@ -251,7 +252,7 @@ export default function ArticleForm({
     async function fetchArticle() {
       const { data, error } = await supabase
         .from("posts")
-        .select("*")
+        .select("*") // Select all columns including date
         .eq("id", id)
         .single();
       if (error) {
@@ -273,6 +274,7 @@ export default function ArticleForm({
         image_url: data.image_url || "",
         is_slide: data.is_slide || false,
         slide_order: data.slide_order || null,
+        date: data.date || new Date().toISOString().split('T')[0], // Include date here
       });
     }
     fetchArticle();
@@ -441,6 +443,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       video_url: youtubeMatch ? `https://www.youtube.com/watch?v=${youtubeMatch[1]}` : null,
       video_thumbnail_url: youtubeMatch ? `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg` : null,
       has_links: sanitizedContent.includes('http') || sanitizedContent.includes('www.'),
+      date: formData.date, // Include the date from formData
     };
 
     if (isSlide && slideOrder !== null) {
@@ -652,6 +655,23 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               </select>
             </div>
           ) */}
+        </div>
+        {/* Date */}
+        <div>
+          <label
+            htmlFor="date"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Date
+          </label>
+          <input
+            type="date"
+            id="date"
+            value={formData.date ? formData.date.split('T')[0] : ""} // Format date for input type="date"
+            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+            required
+            className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+          />
         </div>
         {/* Content */}
         <div>

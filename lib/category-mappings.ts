@@ -7,7 +7,7 @@ export const categoryMappings: Record<string, string> = {
   "산업 동향": "industry",
   "기업 동향": "company",
   "정책 동향": "policy",
-  "언론 동향": "media",
+  // "언론 동향": "media",
   "마케팅 동향": "marketing",
   "인사 동향": "people",
   "미디어 리뷰": "media-review",
@@ -92,6 +92,7 @@ export const categoryMappings: Record<string, string> = {
   "정책_디지털헬스케어": "policy-digital-healthcare",
   
   // 언론 동향의 서브카테고리
+  /*
   "언론_필러": "media-filler",
   "언론_스킨부스터": "media-skin-booster",
   "언론_비만치료제": "media-obesity-treatment",
@@ -101,6 +102,7 @@ export const categoryMappings: Record<string, string> = {
   "언론_의료기기": "media-medical-devices",
   "언론_화장품": "media-cosmetics",
   "언론_건강기능식품": "media-health-supplements",
+  */
 };
 
 // 컨텍스트별 서브카테고리 표시 이름과 매핑
@@ -141,6 +143,7 @@ export const contextualCategoryDisplay: Record<string, Record<string, string>> =
     "건강기능식품": "industry-health-supplements",
     "디지털헬스케어": "industry-digital-healthcare",
   },
+  /*
   "media": {
     "필러": "media-filler",
     "스킨부스터": "media-skin-booster",
@@ -153,6 +156,7 @@ export const contextualCategoryDisplay: Record<string, Record<string, string>> =
     "건강기능식품": "industry-health-supplements",
     "디지털헬스케어": "industry-digital-healthcare",
   }
+  */
 };
 
 // 부모 카테고리별 동일한 이름의 서브카테고리를 처리하기 위한 매핑
@@ -193,6 +197,7 @@ export const contextualCategoryMappings: Record<string, Record<string, string>> 
     "건강기능식품": "industry-health-supplements",
     "디지털헬스케어": "industry-digital-healthcare",
   },
+  /*
   "media": {
     "필러": "media-filler",
     "스킨부스터": "media-skin-booster",
@@ -205,6 +210,7 @@ export const contextualCategoryMappings: Record<string, Record<string, string>> 
     "건강기능식품": "industry-health-supplements",
     "디지털헬스케어": "industry-digital-healthcare",
   }
+  */
 };
 
 // 컨텍스트가 있을 때 올바른 카테고리 매핑 가져오기

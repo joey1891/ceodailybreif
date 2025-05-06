@@ -49,7 +49,7 @@ export function ArticlesSection({
 
         const posts = categoryPosts[mainPath] || [];
         const latestPost = posts.length > 0 ? posts[0] : null;
-        const remainingPosts = posts.slice(1, 7);
+        const remainingPosts = posts.slice(1, 5);
 
         return (
           <div key={typeof mainCat.title === 'string' ? mainCat.title : mainCat.slug || mainCat.title.ko} className="mb-12 max-w-full overflow-x-hidden">

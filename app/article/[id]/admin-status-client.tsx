@@ -20,10 +20,10 @@ export default function AdminStatusClient({ serverAdminStatus }: { serverAdminSt
 
   return (
     <>
-      <div className="text-xs text-gray-500 mb-2">
+      {/* <div className="text-xs text-gray-500 mb-2">
         Admin status: {isAdmin ? 'Yes' : 'No'} 
         {loading && ' (loading...)'}
-      </div>
+      </div> */}
       
       {/* We'll render only the status indicator here, the button will be rendered by the parent component */}
       {/* where it can be properly positioned */}

@@ -153,7 +153,7 @@ export default function LoginPage() {
         <Button onClick={handleLogin} className="w-full" disabled={isLoggingIn}>Login</Button>
       </div>
       
-      {/* 디버그 섹션 토글 버튼 */}
+      {/* 디버그 섹션 토글 버튼 - 주석 처리 
       <div className="mt-4 text-center">
         <button 
           onClick={() => setShowDebug(!showDebug)} 
@@ -162,8 +162,9 @@ export default function LoginPage() {
           {showDebug ? "디버그 숨기기" : "디버그 표시"}
         </button>
       </div>
+      */}
       
-      {/* 디버그 섹션 */}
+      {/* 디버그 섹션 - 주석 처리
       {showDebug && (
         <div className="mt-8">
           <div className="flex space-x-2 mb-4">
@@ -189,6 +190,7 @@ export default function LoginPage() {
           </div>
         </div>
       )}
+      */}
     </div>
   );
 }

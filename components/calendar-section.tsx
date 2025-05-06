@@ -12,12 +12,14 @@ interface CalendarSectionProps {
 }
 
 export function CalendarSection({ initialView = "both" }: CalendarSectionProps) {
+  // Get current year and month for default values
+  const currentDate = new Date();
   const [adminUser, setAdminUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<"annual" | "monthly" | "both">(initialView);
-  const [targetYear, setTargetYear] = useState<number>(2025); // 기본값으로 2025년 사용
-  const [targetMonth, setTargetMonth] = useState<number>(2); // 기본값으로 3월(인덱스 2) 사용
+  const [targetYear, setTargetYear] = useState<number>(currentDate.getFullYear());
+  const [targetMonth, setTargetMonth] = useState<number>(currentDate.getMonth());
 
   useEffect(() => {
     async function checkAdmin() {
@@ -46,52 +48,57 @@ export function CalendarSection({ initialView = "both" }: CalendarSectionProps) 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const { data, error } = await supabase.from("calendar_events").select("*");
+        // Log the query we're about to make for debugging
+        console.log("Fetching calendar events from table: calendar_events");
+        
+        const { data, error } = await supabase
+          .from("calendar_events")
+          .select("*");
+          
         if (error) {
           console.error("Error fetching calendar events:", error);
           return;
         }
+        
+        // Log the raw response to see what's coming back
+        console.log("Calendar events raw response:", data);
+        
         if (data) {
           console.log("불러온 이벤트 데이터:", data.length);
           setEvents(data);
-          
-          // 이벤트 데이터에서 가장 많은 연도/월 찾기
-          const yearCounts: Record<number, number> = {};
-          const monthCounts: Record<number, number> = {};
-          
-          data.forEach(event => {
-            const date = parseISO(event.start_date);
-            const year = date.getFullYear();
-            const month = date.getMonth();
-            
-            yearCounts[year] = (yearCounts[year] || 0) + 1;
-            monthCounts[month] = (monthCounts[month] || 0) + 1;
-          });
-          
-          if (Object.keys(yearCounts).length > 0) {
-            const mostFrequentYear = Number(
-              Object.keys(yearCounts).reduce((a, b) => 
-                yearCounts[Number(a)] > yearCounts[Number(b)] ? a : b
-              )
-            );
-            setTargetYear(mostFrequentYear);
-          }
-          
-          if (Object.keys(monthCounts).length > 0) {
-            const mostFrequentMonth = Number(
-              Object.keys(monthCounts).reduce((a, b) => 
-                monthCounts[Number(a)] > monthCounts[Number(b)] ? a : b
-              )
-            );
-            setTargetMonth(mostFrequentMonth);
-          }
         }
       } catch (error) {
         console.error("Unexpected error fetching calendar events:", error);
       }
     };
+    
     fetchEvents();
   }, []);
+
+  // Add month switching controls
+  const handlePrevMonth = () => {
+    if (targetMonth === 0) {
+      setTargetMonth(11);
+      setTargetYear(targetYear - 1);
+    } else {
+      setTargetMonth(targetMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (targetMonth === 11) {
+      setTargetMonth(0);
+      setTargetYear(targetYear + 1);
+    } else {
+      setTargetMonth(targetMonth + 1);
+    }
+  };
+
+  const handleCurrentMonth = () => {
+    const now = new Date();
+    setTargetYear(now.getFullYear());
+    setTargetMonth(now.getMonth());
+  };
 
   // 연간 일정: calendar_type이 "monthly"인 이벤트를 월별로 그룹화
   const yearlySchedule = Array.from({ length: 12 }, (_, i) => {
@@ -169,6 +176,28 @@ export function CalendarSection({ initialView = "both" }: CalendarSectionProps) 
           )}
         </div>
       )}
+
+      {/* Month Navigation Controls */}
+      <div className="flex justify-between items-center">
+        <button 
+          onClick={handlePrevMonth}
+          className="px-2 py-1 text-sm rounded-md bg-gray-100"
+        >
+          이전 달
+        </button>
+        <button 
+          onClick={handleCurrentMonth}
+          className="px-2 py-1 text-sm rounded-md bg-blue-100"
+        >
+          현재 달
+        </button>
+        <button 
+          onClick={handleNextMonth}
+          className="px-2 py-1 text-sm rounded-md bg-gray-100"
+        >
+          다음 달
+        </button>
+      </div>
 
       {/* 연간 일정 영역: calendar_type === "monthly" */}
       {showAnnual && (

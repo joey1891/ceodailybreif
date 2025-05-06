@@ -25,7 +25,7 @@ import finance from '@/data/categories/03-finance.json';
 import industry from '@/data/categories/04-industry.json';
 import company from '@/data/categories/05-company.json';
 import policy from '@/data/categories/06-policy.json';
-import media from '@/data/categories/07-media.json';
+// import media from '@/data/categories/07-media.json';
 import marketing from '@/data/categories/08-marketing.json';
 import people from '@/data/categories/09-people.json';
 import mediaReview from '@/data/categories/10-media-review.json';
@@ -39,7 +39,7 @@ const allCategories: CategoryItem[] = [
   industry as CategoryItem,
   company as CategoryItem,
   policy as CategoryItem,
-  media as CategoryItem,
+  // media as CategoryItem,
   marketing as CategoryItem,
   people as CategoryItem,
   mediaReview as CategoryItem,

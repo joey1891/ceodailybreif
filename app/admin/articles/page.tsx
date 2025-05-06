@@ -910,7 +910,10 @@ export default function AdminArticlesPage() {
             ) : (
               posts.map((post) => (
                 <TableRow key={post.id}>
-                  <TableCell className="font-medium">{post.title}</TableCell>
+                  <TableCell className="font-medium flex items-center">
+                    {post.is_deleted && <Trash size={14} className="mr-2 text-red-500" />} {/* 휴지통 아이콘 조건부 추가 */}
+                    {post.title}
+                  </TableCell>
                   <TableCell>{getMainCategoryTitle(post.category)}</TableCell>
                   <TableCell>
                     {post.subcategory ? getSubCategoryTitle(post.category, post.subcategory) : "-"}
@@ -1116,7 +1119,10 @@ export default function AdminArticlesPage() {
               ) : (
                 deletedPosts.map((post) => (
                   <TableRow key={post.id}>
-                    <TableCell className="font-medium">{post.title}</TableCell>
+                    <TableCell className="font-medium flex items-center">
+                      <Trash size={14} className="mr-2 text-gray-500" /> {/* 휴지통 아이콘 추가 */}
+                      {post.title}
+                    </TableCell>
                     <TableCell>{post.displayMainCategory}</TableCell>
                     <TableCell>
                       {post.displaySubCategory || "-"}

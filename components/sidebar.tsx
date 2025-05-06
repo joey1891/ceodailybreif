@@ -282,7 +282,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
   };
 
   return (
-    <div className="w-full space-y-6 select-none border-l-2 border-gray-200 pl-4">
+    <div className="w-full space-y-6 select-none md:border-l-2 md:border-gray-200 md:pl-4">
       {/* Author Profile - Always visible */}
       <Card className="bg-white border-0 shadow-sm">
         <CardHeader className="flex flex-col items-center space-y-1.5 p-6">
