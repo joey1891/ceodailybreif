@@ -49,11 +49,14 @@ interface BlogEntry {
 }
 
 export default function SideMenuManagement() {
+  // Remove unused states and variables
+  /* 
   const [settings, setSettings] = useState<SidebarSettings>({
     profile_description: "",
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+  */
   
   const [allPosts, setAllPosts] = useState<Post[]>([]);
   const [featuredPosts, setFeaturedPosts] = useState<FeaturedPost[]>([]);
@@ -108,33 +111,27 @@ export default function SideMenuManagement() {
     }
   };
 
-  // 사이드바 설정 및 유튜브 엔트리 로드
-  useEffect(() => {
+  // 유튜브 엔트리 및 기타 데이터 로드
+  useEffect(() => {    
+    /* 
     const fetchSidebarSettings = async () => {
       setLoadingSettings(true);
       
       const { data, error } = await supabase
         .from("sidebar_settings")
         .select("*")
-        .order("updated_at", { ascending: false })
         .limit(1)
         .single();
       
-      if (error) {
-        if (error.code !== "PGRST116") { // 결과가 없는 경우가 아니라면
-          console.error("Error fetching sidebar settings:", error);
-          toast({
-            title: "설정 로드 오류",
-            description: "사이드바 설정을 불러오지 못했습니다.",
-            variant: "destructive",
-          });
-        }
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error fetching sidebar settings:", error);
       } else if (data) {
         setSettings(data);
       }
       
       setLoadingSettings(false);
     };
+    */
     
     const fetchYoutubeEntries = async () => {
       setLoadingYoutube(true);
@@ -215,7 +212,7 @@ export default function SideMenuManagement() {
       setLoadingBlogs(false);
     };
     
-    fetchSidebarSettings();
+    // fetchSidebarSettings();
     fetchYoutubeEntries();
     fetchPosts();
     fetchBooks();
@@ -244,6 +241,7 @@ export default function SideMenuManagement() {
   };
   
   // 설정 저장
+  /* 
   const saveSettings = async () => {
     setSavingSettings(true);
     
@@ -287,6 +285,7 @@ export default function SideMenuManagement() {
       setSavingSettings(false);
     }
   };
+  */
 
   // 유튜브 엔트리 추가/수정
   const saveYoutubeEntry = async (e: React.FormEvent) => {
@@ -1069,30 +1068,6 @@ export default function SideMenuManagement() {
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">사이드바 관리</h1>
-      
-      {/* 프로필 설명 설정 */}
-      {/* <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4">프로필 설명</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">프로필 설명</label>
-            <textarea
-              value={settings.profile_description}
-              onChange={(e) => setSettings({ ...settings, profile_description: e.target.value })}
-              className="w-full p-2 border rounded-md"
-              rows={4}
-              placeholder="프로필 설명을 입력하세요"
-            />
-          </div>
-          <button
-            onClick={saveSettings}
-            disabled={savingSettings}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-          >
-            {savingSettings ? "저장 중..." : "설정 저장"}
-          </button>
-        </div>
-      </div> */}
       
       {/* 유튜브 항목 관리 섹션 */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
