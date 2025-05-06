@@ -33,11 +33,34 @@ const getTitleString = (title: string | { ko: string; en: string }): string => {
   return typeof title === 'object' ? title.ko : title;
 };
 
-// 이미지 추출 함수 추가 (파일 상단에 추가)
+// 이미지 추출 함수 개선 (파일 상단에 추가)
 const extractFirstImage = (htmlContent: string): string | null => {
-  const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/i;
+  // 더 유연한 정규식으로 변경 (속성 순서와 공백에 상관없이 작동)
+  const imgRegex = /<img[\s\S]*?src=["']([^"']+)["'][\s\S]*?>/i;
   const match = htmlContent.match(imgRegex);
-  return match ? match[1] : null;
+  
+  if (match && match[1]) {
+    // 이미지 URL이 확실히 추출되었는지 확인
+    console.log("추출된 이미지 URL:", match[1]);
+    return match[1];
+  }
+  
+  return null;
+};
+
+// 모든 이미지 추출 함수 추가 (파일 상단에 추가)
+const extractAllImages = (htmlContent: string): string[] => {
+  const imgRegex = /<img[\s\S]*?src=["']([^"']+)["'][\s\S]*?>/gi;
+  const matches = [];
+  let match;
+  
+  while ((match = imgRegex.exec(htmlContent)) !== null) {
+    if (match[1]) {
+      matches.push(match[1]);
+    }
+  }
+  
+  return matches;
 };
 
 // 이미지 타입 정의
@@ -246,13 +269,13 @@ export default function ArticleForm({
     }
   }, [adminLoading, adminUser, router]);
 
-  // 편집 시 기존 게시글 데이터 로드
+  // 게시글 편집 시 기존 데이터 로드 부분 수정
   useEffect(() => {
     if (!id) return;
     async function fetchArticle() {
       const { data, error } = await supabase
         .from("posts")
-        .select("*") // Select all columns including date
+        .select("*")
         .eq("id", id)
         .single();
       if (error) {
@@ -264,18 +287,36 @@ export default function ArticleForm({
         router.push("/admin/articles");
         return;
       }
-      setFormData({
-        title: data.title,
-        content: data.content,
-        category: data.category || "",
-        subcategory: data.subcategory || "",
-        subsubcategory: data.subsubcategory || "",
-        description: data.description || "",
-        image_url: data.image_url || "",
-        is_slide: data.is_slide || false,
-        slide_order: data.slide_order || null,
-        date: data.date || new Date().toISOString().split('T')[0], // Include date here
-      });
+      setTitle(data.title);
+      setContent(data.content);
+      // Main Category는 posts.category, Sub Category는 posts.subcategory
+      if (data.category) setMainCategory(data.category);
+      if (data.subcategory) setSubCategory(data.subcategory);
+      if (data.subsubcategory) setSubSubCategory(data.subsubcategory);
+      setIsSlide(data.is_slide || false);
+      setSlideOrder(data.slide_order || null);
+      
+      // 이미지 URL 설정
+      if (data.image_url) {
+        setImgUrl(data.image_url);
+        setThumbnailUrl(data.image_url);
+      }
+      
+      // 컨텐츠에서 모든 이미지 추출하여 업로드된 이미지 목록에 추가
+      if (data.content) {
+        const extractedImages = extractAllImages(data.content);
+        const imagesList = extractedImages.map(url => ({
+          url,
+          timestamp: Date.now() - Math.floor(Math.random() * 1000) // 고유 타임스탬프 생성
+        }));
+        
+        setUploadedImages(imagesList);
+        console.log("컨텐츠에서 추출된 이미지:", imagesList.length);
+      }
+      
+      if (data.category === "Report" || data.category === "report") {
+        setDescription(data.description || "");
+      }
     }
     fetchArticle();
   }, [id, router, useToastToast]);
@@ -399,16 +440,15 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     const youtubeMatch = sanitizedContent.match(youtubeRegex);
     console.log("YouTube link detection result:", youtubeMatch); // Add log
 
-    // 썸네일 설정
-    let thumbnailUrl = imgUrl;  // 기존 이미지 URL 사용
-
-    // YouTube 링크가 있고 이미지를 따로 설정하지 않은 경우 YouTube 썸네일 사용
-    if (youtubeMatch && youtubeMatch[1] && !thumbnailUrl) {
-      thumbnailUrl = `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg`;
-      console.log("YouTube 썸네일 자동 설정:", thumbnailUrl);
+    // 썸네일 URL이 없는 경우 컨텐츠에서 자동으로 추출
+    let finalThumbnailUrl = thumbnailUrl;
+    if (!finalThumbnailUrl || finalThumbnailUrl.trim() === "") {
+      const extractedImage = extractFirstImage(content);
+      if (extractedImage) {
+        finalThumbnailUrl = extractedImage;
+        console.log("컨텐츠에서 추출한 썸네일:", finalThumbnailUrl);
+      }
     }
-    console.log("Final thumbnail URL:", thumbnailUrl); // Add log
-
 
     // 데이터베이스에 저장할 데이터
     const finalData = {
@@ -418,7 +458,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       subcategory: subCategory || "",
       subsubcategory: subSubCategory || "",
       description: description || "",
-      image_url: thumbnailUrl,
+      image_url: finalThumbnailUrl && finalThumbnailUrl.trim() !== "" ? finalThumbnailUrl.trim() : null,
       is_slide: isSlide,
       ...(isSlide && slideOrder !== null ? { slide_order: slideOrder } : {}),
       // 추가된 필드들
@@ -438,7 +478,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       subcategory: subCategory || "",
       subsubcategory: subSubCategory || "",
       description: description || "",
-      image_url: thumbnailUrl,
+      image_url: finalThumbnailUrl && finalThumbnailUrl.trim() !== "" ? finalThumbnailUrl.trim() : null,
       is_slide: isSlide,
       video_url: youtubeMatch ? `https://www.youtube.com/watch?v=${youtubeMatch[1]}` : null,
       video_thumbnail_url: youtubeMatch ? `https://img.youtube.com/vi/${youtubeMatch[1]}/hqdefault.jpg` : null,
@@ -679,13 +719,14 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
             value={content}
             onChangeAction={(newContent) => {
               setContent(newContent);
-              console.log('Editor new content:', newContent); // Added log
-
+              
               // 콘텐츠가 변경될 때마다 첫 번째 이미지 추출하여 image_url 설정
-              if (!imgUrl) {
+              // 썸네일이 아직 설정되지 않은 경우에만 자동 설정
+              if (!thumbnailUrl || thumbnailUrl.trim() === "") {
                 const firstImage = extractFirstImage(newContent);
                 if (firstImage) {
                   setImgUrl(firstImage);
+                  setThumbnailUrl(firstImage); // imgUrl과 thumbnailUrl 모두 설정
                   console.log("첫 번째 이미지를 대표 이미지로 설정:", firstImage);
                 }
               }
@@ -723,44 +764,48 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         {/* 업로드된 이미지 목록 표시 */}
         {uploadedImages.length > 0 && (
           <div className="mt-8">
-            <h3 className="text-lg font-medium mb-3">업로드된 이미지</h3>
+            <h3 className="text-xl font-semibold mb-3">업로드된 이미지</h3>
             <p className="text-sm text-gray-500 mb-3">썸네일로 사용할 이미지를 선택하세요</p>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {uploadedImages.map((image, index) => (
-                <div
-                  key={image.timestamp}
-                  className={`relative border-2 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity ${
-                    thumbnailUrl === image.url ? 'border-blue-500' : 'border-gray-200'
+                <div 
+                  key={image.timestamp} 
+                  className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                    thumbnailUrl === image.url 
+                      ? 'border-blue-500 ring-2 ring-blue-300 shadow-lg' 
+                      : 'border-gray-200 hover:border-gray-300'
                   }`}
                   onClick={() => handleSelectThumbnail(image.url)}
                 >
-                  <img
-                    src={image.url}
+                  <img 
+                    src={image.url} 
                     alt={`업로드 이미지 ${index + 1}`}
                     className="w-full h-40 object-cover"
                   />
                   {thumbnailUrl === image.url && (
                     <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                      썸네일
+                      썸네일 이미지
                     </div>
                   )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 p-2">
+                    <button 
+                      type="button"
+                      className={`text-xs w-full py-1 rounded ${
+                        thumbnailUrl === image.url 
+                          ? 'bg-blue-500 hover:bg-blue-600' 
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectThumbnail(image.url);
+                      }}
+                    >
+                      {thumbnailUrl === image.url ? '선택됨' : '썸네일 이미지로 선택'}
+                    </button>
+                  </div>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* 현재 썸네일 표시 (편집 시) */}
-        {id && thumbnailUrl && !uploadedImages.some(img => img.url === thumbnailUrl) && (
-          <div className="mt-4">
-            <h3 className="text-lg font-medium mb-3">현재 썸네일</h3>
-            <div className="w-56 h-40 border-2 border-blue-500 rounded-md overflow-hidden">
-              <img
-                src={thumbnailUrl}
-                alt="현재 썸네일"
-                className="w-full h-full object-cover"
-              />
             </div>
           </div>
         )}

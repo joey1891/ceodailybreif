@@ -89,10 +89,11 @@ export function TopHeader() {
             <>
                {isAdmin && (
                  <Link
-                   href="/admin"
-                   className="text-black hover:text-gray-700 inline-flex items-center"
-                 >
-                   관리자
+                  href="/admin"
+                  className="text-black hover:text-gray-700 inline-flex items-center"
+                  target="_blank"
+                >
+                  관리자
                 </Link>
               )}
                <button

@@ -29,7 +29,7 @@ export function ArticlesSection({
   mainCategories,
   categoryPosts,
 }: ArticlesSectionProps) {
-  const [showAllCategories, setShowAllCategories] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(true);
   
   // 처음에는 최대 5개의 카테고리만 표시
   const displayedCategories = showAllCategories 

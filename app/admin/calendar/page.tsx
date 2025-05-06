@@ -497,7 +497,7 @@ export default function CalendarManagement() {
             onClick={handleMonthlyClick}
             className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
           >
-            월간 일정 등록
+            연간 일정으로 등록
           </button>
         </div>
         {monthlyEvents.length > 0 ? (

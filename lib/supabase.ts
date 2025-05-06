@@ -18,7 +18,15 @@ export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     // storageKey는 createBrowserClient 사용 시 필요 없음 (쿠키 사용)
-  }
+  },
+  global: {
+    fetch: (input, init) => {
+      return fetch(input, {
+        ...init,
+        cache: 'no-store', // 캐시 비활성화
+      });
+    },
+  },
 });
 
 // 익명 사용자를 위한 구독 기능
