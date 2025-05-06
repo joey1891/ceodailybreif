@@ -117,42 +117,49 @@
   
   body {
     font-size: 13px;
-    @apply bg-white text-foreground;
+    background-color: white;
+    color: hsl(var(--foreground));
     font-family: "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   }
   
   h1 {
     font-size: 1.833em; /* 약 23.8px */
-    @apply text-primary font-bold;
+    color: hsl(var(--primary));
+    font-weight: bold;
   }
   
   h2 {
     font-size: 1.667em; /* 약 21.7px */
-    @apply text-primary font-bold;
+    color: hsl(var(--primary));
+    font-weight: bold;
   }
   
   h3 {
     font-size: 1.5em; /* 약 19.5px */
-    @apply text-primary font-bold;
+    color: hsl(var(--primary));
+    font-weight: bold;
   }
   
   h4 {
     font-size: 1.333em; /* 약 17.3px */
-    @apply text-primary font-bold;
+    color: hsl(var(--primary));
+    font-weight: bold;
   }
   
   h5 {
     font-size: 1.25em; /* 약 16.3px */
-    @apply text-primary font-bold;
+    color: hsl(var(--primary));
+    font-weight: bold;
   }
   
   h6 {
     font-size: 1.083em; /* 약 14.1px */
-    @apply text-primary font-bold;
+    color: hsl(var(--primary));
+    font-weight: bold;
   }
   
   p {
-    @apply text-muted-foreground;
+    color: hsl(var(--muted-foreground));
   }
   
   .content-title h1 {
@@ -165,10 +172,11 @@
     @apply border-border;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply text-primary font-bold;
+    color: hsl(var(--primary));
+    font-weight: bold;
   }
   p {
-    @apply text-muted-foreground;
+    color: hsl(var(--muted-foreground));
   }
 }
 

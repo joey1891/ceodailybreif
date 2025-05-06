@@ -28,7 +28,7 @@ interface SidebarSettings {
 }
 
 export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: SidebarProps) {
-  const [popularPosts, setPopularPosts] = useState<Post[]>(propPopularPosts || []);
+  const [popularPosts] = useState<Post[]>(propPopularPosts || []);
   const [aboutMeData, setAboutMeData] = useRecoilState(aboutMeDataState);
   const [email, setEmail] = useState("");
   const [subscribeStatus, setSubscribeStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -50,91 +50,43 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
   const [searchResults, setSearchResults] = useState<Post[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   
-  // 전체 게시물 데이터를 가져옵니다.
+  // All posts for search functionality
   const [allPosts, setAllPosts] = useState<Post[]>([]);
-  
-  // HTML 태그와 엔티티를 제거하는 개선된 함수
+
+  // HTML tags stripper function
   const stripHtml = (html: string): string => {
     if (!html) return '';
-    
-    // 임시 div 요소 생성
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    
-    // 텍스트 콘텐츠만 추출 (모든 태그와 엔티티가 해석됨)
     let text = doc.body.textContent || '';
-    
-    // 연속된 공백을 하나로 줄이기
-    text = text.replace(/\s+/g, ' ').trim();
-    
-    return text;
+    return text.replace(/\s+/g, ' ').trim();
   };
   
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchSidebarData = async () => {
       setLoading(true);
+      
       try {
-        // 사이드바 설정 가져오기 (sidebar_settings 테이블이 필요하지 않다면 이 부분을 주석 처리하거나 제거합니다)
-        // const { data: settingsData, error: settingsError } = await supabase
-        //   .from("sidebar_settings")
-        //   .select("*")
-        //   .order("updated_at", { ascending: false })
-        //   .limit(1)
-        //   .single();
-          
-        // if (!settingsError && settingsData) {
-        //   setSidebarSettings({
-        //     profile_description: settingsData.profile_description,
-        //     youtube_link: settingsData.youtube_link,
-        //     youtube_thumbnail_url: settingsData.youtube_thumbnail_url
-        //   });
-        // }
-        console.log("Sidebar settings fetch code commented out."); // Added log
-
-        // 피처드(조회수 순위) 게시물 가져오기
-        const { data: featuredData, error: featuredError } = await supabase
-          .from("featured_posts")
-          .select("*, post:posts(*)")
-          .order("display_order", { ascending: true });
-          
-        if (!featuredError && featuredData && featuredData.length > 0) {
-          // 피처드 게시물이 있으면 이를 사용
-          const transformedPosts = featuredData.map(item => item.post) as Post[];
-          setPopularPosts(transformedPosts);
-        } else {
-          // 피처드 게시물이 없으면 실제 조회수 순으로 가져오기
-          const { data: popularData, error: popularError } = await supabase
-            .from('posts')
-            .select('*')
-            .order('viewcnt', { ascending: false })
-            .limit(5);
-            
-          if (!popularError && popularData) {
-            setPopularPosts(popularData);
-          }
-        }
-
-        // 추천 도서 불러오기
-        const { data: books, error: booksError } = await supabase
-          .from('recommended_books')
-          .select('*')
-          .order('display_order', { ascending: true })
-          .limit(5);
-
-        if (!booksError && books) {
-          setRecommendedBooks(books);
-        }
+        // Fetch multiple resources in parallel for better performance
+        const [
+          aboutMeResult,
+          recommendedBooksResult,
+          youtubeEntriesResult,
+          blogEntriesResult,
+          allPostsResult
+        ] = await Promise.all([
+          fetchAboutMe(),
+          fetchRecommendedBooks(),
+          fetchYoutubeEntries(),
+          fetchBlogEntries(),
+          fetchAllPosts()
+        ]);
         
-        // 프로필 정보 가져오기
-        const { data: profileData, error: profileError } = await supabase
-          .from("about_me")
-          .select("*")
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (!profileError && profileData) {
-          setAboutMeData(profileData);
-        }
+        // Update state with results
+        if (aboutMeResult) setAboutMeData(aboutMeResult);
+        setRecommendedBooks(recommendedBooksResult || []);
+        setYoutubeEntries(youtubeEntriesResult || []);
+        setBlogEntries(blogEntriesResult || []);
+        setAllPosts(allPostsResult || []);
       } catch (err) {
         console.error('데이터 처리 중 오류:', err);
       } finally {
@@ -142,54 +94,111 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
       }
     };
     
-    fetchData();
+    fetchSidebarData();
   }, []);
 
-  // Add to the existing useEffect or create a new one for YouTube entries
-  useEffect(() => {
-    const fetchYoutubeEntries = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("youtube_recommendations")
-          .select("*")
-          .order("display_order", { ascending: true });
-          
-        if (error) {
-          console.error("Error fetching YouTube entries:", error);
-        } else {
-          setYoutubeEntries(data || []);
-        }
-      } catch (error) {
-        console.error("Error in fetchYoutubeEntries:", error);
-      }
-    };
+  // Separate fetch functions for cleaner code and better error isolation
+  const fetchAboutMe = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("about_me")
+        .select("*")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .single();
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error fetching about me data:", error);
+      return null;
+    }
+  };
+  
+  const fetchRecommendedBooks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('recommended_books')
+        .select('*')
+        .order('display_order', { ascending: true })
+        .limit(5);
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error fetching recommended books:", error);
+      return [];
+    }
+  };
+  
+  const fetchYoutubeEntries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("youtube_recommendations")
+        .select("*")
+        .order("display_order", { ascending: true });
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error fetching YouTube entries:", error);
+      return [];
+    }
+  };
+  
+  const fetchBlogEntries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("blog_recommendations")
+        .select("*")
+        .order("display_order", { ascending: true });
+        
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error fetching blog entries:", error);
+      return [];
+    }
+  };
+  
+  const fetchAllPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false });
+        
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error("Failed to fetch posts:", error);
+      return [];
+    }
+  };
+
+  // Search functionality
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    fetchYoutubeEntries();
-  }, []);
-
-  // Add to the existing useEffect or create a new one for blog entries
-  useEffect(() => {
-    const fetchBlogEntries = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("blog_recommendations")
-          .select("*")
-          .order("display_order", { ascending: true });
-          
-        if (error) {
-          console.error("Error fetching blog entries:", error);
-        } else {
-          setBlogEntries(data || []);
-        }
-      } catch (error) {
-        console.error("Error in fetchBlogEntries:", error);
-      }
-    };
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
     
-    fetchBlogEntries();
-  }, []);
-
-  // 이메일 구독 처리 함수
+    setIsSearching(true);
+    const query = searchQuery.toLowerCase();
+    
+    // Search in title - could be extended to search in content too
+    const results = allPosts.filter(post => 
+      post.title.toLowerCase().includes(query)
+    );
+    
+    setSearchResults(results);
+  };
+  
+  // Email subscription handler
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
@@ -221,64 +230,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
     } catch (err) {
       console.error("구독 처리 중 오류:", err);
       setSubscribeStatus("error");
-    }
-  };
-
-  useEffect(() => {
-    // 모든 게시물 데이터를 가져옵니다.
-    const fetchAllPosts = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("posts")
-          .select("*")
-          .eq("is_deleted", false)
-          .order("created_at", { ascending: false });
-          
-        if (error) {
-          console.error("Error fetching posts:", error);
-          return;
-        }
-        
-        if (data) {
-          setAllPosts(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch posts:", err);
-      }
-    };
-    
-    fetchAllPosts();
-  }, []);
-  
-  // 검색 함수
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-    
-    setIsSearching(true);
-    const query = searchQuery.toLowerCase();
-    
-    // 제목에 검색어가 포함된 게시물 필터링
-    const results = allPosts.filter(post => 
-      post.title.toLowerCase().includes(query)
-    );
-    
-    setSearchResults(results);
-  };
-  
-  // 검색 입력 변경 핸들러
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    
-    // 검색어가 없으면 검색 결과 초기화
-    if (!e.target.value.trim()) {
-      setSearchResults([]);
-      setIsSearching(false);
     }
   };
 
@@ -470,7 +421,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
                 type="text"
                 placeholder="검색어를 입력하세요"
                 value={searchQuery}
-                onChange={handleSearchInputChange}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-grow"
               />
               <Button type="submit" variant="outline">
