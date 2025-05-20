@@ -138,7 +138,8 @@ export default function Home() {
       // Fetch posts for each category in parallel
       const fetchPromises = mainCategories.map(category => {
         console.log(`Fetching posts for category: ${category.slug} (${category.id})`); // Added log
-        return supabase
+        
+        const fetchPromise = supabase
           .from("posts")
           .select("*")
           .eq("category", category.id)
@@ -157,9 +158,18 @@ export default function Home() {
             }
             return data || []; // Ensure data is returned even if empty
           });
+
+        // Add a timeout to the fetch promise
+        const timeoutPromise = new Promise<[]>( (_, reject) =>
+          setTimeout(() => reject(new Error(`Fetch timeout for category ${category.slug}`)), 10000) // 10초 타임아웃
+        );
+
+        // Use Promise.race to race the fetch promise against the timeout promise
+        return Promise.race([fetchPromise, timeoutPromise]);
       });
       
       // Use Promise.allSettled to wait for all promises to settle (fulfilled or rejected)
+      // Now fetchPromises contains promises that will either resolve with data or reject on timeout/error
       const results = await Promise.allSettled(fetchPromises);
 
       // Process results
@@ -169,8 +179,8 @@ export default function Home() {
           // Data was successfully fetched for this category and already added in .then()
           console.log(`Category ${category.slug} fetch fulfilled.`); // Added log
         } else {
-          // Handle rejected or pending promises (though .then() should prevent rejection)
-          console.error(`Category ${category.slug} fetch failed or pending:`, result.reason); // Log reason for rejection
+          // Handle rejected promises (due to timeout or error)
+          console.error(`Category ${category.slug} fetch failed:`, result.reason); // Log reason for rejection
           // Ensure this category's entry is an empty array if it failed
           if (!posts[category.slug]) {
             posts[category.slug] = [];
