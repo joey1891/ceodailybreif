@@ -50,12 +50,14 @@ export function useAdminSession() {
     async function checkAdminUser(user: User) {
       try {
         console.log("Checking admin for user:", user.id);
+        console.log("Executing admin query for user ID:", user.id); // Added log
         const { data: adminData, error: adminError } = await supabase
           .from("admin_users")
           .select("*")
           .eq("id", user.id)
           .single();
         
+        console.log("Admin query raw result:", { data: adminData, error: adminError }); // Added log
         console.log("Admin data:", adminData, "Error:", adminError);
         
         if (adminData) {
@@ -103,12 +105,14 @@ export async function getAdminUser(): Promise<AdminUser | null> {
 
   // 관리자 테이블에서 사용자 정보 조회 - 정확한 쿼리 확인
   console.log("Querying admin_users with ID:", user.id);
+  console.log("Executing admin query for user ID:", user.id); // Added log
   const { data: adminData, error: adminError } = await supabase
     .from("admin_users")
     .select("*")
     .eq("id", user.id)
     .single();
 
+  console.log("Admin query raw result:", { data: adminData, error: adminError }); // Added log
   console.log("Admin query result:", adminData, adminError);
 
   if (adminError || !adminData) {
