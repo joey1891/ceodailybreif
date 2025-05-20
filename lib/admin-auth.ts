@@ -60,16 +60,27 @@ export function useAdminSession() {
       try {
         console.log("Checking admin for user:", user.id);
         console.log("Executing admin query for user ID:", user.id); // Added log
-        const { data: adminData, error: adminError } = await supabase
+        
+        const adminQueryPromise = supabase
           .from("admin_users")
           .select("*")
           .eq("id", user.id)
           .single();
+
+        // Add a timeout to the admin query promise (e.g., 5 seconds)
+        const timeoutPromise = new Promise<any>((_, reject) =>
+          setTimeout(() => reject(new Error(`Admin query timeout for user ${user.id}`)), 5000) // 5초 타임아웃
+        );
+
+        const { data: adminData, error: adminError } = await Promise.race([adminQueryPromise, timeoutPromise]);
         
         console.log("Admin query raw result:", { data: adminData, error: adminError }); // Added log
         console.log("Admin data:", adminData, "Error:", adminError);
         
-        if (adminData) {
+        if (adminError) {
+           console.error("Admin query error:", adminError);
+           setAdminUser(null);
+        } else if (adminData) {
           // 관리자인 경우 정보 설정
           setAdminUser({
             ...user,
@@ -79,10 +90,11 @@ export function useAdminSession() {
             isSubAdmin: adminData.role === 'sub_admin',
           });
         } else {
+          // adminData가 null인 경우 (사용자가 admin_users 테이블에 없음)
           setAdminUser(null);
         }
-      } catch (error) {
-        console.error("Admin check error:", error);
+      } catch (error: any) { // Catch timeout or other exceptions
+        console.error("Admin check exception:", error);
         setAdminUser(null);
       } finally { // Added finally block
         setLoading(false); // Ensure loading state is updated
@@ -121,18 +133,31 @@ export async function getAdminUser(): Promise<AdminUser | null> {
     // 관리자 테이블에서 사용자 정보 조회 - 정확한 쿼리 확인
     console.log("Querying admin_users with ID:", user.id);
     console.log("Executing admin query for user ID:", user.id); // Added log
-    const { data: adminData, error: adminError } = await supabase
+    
+    const adminQueryPromise = supabase
       .from("admin_users")
       .select("*")
       .eq("id", user.id)
       .single();
 
+    // Add a timeout to the admin query promise (e.g., 5 seconds)
+    const timeoutPromise = new Promise<any>((_, reject) =>
+      setTimeout(() => reject(new Error(`Admin query timeout for user ${user.id}`)), 5000) // 5초 타임아웃
+    );
+
+    const { data: adminData, error: adminError } = await Promise.race([adminQueryPromise, timeoutPromise]);
+
     console.log("Admin query raw result:", { data: adminData, error: adminError }); // Added log
     console.log("Admin query result:", adminData, adminError);
 
-    if (adminError || !adminData) {
+    if (adminError) {
       console.error("Admin user lookup failed:", adminError);
       return null;
+    }
+    
+    if (!adminData) { // Handle case where adminData is null (user not in admin_users)
+       console.warn("Admin user not found in admin_users table.");
+       return null;
     }
 
     console.log("Admin user data:", adminData);
@@ -146,7 +171,7 @@ export async function getAdminUser(): Promise<AdminUser | null> {
     
     console.log("Returning admin user:", adminUser);
     return adminUser;
-  } catch (sessionFetchError) { // Added catch block
+  } catch (sessionFetchError: any) { // Added catch block and type
     console.error("getAdminUser: getSession or subsequent logic caught an exception:", sessionFetchError); // Log exception
     return null;
   }
@@ -199,7 +224,7 @@ export async function authenticateAdmin() {
       }
       
       session = data.session;
-    } catch (sessionError) {
+    } catch (sessionError: any) { // Type error
       console.error("Failed to get session:", sessionError);
       return null;
     }
@@ -221,7 +246,7 @@ export async function authenticateAdmin() {
       }
       
       user = userData?.user;
-    } catch (userError) {
+    } catch (userError: any) { // Type error
       console.error("Failed to get user:", userError);
       return null;
     }
@@ -233,11 +258,18 @@ export async function authenticateAdmin() {
     
     // 4. 관리자 테이블에서 정보 가져오기
     try {
-      const { data: adminData, error: adminError } = await supabase
+      const adminQueryPromise = supabase
         .from("admin_users")
         .select("*")
         .eq("id", user.id)
         .single();
+
+      // Add a timeout to the admin query promise (e.g., 5 seconds)
+      const timeoutPromise = new Promise<any>((_, reject) =>
+        setTimeout(() => reject(new Error(`Admin query timeout for user ${user.id}`)), 5000) // 5초 타임아웃
+      );
+
+      const { data: adminData, error: adminError } = await Promise.race([adminQueryPromise, timeoutPromise]);
       
       if (adminError) {
         console.error("Admin lookup error:", adminError);
@@ -257,11 +289,11 @@ export async function authenticateAdmin() {
         isSuperAdmin: adminData.role === 'super_admin',
         isSubAdmin: adminData.role === 'sub_admin',
       };
-    } catch (adminLookupError) {
+    } catch (adminLookupError: any) { // Type error
       console.error("Failed admin lookup:", adminLookupError);
       return null;
     }
-  } catch (error) {
+  } catch (error: any) { // Type error
     console.error("Authentication error:", error);
     return null;
   }
