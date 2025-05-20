@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { categoryOptions, loadCategoryData } from "@/lib/category-options";
 import { categoryMappings, contextualCategoryMappings, reverseCategoryMappings } from "@/lib/category-mappings";
 import { useToast } from "@/hooks/use-toast";
-import { useAdminSession } from "@/lib/admin-auth";
+import { useAdminSession, authenticateAdmin } from "@/lib/admin-auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Trash, Edit, Eye, Plus, Check, X, Upload, RefreshCcw, FileText, CheckCircle } from "lucide-react";
@@ -73,8 +73,8 @@ const getTitleString = (title: string | { ko: string; en: string }): string => {
 export default function AdminArticlesPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [deletedPosts, setDeletedPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingTrash, setLoadingTrash] = useState(true);
+  const [isFetchingPosts, setIsFetchingPosts] = useState(false); // Initial state is false, will be set to true in the new effect
+  const [isFetchingDeletedPosts, setIsFetchingDeletedPosts] = useState(false); // Initial state is false
   const [currentPage, setCurrentPage] = useState(1);
   const [currentTrashPage, setCurrentTrashPage] = useState(1);
   const [totalPosts, setTotalPosts] = useState(0);
@@ -87,6 +87,9 @@ export default function AdminArticlesPage() {
   const postsPerPage = 10;
   const totalPages = Math.ceil(totalPosts / postsPerPage);
   const router = useRouter();
+
+  // New state for combined auth and data loading
+  const [isLoadingAuthAndData, setIsLoadingAuthAndData] = useState(true);
 
   // 필터 상태: 기본값은 "all"
   const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
@@ -326,7 +329,7 @@ export default function AdminArticlesPage() {
 
   // DB 쿼리 함수 수정
   const fetchPosts = async (page = currentPage, search = searchTerm) => {
-    setLoading(true);
+    setIsFetchingPosts(true);
     const start = (page - 1) * postsPerPage;
     const end = page * postsPerPage - 1;
     setIsSearching(!!search);
@@ -372,12 +375,12 @@ export default function AdminArticlesPage() {
         setTotalPosts(count);
       }
     }
-    setLoading(false);
+    setIsFetchingPosts(false);
   };
 
   // 휴지통 게시글 조회 함수 추가
   const fetchDeletedPosts = async (page = currentTrashPage, search = trashSearchTerm) => {
-    setLoadingTrash(true);
+    setIsFetchingDeletedPosts(true);
     const start = (page - 1) * postsPerPage;
     const end = page * postsPerPage - 1;
     setIsTrashSearching(!!search);
@@ -410,7 +413,7 @@ export default function AdminArticlesPage() {
         setTotalDeletedPosts(count);
       }
     }
-    setLoadingTrash(false);
+    setIsFetchingDeletedPosts(false);
   };
 
   // 휴지통 페이지 변경 시 삭제된 게시글 다시 조회
@@ -732,7 +735,7 @@ export default function AdminArticlesPage() {
 
   // 임시저장 게시글 관련 상태 추가
   const [drafts, setDrafts] = useState<Post[]>([]);
-  const [loadingDrafts, setLoadingDrafts] = useState(false);
+  const [isFetchingDrafts, setIsFetchingDrafts] = useState(false);
   const [totalDrafts, setTotalDrafts] = useState(0);
   const [currentDraftPage, setCurrentDraftPage] = useState(1);
   const [totalDraftPages, setTotalDraftPages] = useState(1);
@@ -741,7 +744,7 @@ export default function AdminArticlesPage() {
   
   // 임시저장 게시글 불러오기 함수
   const fetchDrafts = async (page = 1, search = "") => {
-    setLoadingDrafts(true);
+    setIsFetchingDrafts(true);
     setIsDraftSearching(!!search);
     
     try {
@@ -799,7 +802,7 @@ export default function AdminArticlesPage() {
     } catch (error) {
       console.error("임시저장 게시글 로드 중 오류:", error);
     } finally {
-      setLoadingDrafts(false);
+      setIsFetchingDrafts(false);
     }
   };
 
@@ -884,16 +887,33 @@ export default function AdminArticlesPage() {
     }
   };
 
-  // 1. 페이지 로드 시 실행되는 초기 게시글 로드 함수 수정
+  // New useEffect to handle authentication and initial data fetching
   useEffect(() => {
-    if (adminUser) {
-      fetchPosts(1, ""); // 페이지 첫 로드 시 게시글 가져오기
-      fetchDeletedPosts(); // 삭제된 게시글도 가져오기
-      fetchDrafts(); // 임시저장 게시글 가져오기
+    async function loadAuthAndData() {
+      setIsLoadingAuthAndData(true);
+      try {
+        const adminUser = await authenticateAdmin(); // Authenticate and get user
+        if (adminUser) {
+          // Fetch data only if authenticated
+          await fetchPosts(1, ""); // Pass initial page and search term
+          await fetchDeletedPosts();
+          await fetchDrafts();
+        } else {
+          // Handle unauthenticated state, redirect to login
+          router.push('/admin/login');
+        }
+      } catch (error) {
+        console.error("Error during auth or data fetching:", error);
+        // Handle errors, maybe show an error message
+        toast.error("데이터 로딩 중 오류가 발생했습니다.");
+      } finally {
+        setIsLoadingAuthAndData(false);
+      }
     }
-  }, [adminUser]);
+    loadAuthAndData();
+  }, []); // Empty dependency array, runs once on mount
 
-  if (loading) {
+  if (isLoadingAuthAndData) {
     return <div className="container mx-auto px-4 py-8">로딩 중...</div>;
   }
 
@@ -1073,16 +1093,16 @@ export default function AdminArticlesPage() {
               <TableHead className="text-center">슬라이드 순서</TableHead>
               <TableHead>작업</TableHead>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  로딩 중...
-                </TableCell>
-              </TableRow>
-            ) : posts.length === 0 ? (
-              <TableRow>
+            </TableHeader>
+            <TableBody>
+              {isFetchingPosts ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center">
+                    로딩 중...
+                  </TableCell>
+                </TableRow>
+              ) : posts.length === 0 ? (
+                <TableRow>
                 <TableCell colSpan={5} className="text-center">
                   {isSearching ? "검색 결과가 없습니다." : "등록된 기사가 없습니다."}
                 </TableCell>
@@ -1293,7 +1313,7 @@ export default function AdminArticlesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loadingDrafts ? (
+              {isFetchingDrafts ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center">
                     로딩 중...
@@ -1423,7 +1443,7 @@ export default function AdminArticlesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loadingTrash ? (
+              {isFetchingDeletedPosts ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">
                     로딩 중...

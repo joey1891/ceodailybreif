@@ -548,20 +548,20 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
                       />
                     </div>
                     <h3 className="text-sm font-medium">
-                      <Link href={`/book/${book.id}`} className="hover:underline">
+                      <a href={book.link_url} target="_blank" rel="noopener noreferrer" className="hover:underline">
                         {book.title || `추천 도서 ${index + 1}`}
-                      </Link>
+                      </a>
                     </h3>
                     <div className="text-xs text-muted-foreground mt-1">
                       저자: {book.author || '작자미상'}
                     </div>
                   </div>
                 ))}
-                
+
                 {/* Only show toggle button if there are more than 1 book */}
                 {recommendedBooks.length > 1 && (
                   <div className="flex justify-center mt-4">
-                    <Button 
+                    <Button
                       variant="outline"
                       className="w-full text-sm"
                       onClick={() => setShowAllBooks(!showAllBooks)}

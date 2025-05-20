@@ -24,8 +24,27 @@ export default function AdminLoginPage() {
       console.log("- Password first/last char:", password[0] + "..." + password[password.length-1]);
       
       // 1. 세션 정리
-      console.log("Clearing session...");
-      await supabase.auth.signOut();
+      console.log("Clearing session (before signOut call)...");
+      try {
+        const { error: signOutError } = await supabase.auth.signOut();
+        if (signOutError) {
+          console.error("Error during signOut:", JSON.stringify(signOutError, null, 2));
+          // signOut 오류도 화면에 표시하거나 별도 처리 가능
+          setErrorMessage(`세션 초기화 실패: ${signOutError.message}`); 
+          setIsLoggingIn(false);
+          return; // signOut 실패 시 더 이상 진행하지 않음
+        }
+        console.log("Successfully signed out (or no session to sign out).");
+      } catch (e: any) {
+        console.error("Exception during signOut:", JSON.stringify(e, null, 2));
+        setErrorMessage(`세션 초기화 중 예외 발생: ${e.message}`);
+        setIsLoggingIn(false);
+        return; // signOut 실패 시 더 이상 진행하지 않음
+      }
+
+      // signOut 직후 세션 상태 확인 (디버깅용)
+      const sessionAfterSignOut = await supabase.auth.getSession();
+      console.log("Session state immediately after signOut attempt:", JSON.stringify(sessionAfterSignOut.data.session, null, 2));
       
       // 2. 로그인 직전 확인
       console.log("About to call auth.signInWithPassword with:");
@@ -52,14 +71,31 @@ export default function AdminLoginPage() {
         .select("*")
         .eq("id", authResponse.data.user.id)
         .single();
+
+      // ===== 추가된 디버깅 로그 시작 =====
+      console.log("Detailed Admin Check - User ID for query:", authResponse.data.user.id);
+      console.log("Detailed Admin Check - adminData (raw):", JSON.stringify(adminData, null, 2));
+      console.log("Detailed Admin Check - adminError (raw):", JSON.stringify(adminError, null, 2));
+      console.log("Detailed Admin Check - Is adminData truthy?", !!adminData);
+      console.log("Detailed Admin Check - Is adminError truthy?", !!adminError);
+      // ===== 추가된 디버깅 로그 끝 =====
       
+      // 기존 로그
       console.log("Admin check:");
       console.log("- User ID:", authResponse.data.user.id);
       console.log("- Found admin:", !!adminData);
       console.log("- Error:", adminError);
       
       if (adminError || !adminData) {
-        throw new Error("해당 이메일은 관리자로 등록되지 않았습니다");
+        // ===== 조건 확인 로그 추가 시작 =====
+        if (adminError) {
+          console.error("Throwing error because adminError is present. Message:", adminError.message, "Details:", JSON.stringify(adminError, null, 2));
+        }
+        if (!adminData) {
+          console.error("Throwing error because adminData is falsy (null, undefined, etc.). Current adminData:", JSON.stringify(adminData, null, 2));
+        }
+        // ===== 조건 확인 로그 추가 끝 =====
+        throw new Error("해당 이메일은 관리자로 등록되지 않았습니다. (Debug: adminError or !adminData condition met)");
       }
       
       // 4. 성공 시 이동
@@ -116,4 +152,4 @@ export default function AdminLoginPage() {
       </div>
     </div>
   );
-} 
+}
