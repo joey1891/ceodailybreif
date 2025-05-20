@@ -34,22 +34,21 @@ export default function Home() {
       console.log("--- Starting fetchData ---");
       setIsLoading(true);
       try {
-        // Add debug log to track execution
         console.log("Fetching data with mainCategories:", mainCategories);
         
+        console.log("--- Calling fetchSlides and fetchAllPostsData ---"); // Added log
         // Parallel data fetching with Promise.all
         const [slidesResult, postsData] = await Promise.all([
           fetchSlides(),
           fetchAllPostsData()
         ]);
+        console.log("--- Promise.all completed ---"); // Added log
         
-        // Log results to ensure they're being properly received
         console.log("Slides fetched:", slidesResult?.length || 0);
         console.log("Posts data fetched:", Boolean(postsData));
         
         setSlides(slidesResult || []);
         
-        // Process the posts data if successful
         if (postsData) {
           setCategoryPosts(postsData.categoryPosts);
           setRecentPosts(postsData.recentPosts);
@@ -135,8 +134,10 @@ export default function Home() {
     const posts: Record<string, Post[]> = {};
 
     try {
+      console.log("--- Starting fetchCategoryPosts ---"); // Added log
       // Fetch posts for each category in parallel
       const fetchPromises = mainCategories.map(category => {
+        console.log(`Fetching posts for category: ${category.slug} (${category.id})`); // Added log
         return supabase
           .from("posts")
           .select("*")
@@ -145,15 +146,24 @@ export default function Home() {
           .order("updated_at", { ascending: false })
           .limit(7)
           .then(({ data, error }) => {
-            if (error) throw error;
+            console.log(`Fetch result for category ${category.slug}:`, { data: data?.length, error }); // Added log
+            if (error) {
+              console.error(`Error fetching posts for category ${category.slug}:`, error); // Log specific category error
+              // Return empty array on error
+              return [];
+            }
             if (data) {
               posts[category.slug] = data;
             }
-            return data;
+            return data || []; // Ensure data is returned even if empty
           });
       });
       
+      // Await all promises. Promise.all will throw if any promise rejects.
+      // Since we handle errors in .then() and return empty array, it should not reject.
       await Promise.all(fetchPromises);
+
+      console.log("--- fetchCategoryPosts completed ---"); // Added log
       return posts;
     } catch (error) {
       console.error("Error fetching category posts:", error);
