@@ -20,6 +20,7 @@ import { getAllCategories } from "@/lib/category-loader";
 import { Post } from "@/types/supabase";
 import { supabase } from "@/lib/supabase";
 import PopupDisplay from "@/components/popup-display";
+import { PostgrestSingleResponse } from "@supabase/supabase-js";
 
 export default function Home() {
   const [mainCategories] = useState(() => Array.from(getAllCategories()));
@@ -144,53 +145,76 @@ export default function Home() {
       // Fetch posts for each category in parallel
       const fetchPromises = mainCategories.map(category => {
         console.log(`Fetching posts for category: ${category.slug} (${category.id})`); // Added log
-        
-        const fetchPromise = supabase
-          .from("posts")
-          .select("*")
-          .eq("category", category.id)
-          .eq("is_deleted", false)
-          .order("updated_at", { ascending: false })
-          .limit(7)
-          .then(({ data, error }) => {
-            console.log(`Fetch result for category ${category.slug}:`, { data: data?.length, error }); // Added log
-            if (error) {
-              console.error(`Error fetching posts for category ${category.slug}:`, error); // Log specific category error
-              // Return empty array on error
-              return [];
-            }
-            if (data) {
-              posts[category.slug] = data;
-            }
-            return data || []; // Ensure data is returned even if empty
-          });
 
-        // Add a timeout to the fetch promise
-        const timeoutPromise = new Promise<[]>( (_, reject) =>
-          setTimeout(() => reject(new Error(`Fetch timeout for category ${category.slug}`)), 10000) // 10초 타임아웃
-        );
+        const fetchWithRetry = async (retries: number) => {
+          try {
+            const fetchPromise = supabase
+              .from("posts")
+              .select("*")
+              .eq("category", category.id)
+              .eq("is_deleted", false)
+              .order("updated_at", { ascending: false })
+              .limit(7);
 
-        // Use Promise.race to race the fetch promise against the timeout promise
-        return Promise.race([fetchPromise, timeoutPromise]);
+            // Add a timeout to the fetch promise
+            const timeoutPromise = new Promise<[]>( (_, reject) =>
+              setTimeout(() => reject(new Error(`Fetch timeout for category ${category.slug}`)), 60000) // 60초 타임아웃
+            );
+
+            // Use Promise.race to race the fetch promise against the timeout promise
+            const result = await Promise.race([fetchPromise, timeoutPromise]);
+
+            // Check if the result is a Supabase response object
+            if (result && typeof result === 'object' && ('data' in result || 'error' in result)) {
+              const { data, error } = result as PostgrestSingleResponse<any[]>; // Cast to the expected type
+
+              console.log(`Fetch result for category ${category.slug}:`, { data: data?.length, error }); // Added log
+              if (error) {
+                console.error(`Error fetching posts for category ${category.slug}:`, error); // Log specific category error
+                throw error; // Throw to trigger retry
+              }
+              if (data) {
+                posts[category.slug] = data;
+              }
+              return data || []; // Ensure data is returned even if empty
+            } else {
+              // This case should ideally not happen if timeout throws an error,
+              // but as a fallback, handle unexpected results.
+              console.error(`Unexpected result from Promise.race for category ${category.slug}:`, result);
+              throw new Error(`Unexpected fetch result for category ${category.slug}`);
+            }
+          } catch (error: any) {
+            if (retries > 0) {
+              console.warn(`Retrying fetch for category ${category.slug}. Retries left: ${retries}`);
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
+              return fetchWithRetry(retries - 1);
+            } else {
+              console.error(`Max retries reached for category ${category.slug}. Fetch failed:`, error);
+              // Ensure this category's entry is an empty array if it failed after retries
+              if (!posts[category.slug]) {
+                posts[category.slug] = [];
+              }
+              throw error; // Re-throw error after max retries
+            }
+          }
+        };
+
+        return fetchWithRetry(3); // Retry up to 3 times
       });
-      
+
       // Use Promise.allSettled to wait for all promises to settle (fulfilled or rejected)
-      // Now fetchPromises contains promises that will either resolve with data or reject on timeout/error
       const results = await Promise.allSettled(fetchPromises);
 
-      // Process results
+      // Process results - errors are already handled within fetchWithRetry
       results.forEach((result, index) => {
         const category = mainCategories[index];
         if (result.status === 'fulfilled') {
-          // Data was successfully fetched for this category and already added in .then()
           console.log(`Category ${category.slug} fetch fulfilled.`); // Added log
         } else {
-          // Handle rejected promises (due to timeout or error)
-          console.error(`Category ${category.slug} fetch failed:`, result.reason); // Log reason for rejection
-          // Ensure this category's entry is an empty array if it failed
-          if (!posts[category.slug]) {
-            posts[category.slug] = [];
-          }
+          // This case is for errors that weren't caught and handled within fetchWithRetry,
+          // or if fetchWithRetry re-threw after max retries.
+          // The error is already logged within fetchWithRetry.
+          console.log(`Category ${category.slug} fetch settled with rejection.`); // Added log
         }
       });
 
