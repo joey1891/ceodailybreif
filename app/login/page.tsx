@@ -40,21 +40,7 @@ export default function LoginPage() {
     try {
       addLog(`로그인 시도: ${email}`);
       
-      // 1. 세션 초기화
-      // - 기존 세션을 정리하여 인증 상태 충돌 방지
-      // - 이전 세션이 남아있는 경우 새 로그인에 영향을 줄 수 있음
-      addLog("세션 초기화 중...");
-      try {
-        await supabase.auth.signOut();
-        addLog("세션 초기화 완료");
-      } catch (signOutError) {
-        addLog(`세션 초기화 오류: ${signOutError}`);
-      }
-      
-      // 2. 로그인 시도 - 세분화된 예외 처리
-      // - 비동기 호출을 별도 블록으로 분리하여 정확한 에러 위치 추적
-      // - Promise 반환 함수에서 발생하는 예외를 명시적으로 포착
-      // - 이 세분화된 에러 처리가 문제 해결의 핵심이었음
+      // 로그인 시도
       addLog("로그인 요청 직전...");
       let authResponse;
       
@@ -66,13 +52,10 @@ export default function LoginPage() {
         });
         addLog("supabase.auth.signInWithPassword 호출 완료");
       } catch (loginError: any) {
-        // 네트워크 오류, 타임아웃 등이 여기서 포착됨
         addLog(`로그인 요청 예외: ${loginError}`);
         throw new Error(`로그인 요청 실패: ${loginError.message || loginError}`);
       }
       
-      // 3. 응답 처리 - 성공/실패 명확히 구분
-      // - API 호출은 성공했으나 인증 실패한 경우
       addLog(`로그인 응답: success=${!authResponse.error}, user=${authResponse.data?.user?.id || 'none'}`);
       
       if (authResponse.error) {
