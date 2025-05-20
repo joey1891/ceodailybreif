@@ -37,10 +37,16 @@ export default function Home() {
         console.log("Fetching data with mainCategories:", mainCategories);
         
         console.log("--- Calling fetchSlides and fetchAllPostsData ---"); // Added log
+        
+        console.log("--- Calling fetchSlides ---"); // Added log
+        const slidesPromise = fetchSlides();
+        console.log("--- Calling fetchAllPostsData ---"); // Added log
+        const postsDataPromise = fetchAllPostsData();
+
         // Parallel data fetching with Promise.all
         const [slidesResult, postsData] = await Promise.all([
-          fetchSlides(),
-          fetchAllPostsData()
+          slidesPromise,
+          postsDataPromise
         ]);
         console.log("--- Promise.all completed ---"); // Added log
         
