@@ -36,11 +36,18 @@ export function useAdminSession() {
 
     // 초기 세션 확인
     async function initialize() {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log("useAdminSession: Initializing session check"); // Added log
+      const { data, error } = await supabase.auth.getSession(); // Modified to get data and error
+      console.log("useAdminSession: getSession result:", { data, error }); // Added log
+      const session = data?.session; // Get session from data
+      
       console.log("Initial session:", session);
       
       if (session?.user) {
+        console.log("useAdminSession: Session user found, checking admin user"); // Added log
         await checkAdminUser(session.user);
+      } else {
+        console.log("useAdminSession: No session user found"); // Added log
       }
       
       setLoading(false);
@@ -91,16 +98,19 @@ export function useAdminSession() {
 
 // ✅ 관리자 로그인 여부 확인 및 세션 유지
 export async function getAdminUser(): Promise<AdminUser | null> {
+  console.log("getAdminUser: Fetching session"); // Added log
   // 세션을 먼저 가져옴
   const { data, error } = await supabase.auth.getSession();
+  console.log("getAdminUser: getSession result:", { data, error }); // Added log
   console.log("Auth session data:", data, error);
 
-  if (error || !data.session?.user) {
-    console.warn("No active session found", error);
+  if (error || !data?.session?.user) { // Modified check for data?.session?.user
+    console.warn("getAdminUser: No active session found or error", error); // Added log
     return null;
   }
 
   const user = data.session.user;
+  console.log("getAdminUser: User from session:", user); // Added log
   console.log("User from session:", user);
 
   // 관리자 테이블에서 사용자 정보 조회 - 정확한 쿼리 확인
