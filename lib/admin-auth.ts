@@ -29,8 +29,6 @@ export function useAdminSession() {
         } else {
           setAdminUser(null);
         }
-        
-        setLoading(false);
       }
     );
 
