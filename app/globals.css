@@ -2,8 +2,8 @@
 
 /* 강원교육튼튼 폰트 추가 */
 @font-face {
-  font-family: 'GangwonEdu';
-  src: url('/fonts/강원교육튼튼.ttf') format('truetype');
+  font-family: 'GangwonEduTteunTteun'; /* 폰트 이름 변경 */
+  src: url('/fonts/GangwonEduTteunTteun.ttf') format('truetype'); /* 파일 경로 변경 */
   font-weight: normal;
   font-style: normal;
 }
@@ -11,6 +11,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 로고 패딩 클래스 추가 */
+.logo-padding {
+  padding-top: var(--logo-padding-top);
+  padding-bottom: var(--logo-padding-bottom);
+}
 
 :root {
   --logo-letter-spacing-ceo: 0px; /* CEO 글자 간격 조정 변수 */

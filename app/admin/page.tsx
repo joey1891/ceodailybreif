@@ -78,6 +78,7 @@ export default function AdminDashboard() {
                   {/* 서브 관리자 관리 메뉴 - 슈퍼 관리자만 표시 */}
                   {isSuperAdmin(adminUser) && (
                     <button
+                      key="sub-managers"
                       onClick={() => setActiveTab("sub-managers")}
                       className={`flex-1 py-3 px-4 text-lg whitespace-nowrap ${
                         activeTab === "sub-managers"

@@ -1,8 +1,10 @@
 "use client";
 
+"use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { loginAdmin } from "@/lib/supabase"; // lib/supabase에서 loginAdmin 함수 임포트
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("admin@gmail.com");
@@ -17,94 +19,36 @@ export default function AdminLoginPage() {
     setErrorMessage("");
     
     try {
-      // 폼 제출 시 입력값 확인
       console.log("Form submission values:");
       console.log("- Email:", email);
       console.log("- Password length:", password.length);
-      console.log("- Password first/last char:", password[0] + "..." + password[password.length-1]);
       
-      // 1. 세션 정리
-      console.log("Clearing session (before signOut call)...");
-      try {
-        const { error: signOutError } = await supabase.auth.signOut();
-        if (signOutError) {
-          console.error("Error during signOut:", JSON.stringify(signOutError, null, 2));
-          // signOut 오류도 화면에 표시하거나 별도 처리 가능
-          setErrorMessage(`세션 초기화 실패: ${signOutError.message}`); 
-          setIsLoggingIn(false);
-          return; // signOut 실패 시 더 이상 진행하지 않음
-        }
-        console.log("Successfully signed out (or no session to sign out).");
-      } catch (e: any) {
-        console.error("Exception during signOut:", JSON.stringify(e, null, 2));
-        setErrorMessage(`세션 초기화 중 예외 발생: ${e.message}`);
+      // lib/supabase의 loginAdmin 함수 사용
+      const { data, error } = await loginAdmin(email, password);
+
+      if (error) {
+        console.error("Login failed:", error);
+        // loginAdmin 함수에서 이미 에러 로깅을 하므로 간단히 메시지 설정
+        setErrorMessage(error.message || "로그인 실패");
         setIsLoggingIn(false);
-        return; // signOut 실패 시 더 이상 진행하지 않음
+        return;
       }
 
-      // signOut 직후 세션 상태 확인 (디버깅용)
-      const sessionAfterSignOut = await supabase.auth.getSession();
-      console.log("Session state immediately after signOut attempt:", JSON.stringify(sessionAfterSignOut.data.session, null, 2));
-      
-      // 2. 로그인 직전 확인
-      console.log("About to call auth.signInWithPassword with:");
-      console.log("- Email:", email);
-      console.log("- Password (masked):", "*".repeat(password.length));
-      
-      // 매우 기본적인 로그인 시도
-      const authResponse = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      // 로그인 응답 확인 (비밀번호 정보는 제외)
-      console.log("Raw auth response:");
-      console.log("- Success:", !authResponse.error);
-      console.log("- User:", authResponse.data?.user?.id);
-      console.log("- Error:", authResponse.error);
-      
-      if (authResponse.error) throw authResponse.error;
-      
-      // 3. 로그인은 성공했지만 admin 여부 확인
-      const { data: adminData, error: adminError } = await supabase
-        .from("admin_users")
-        .select("*")
-        .eq("id", authResponse.data.user.id)
-        .single();
-
-      // ===== 추가된 디버깅 로그 시작 =====
-      console.log("Detailed Admin Check - User ID for query:", authResponse.data.user.id);
-      console.log("Detailed Admin Check - adminData (raw):", JSON.stringify(adminData, null, 2));
-      console.log("Detailed Admin Check - adminError (raw):", JSON.stringify(adminError, null, 2));
-      console.log("Detailed Admin Check - Is adminData truthy?", !!adminData);
-      console.log("Detailed Admin Check - Is adminError truthy?", !!adminError);
-      // ===== 추가된 디버깅 로그 끝 =====
-      
-      // 기존 로그
-      console.log("Admin check:");
-      console.log("- User ID:", authResponse.data.user.id);
-      console.log("- Found admin:", !!adminData);
-      console.log("- Error:", adminError);
-      
-      if (adminError || !adminData) {
-        // ===== 조건 확인 로그 추가 시작 =====
-        if (adminError) {
-          console.error("Throwing error because adminError is present. Message:", adminError.message, "Details:", JSON.stringify(adminError, null, 2));
-        }
-        if (!adminData) {
-          console.error("Throwing error because adminData is falsy (null, undefined, etc.). Current adminData:", JSON.stringify(adminData, null, 2));
-        }
-        // ===== 조건 확인 로그 추가 끝 =====
-        throw new Error("해당 이메일은 관리자로 등록되지 않았습니다. (Debug: adminError or !adminData condition met)");
+      // loginAdmin 함수 내에서 이미 admin_users 확인까지 완료됨
+      // data.user가 존재하면 관리자로 간주
+      if (data?.user) {
+        console.log("Login successful, redirecting to admin page");
+        router.push('/admin');
+      } else {
+        // loginAdmin에서 에러 없이 user가 null인 경우는 없어야 하지만, 안전을 위해 처리
+        console.error("Login process completed without error but no user data.");
+        setErrorMessage("로그인 처리 중 오류가 발생했습니다.");
       }
       
-      // 4. 성공 시 이동
-      console.log("Login successful, redirecting to admin page");
-      router.push('/admin');
-      
-    } catch (error: any) {
-      console.error("Login error:", error);
-      setErrorMessage(error.message || "로그인 실패");
+    } catch (error: any) { // any 타입으로 유지하되, message 속성 존재 여부 확인
+      console.error("Unexpected login error:", error);
+      // error 객체가 message 속성을 가지고 있는지 확인하여 안전하게 접근
+      setErrorMessage((error as any).message || "로그인 처리 중 예상치 못한 오류 발생");
     } finally {
       setIsLoggingIn(false);
     }

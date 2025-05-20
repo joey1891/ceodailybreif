@@ -50,20 +50,55 @@ export const addSubscriber = async (email: string) => {
 // 관리자 로그인 전용 함수 추가
 export const loginAdmin = async (email: string, password: string) => {
   try {
+    console.log("loginAdmin: 로그인 프로세스 시작");
     // 먼저 로그아웃을 해서 세션을 초기화
-    await supabase.auth.signOut();
+    console.log("loginAdmin: 세션 초기화 (signOut) 시도");
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      console.error("loginAdmin: signOut 오류", signOutError);
+    } else {
+      console.log("loginAdmin: signOut 성공");
+    }
 
     // 로그인 시도
-    const { data, error } = await supabase.auth.signInWithPassword({
+    console.log("loginAdmin: signInWithPassword 시도");
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
-    if (error) throw error;
-    return { data, error: null };
-  } catch (error) {
-    console.error('관리자 로그인 오류:', error);
-    return { data: null, error };
+    console.log("loginAdmin: signInWithPassword 결과 - data:", data, "error:", signInError);
+
+    if (signInError) {
+      console.error("loginAdmin: signInWithPassword 오류 발생", signInError);
+      // signInWithPassword 오류 발생 시 바로 반환
+      return { data: null, error: signInError };
+    }
+    console.log("loginAdmin: signInWithPassword 성공, admin_users 확인 시작");
+
+    // 3. 로그인은 성공했지만 admin 여부 확인
+    const { data: adminData, error: adminError } = await supabase
+      .from("admin_users")
+      .select("*")
+      .eq("id", data.user.id)
+      .single();
+
+    console.log("loginAdmin: admin_users 조회 결과 - data:", adminData, "error:", adminError);
+
+    if (adminError || !adminData) {
+      console.error("loginAdmin: admin_users 조회 오류 또는 관리자 아님", adminError || "관리자 데이터 없음");
+      // admin_users 조회 오류 또는 관리자 아닐 경우 오류 반환
+      return { data: null, error: adminError || new Error("해당 이메일은 관리자로 등록되지 않았습니다.") };
+    }
+
+    console.log("loginAdmin: 관리자 확인 성공");
+    // 관리자 정보 포함하여 반환
+    return { data: { user: { ...data.user, role: adminData.role, name: adminData.name } }, error: null };
+
+  } catch (error: any) {
+    console.error('loginAdmin: 관리자 로그인 처리 중 예상치 못한 오류 발생 (catch 블록)', error);
+    // 예상치 못한 오류 발생 시 Error 객체를 반환
+    return { data: null, error: error instanceof Error ? error : new Error(String(error)) };
   }
 };
 
