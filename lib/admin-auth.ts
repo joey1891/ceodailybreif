@@ -246,22 +246,23 @@ export async function authenticateAdmin() {
       }
       
       user = userData?.user || null; // nullish coalescing operator 사용 및 null 할당
+
+      if (!user) { // Move the null check inside the try block
+        console.log("No user found");
+        return null;
+      }
+
     } catch (userError: any) {
       console.error("Failed to get user:", userError);
       return null;
     }
-    
-    if (!user) {
-      console.log("No user found");
-      return null;
-    }
-    
+
     // 4. 관리자 테이블에서 정보 가져오기
     try {
       const adminQueryPromise = supabase
         .from("admin_users")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", user.id) // Now user is guaranteed to be not null here
         .single();
 
       // Add a timeout to the admin query promise (e.g., 5 seconds)
