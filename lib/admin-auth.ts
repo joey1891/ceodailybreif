@@ -279,7 +279,13 @@ export async function authenticateAdmin() {
 
       // Add a timeout to the admin query promise (e.g., 5 seconds)
       const timeoutPromise = new Promise<any>((_, reject) =>
-        setTimeout(() => reject(new Error(`Admin query timeout for user ${user.id}`)), 5000) // 5초 타임아웃
+        setTimeout(() => { // Added a block for the callback
+          if (!user) { // Add null check for user
+            reject(new Error(`Admin query timeout for an unknown user`)); // Handle null user case
+          } else {
+            reject(new Error(`Admin query timeout for user ${user.id}`)); // Original logic
+          }
+        }, 5000) // 5초 타임아웃
       );
 
       const { data: adminData, error: adminError } = await Promise.race([adminQueryPromise, timeoutPromise]);
