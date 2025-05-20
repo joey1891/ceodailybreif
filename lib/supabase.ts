@@ -51,14 +51,6 @@ export const addSubscriber = async (email: string) => {
 export const loginAdmin = async (email: string, password: string) => {
   try {
     console.log("loginAdmin: 로그인 프로세스 시작");
-    // 먼저 로그아웃을 해서 세션을 초기화
-    console.log("loginAdmin: 세션 초기화 (signOut) 시도");
-    const { error: signOutError } = await supabase.auth.signOut();
-    if (signOutError) {
-      console.error("loginAdmin: signOut 오류", signOutError);
-    } else {
-      console.log("loginAdmin: signOut 성공");
-    }
 
     // 로그인 시도
     console.log("loginAdmin: signInWithPassword 시도");
