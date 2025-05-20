@@ -86,6 +86,8 @@ export function useAdminSession() {
       } catch (error) {
         console.error("Admin check error:", error);
         setAdminUser(null);
+      } finally { // Added finally block
+        setLoading(false); // Ensure loading state is updated
       }
     }
 
