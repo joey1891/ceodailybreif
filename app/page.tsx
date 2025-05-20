@@ -159,9 +159,24 @@ export default function Home() {
           });
       });
       
-      // Await all promises. Promise.all will throw if any promise rejects.
-      // Since we handle errors in .then() and return empty array, it should not reject.
-      await Promise.all(fetchPromises);
+      // Use Promise.allSettled to wait for all promises to settle (fulfilled or rejected)
+      const results = await Promise.allSettled(fetchPromises);
+
+      // Process results
+      results.forEach((result, index) => {
+        const category = mainCategories[index];
+        if (result.status === 'fulfilled') {
+          // Data was successfully fetched for this category and already added in .then()
+          console.log(`Category ${category.slug} fetch fulfilled.`); // Added log
+        } else {
+          // Handle rejected or pending promises (though .then() should prevent rejection)
+          console.error(`Category ${category.slug} fetch failed or pending:`, result.reason); // Log reason for rejection
+          // Ensure this category's entry is an empty array if it failed
+          if (!posts[category.slug]) {
+            posts[category.slug] = [];
+          }
+        }
+      });
 
       console.log("--- fetchCategoryPosts completed ---"); // Added log
       return posts;
