@@ -168,9 +168,7 @@ export function isSuperAdmin(user: AdminUser | null): boolean {
 // 관리자 로그인 전용 함수 추가
 export const loginAdmin = async (email: string, password: string) => {
   try {
-    // 먼저 로그아웃을 해서 세션을 초기화
-    await supabase.auth.signOut();
-    
+
     // 로그인 시도
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
