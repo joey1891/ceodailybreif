@@ -236,7 +236,7 @@ export async function authenticateAdmin() {
     }
     
     // 3. 사용자 정보 가져오기
-    let user;
+    let user: User | null; // 명시적으로 타입 지정
     try {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       
@@ -245,8 +245,8 @@ export async function authenticateAdmin() {
         return null;
       }
       
-      user = userData?.user;
-    } catch (userError: any) { // Type error
+      user = userData?.user || null; // nullish coalescing operator 사용 및 null 할당
+    } catch (userError: any) {
       console.error("Failed to get user:", userError);
       return null;
     }
