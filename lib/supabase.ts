@@ -21,10 +21,14 @@ export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     fetch: (input, init) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 15000); // 15초 타임아웃 설정
+
       return fetch(input, {
         ...init,
         cache: 'no-store', // 캐시 비활성화
-      });
+        signal: controller.signal // 타임아웃 시그널 추가
+      }).finally(() => clearTimeout(id)); // fetch 완료 시 타임아웃 해제
     },
   },
 });

@@ -146,7 +146,7 @@ export default function Home() {
       const fetchPromises = mainCategories.map(category => {
         console.log(`Fetching posts for category: ${category.slug} (${category.id})`); // Added log
 
-        const fetchWithRetry = async (retries: number) => {
+        const fetchWithRetry = async (retries: number): Promise<Post[]> => {
           try {
             const fetchPromise = supabase
               .from("posts")
