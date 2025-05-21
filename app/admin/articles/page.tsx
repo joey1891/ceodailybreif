@@ -191,7 +191,7 @@ export default function AdminArticlesPage() {
   };
 
   // 데이터 전처리 함수 (SWR 데이터에 적용)
-  const preprocessPosts = (data: Post[] | undefined): Post[] => {
+  const preprocessPosts = (data: Post[] | null | undefined): Post[] => {
     if (!data) return [];
     return data.map(post => {
       const displayMainCategory = getMainCategoryTitle(post.category);
