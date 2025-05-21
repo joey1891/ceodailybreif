@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react"; // useEffect 제거
+import useSWR from 'swr'; // SWR 훅 임포트
+import { createBrowserClient } from '@supabase/ssr'; // Supabase 클라이언트 임포트
+import { Post } from "@/types/supabase"; // Post 타입 임포트
+import { getAllCategories } from "@/lib/category-loader"; // getAllCategories 임포트
+
 import { ArrowRight, Calendar } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -16,71 +21,23 @@ import { ArticlesSection } from "@/components/ArticlesSection";
 import { FinanceInfo } from "@/components/finance-info";
 import { Sidebar } from "@/components/sidebar";
 import { CalendarSection } from "@/components/calendar-section";
-import { getAllCategories } from "@/lib/category-loader";
-import { Post } from "@/types/supabase";
-import { supabase } from "@/lib/supabase";
 import PopupDisplay from "@/components/popup-display";
-import { PostgrestSingleResponse } from "@supabase/supabase-js";
+
+
+// Supabase 클라이언트 인스턴스 생성 (lib/supabase.ts와 동일하게)
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 
 export default function Home() {
   const [mainCategories] = useState(() => Array.from(getAllCategories()));
-  const [categoryPosts, setCategoryPosts] = useState<Record<string, Post[]>>({});
-  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
-  const [popularPosts, setPopularPosts] = useState<Post[]>([]);
-  const [slides, setSlides] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      console.log("--- Starting fetchData ---");
-      setIsLoading(true);
-      try {
-        console.log("Fetching data with mainCategories:", mainCategories);
-        
-        console.log("--- Calling fetchSlides and fetchAllPostsData ---"); // Added log
-        
-        console.log("--- Calling fetchSlides ---"); // Added log
-        const slidesPromise = fetchSlides();
-        console.log("--- Calling fetchAllPostsData ---"); // Added log
-        const postsDataPromise = fetchAllPostsData();
-
-        // Parallel data fetching with Promise.all
-        const [slidesResult, postsData] = await Promise.all([
-          slidesPromise,
-          postsDataPromise
-        ]);
-        console.log("--- Promise.all completed ---"); // Added log
-        
-        console.log("Slides fetched:", slidesResult?.length || 0);
-        console.log("Posts data fetched:", Boolean(postsData));
-        
-        setSlides(slidesResult || []);
-        
-        if (postsData) {
-          setCategoryPosts(postsData.categoryPosts);
-          setRecentPosts(postsData.recentPosts);
-          setPopularPosts(postsData.popularPosts);
-        }
-      } catch (error: any) {
-        console.error('[fetchData] 데이터 로딩 중 오류:', error);
-      } finally {
-        setIsLoading(false);
-        console.log("Fetch complete, isLoading set to false");
-      }
-    };
-
-    // Only fetch if we have categories to fetch for
-    if (mainCategories && mainCategories.length > 0) {
-      fetchData();
-    } else {
-      setIsLoading(false);
-      console.log("No mainCategories, skipping fetch");
-    }
-  }, [mainCategories]);
-
-  // Fetch slides using a dedicated function
-  const fetchSlides = async () => {
-    try {
+  // SWR 훅을 사용하여 슬라이드 데이터 가져오기
+  const { data: slides, error: slidesError, isLoading: isLoadingSlides } = useSWR(
+    'slides', // 캐시 키
+    async () => {
       const { data, error } = await supabase
         .from('posts')
         .select('id, title, image_url, description, slide_order')
@@ -90,141 +47,79 @@ export default function Home() {
       
       if (error) throw error;
       return data || [];
-    } catch (error: any) {
-      console.error('Error fetching slides:', error);
-      return [];
     }
-  };
+  );
 
-  // Consolidated posts data fetching
-  const fetchAllPostsData = async () => {
-    try {
-      // Fetch category posts in parallel
-      const categoryPostsData = await fetchCategoryPosts();
-      
-      // Get all posts by combining all category posts
-      const allPosts = Object.values(categoryPostsData).flat();
-      
-      // Get recent posts (directly from DB instead of client-side filtering)
-      const { data: recentPostsData } = await supabase
+  // SWR 훅을 사용하여 최근 게시물 데이터 가져오기
+  const { data: recentPosts, error: recentPostsError, isLoading: isLoadingRecentPosts } = useSWR(
+    'recentPosts', // 캐시 키
+    async () => {
+      const { data, error } = await supabase
         .from("posts")
         .select("*")
         .eq("is_deleted", false)
         .order("created_at", { ascending: false })
         .limit(5);
-        
-      // Get popular posts (directly from DB)
-      const { data: popularPostsData } = await supabase
+      
+      if (error) throw error;
+      return data || [];
+    }
+  );
+
+  // SWR 훅을 사용하여 인기 게시물 데이터 가져오기
+  const { data: popularPosts, error: popularPostsError, isLoading: isLoadingPopularPosts } = useSWR(
+    'popularPosts', // 캐시 키
+    async () => {
+      const { data, error } = await supabase
         .from("posts")
         .select("*")
         .eq("is_deleted", false)
         .order("viewcnt", { ascending: false })
         .limit(5);
       
-      return {
-        categoryPosts: categoryPostsData,
-        recentPosts: recentPostsData || [],
-        popularPosts: popularPostsData || []
-      };
-    } catch (error) {
-      console.error("Error fetching posts data:", error);
-      return {
-        categoryPosts: {},
-        recentPosts: [],
-        popularPosts: []
-      };
+      if (error) throw error;
+      return data || [];
     }
-  };
+  );
 
-  // Fetch posts by category
-  const fetchCategoryPosts = async () => {
-    const posts: Record<string, Post[]> = {};
+  // 각 카테고리별 게시물을 가져오기 위한 SWR 훅 (동적으로 생성)
+  const categoryPostsResults = mainCategories.map(category => {
+    const { data, error, isLoading } = useSWR(
+      `categoryPosts-${category.slug}`, // 카테고리 slug를 포함한 캐시 키
+      async () => {
+        const { data, error } = await supabase
+          .from("posts")
+          .select("*")
+          .eq("category", category.id)
+          .eq("is_deleted", false)
+          .order("updated_at", { ascending: false })
+          .limit(7);
+        
+        if (error) throw error;
+        return data || [];
+      }
+    );
+    return { category, data, error, isLoading };
+  });
 
-    try {
-      console.log("--- Starting fetchCategoryPosts ---"); // Added log
-      // Fetch posts for each category in parallel
-      const fetchPromises = mainCategories.map(category => {
-        console.log(`Fetching posts for category: ${category.slug} (${category.id})`); // Added log
+  // 모든 데이터 로딩 상태 확인
+  const isLoading = isLoadingSlides || isLoadingRecentPosts || isLoadingPopularPosts || categoryPostsResults.some(res => res.isLoading);
 
-        const fetchWithRetry = async (retries: number): Promise<Post[]> => {
-          try {
-            const fetchPromise = supabase
-              .from("posts")
-              .select("*")
-              .eq("category", category.id)
-              .eq("is_deleted", false)
-              .order("updated_at", { ascending: false })
-              .limit(7);
-
-            // Add a timeout to the fetch promise
-            const timeoutPromise = new Promise<[]>( (_, reject) =>
-              setTimeout(() => reject(new Error(`Fetch timeout for category ${category.slug}`)), 60000) // 60초 타임아웃
-            );
-
-            // Use Promise.race to race the fetch promise against the timeout promise
-            const result = await Promise.race([fetchPromise, timeoutPromise]);
-
-            // Check if the result is a Supabase response object
-            if (result && typeof result === 'object' && ('data' in result || 'error' in result)) {
-              const { data, error } = result as PostgrestSingleResponse<any[]>; // Cast to the expected type
-
-              console.log(`Fetch result for category ${category.slug}:`, { data: data?.length, error }); // Added log
-              if (error) {
-                console.error(`Error fetching posts for category ${category.slug}:`, error); // Log specific category error
-                throw error; // Throw to trigger retry
-              }
-              if (data) {
-                posts[category.slug] = data;
-              }
-              return data || []; // Ensure data is returned even if empty
-            } else {
-              // This case should ideally not happen if timeout throws an error,
-              // but as a fallback, handle unexpected results.
-              console.error(`Unexpected result from Promise.race for category ${category.slug}:`, result);
-              throw new Error(`Unexpected fetch result for category ${category.slug}`);
-            }
-          } catch (error: any) {
-            if (retries > 0) {
-              console.warn(`Retrying fetch for category ${category.slug}. Retries left: ${retries}`);
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
-              return fetchWithRetry(retries - 1);
-            } else {
-              console.error(`Max retries reached for category ${category.slug}. Fetch failed:`, error);
-              // Ensure this category's entry is an empty array if it failed after retries
-              if (!posts[category.slug]) {
-                posts[category.slug] = [];
-              }
-              throw error; // Re-throw error after max retries
-            }
-          }
-        };
-
-        return fetchWithRetry(3); // Retry up to 3 times
-      });
-
-      // Use Promise.allSettled to wait for all promises to settle (fulfilled or rejected)
-      const results = await Promise.allSettled(fetchPromises);
-
-      // Process results - errors are already handled within fetchWithRetry
-      results.forEach((result, index) => {
-        const category = mainCategories[index];
-        if (result.status === 'fulfilled') {
-          console.log(`Category ${category.slug} fetch fulfilled.`); // Added log
-        } else {
-          // This case is for errors that weren't caught and handled within fetchWithRetry,
-          // or if fetchWithRetry re-threw after max retries.
-          // The error is already logged within fetchWithRetry.
-          console.log(`Category ${category.slug} fetch settled with rejection.`); // Added log
-        }
-      });
-
-      console.log("--- fetchCategoryPosts completed ---"); // Added log
-      return posts;
-    } catch (error) {
-      console.error("Error fetching category posts:", error);
-      return {};
+  // 카테고리별 게시물 데이터를 객체 형태로 변환
+  const categoryPosts: Record<string, Post[]> = {};
+  categoryPostsResults.forEach(res => {
+    if (res.data) {
+      categoryPosts[res.category.slug] = res.data;
     }
-  };
+  });
+
+  // 에러 처리 (필요에 따라 더 상세하게 처리 가능)
+  if (slidesError || recentPostsError || popularPostsError || categoryPostsResults.some(res => res.error)) {
+    console.error("Error fetching data:", slidesError || recentPostsError || popularPostsError || categoryPostsResults.find(res => res.error)?.error);
+    // 에러 메시지를 표시하거나 다른 에러 처리 UI를 렌더링할 수 있습니다.
+    return <div>데이터 로딩 중 오류가 발생했습니다.</div>;
+  }
+
 
   return (
     <>
@@ -240,7 +135,7 @@ export default function Home() {
           <>
             {/* Hero Slider - 슬라이드 데이터 전달 */}
             <section className="mb-12 w-full max-w-full overflow-x-hidden">
-              <HeroSlider slides={slides} />
+              <HeroSlider slides={slides || []} /> {/* slides가 undefined일 경우 빈 배열 전달 */}
             </section>
 
             {/* 나머지 섹션들에 max-width 제약 추가 */}
@@ -255,8 +150,8 @@ export default function Home() {
                 {/* Sidebar */}
                 <div className="w-full lg:w-1/3">
                   <Sidebar
-                    recentPosts={recentPosts}
-                    popularPosts={popularPosts}
+                    recentPosts={recentPosts || []} // recentPosts가 undefined일 경우 빈 배열 전달
+                    popularPosts={popularPosts || []} // popularPosts가 undefined일 경우 빈 배열 전달
                   />
                 </div>
               </div>
