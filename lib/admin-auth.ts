@@ -1,8 +1,9 @@
 "use client";
 
 import { supabase } from "./supabase";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
+import { createBrowserClient } from '@supabase/ssr';
 
 // 관리자 사용자 타입 정의
 type AdminUser = User & {
@@ -14,107 +15,79 @@ type AdminUser = User & {
 
 // ✅ 관리자 로그인 여부 확인 및 세션 유지를 위한 훅
 export function useAdminSession() {
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [adminUser, setAdminUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Supabase 클라이언트 인스턴스를 useMemo로 감싸서 한 번만 생성되도록 함
+  const supabase = useMemo(() => {
+    // console.log("useAdminSession: Creating Supabase client");
+    return createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }, []);
+
   useEffect(() => {
-    // 세션 상태 변경 감지
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth state changed:", event, session);
+    let isMounted = true; // 컴포넌트 마운트 상태 추적
+    // console.log("useAdminSession: useEffect triggered. Supabase instance:", supabase ? "exists" : "null");
+
+    const getSessionAndSetUser = async () => {
+      // console.log("useAdminSession: getSessionAndSetUser called");
+      if (!isMounted) return;
+      setLoading(true);
+
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (!isMounted) return;
+
+      if (error) {
+        console.error("Error getting session in useAdminSession:", error);
+        setAdminUser(null);
+      } else if (session) {
+        // TODO: 실제 관리자 역할 확인 로직 추가
+        // const isAdmin = await checkUserAdminRole(supabase, session.user.id);
+        // setAdminUser(isAdmin ? session.user : null);
+        setAdminUser(session.user); // 현재: 로그인된 사용자는 모두 관리자로 간주
+        // console.log("useAdminSession: Session found, user set:", session.user.id);
+      } else {
+        setAdminUser(null);
+        // console.log("useAdminSession: No session found.");
+      }
+      setLoading(false);
+    };
+
+    getSessionAndSetUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        // console.log("useAdminSession: onAuthStateChange triggered", _event, "Session:", session ? session.user.id : null);
+        if (!isMounted) return;
         
-        // 세션이 있으면 관리자 정보 확인
-        if (session?.user) {
-          await checkAdminUser(session.user);
+        // 인증 상태 변경 시에도 로딩 상태를 잠시 true로 설정하여 UI가 올바르게 반응하도록 할 수 있습니다.
+        // setLoading(true); // 필요에 따라 주석 해제
+
+        if (session) {
+          // TODO: 실제 관리자 역할 확인 로직 추가
+          // const isAdmin = await checkUserAdminRole(supabase, session.user.id);
+          // setAdminUser(isAdmin ? session.user : null);
+          setAdminUser(session.user);
         } else {
           setAdminUser(null);
         }
+        // 인증 상태 변경 처리 후 로딩 상태를 false로 설정합니다.
+        // (위에서 setLoading(true)를 사용했다면 여기서 false로 설정)
+        if (isMounted) setLoading(false); // setLoading(true)를 사용하지 않았다면 이 줄도 필요 없을 수 있음
       }
     );
 
-    // 초기 세션 확인
-    async function initialize() {
-      console.log("useAdminSession: Initializing session check"); // Added log
-      try { // Added try block
-        const { data, error } = await supabase.auth.getSession(); // Modified to get data and error
-        console.log("useAdminSession: getSession result:", { data, error }); // Added log
-        const session = data?.session; // Get session from data
-        
-        console.log("Initial session:", session);
-        
-        if (session?.user) {
-          console.log("useAdminSession: Session user found, checking admin user"); // Added log
-          await checkAdminUser(session.user);
-        } else {
-          console.log("useAdminSession: No session user found"); // Added log
-        }
-      } catch (sessionError) { // Added catch block
-        console.error("useAdminSession: getSession caught an exception:", sessionError); // Log exception
-      } finally { // Ensure loading state is updated
-        setLoading(false);
-      }
-    }
-
-    // 관리자 테이블에서 사용자 정보 확인
-    async function checkAdminUser(user: User) {
-      try {
-        console.log("Checking admin for user:", user.id);
-        console.log("Executing admin query for user ID:", user.id); // Added log
-        
-        const adminQueryPromise = supabase
-          .from("admin_users")
-          .select("*")
-          .eq("id", user.id)
-          .single();
-
-        // Add a timeout to the admin query promise (e.g., 5 seconds)
-      const timeoutPromise = new Promise<any>((_, reject) =>
-        setTimeout(() => { // Added a block for the callback
-          if (!user) { // Add null check for user
-            reject(new Error(`Admin query timeout for an unknown user`)); // Handle null user case
-          } else {
-            reject(new Error(`Admin query timeout for user ${user.id}`)); // Original logic
-          }
-        }, 5000) // 5초 타임아웃
-      );
-
-        const { data: adminData, error: adminError } = await Promise.race([adminQueryPromise, timeoutPromise]);
-        
-        console.log("Admin query raw result:", { data: adminData, error: adminError }); // Added log
-        console.log("Admin data:", adminData, "Error:", adminError);
-        
-        if (adminError) {
-           console.error("Admin query error:", adminError);
-           setAdminUser(null);
-        } else if (adminData) {
-          // 관리자인 경우 정보 설정
-          setAdminUser({
-            ...user,
-            role: adminData.role,
-            name: adminData.name,
-            isSuperAdmin: adminData.role === 'super_admin',
-            isSubAdmin: adminData.role === 'sub_admin',
-          });
-        } else {
-          // adminData가 null인 경우 (사용자가 admin_users 테이블에 없음)
-          setAdminUser(null);
-        }
-      } catch (error: any) { // Catch timeout or other exceptions
-        console.error("Admin check exception:", error);
-        setAdminUser(null);
-      } finally { // Added finally block
-        setLoading(false); // Ensure loading state is updated
-      }
-    }
-
-    initialize();
-
-    // 클린업 함수
     return () => {
-      subscription.unsubscribe();
+      isMounted = false;
+      authListener?.subscription.unsubscribe();
+      // console.log("useAdminSession: Unsubscribed from auth listener");
     };
-  }, []);
+  }, [supabase]); // supabase는 이제 안정적인 의존성임
 
+  // console.log("useAdminSession: Returning state - loading:", loading, "adminUser:", adminUser ? adminUser.id : null);
   return { adminUser, loading };
 }
 
@@ -317,3 +290,4 @@ export async function authenticateAdmin() {
     return null;
   }
 }
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ export default function LoginPage() {
   );
 
   const sessionFetcher = async () => {
+    addLog("SWR: getSession 호출됨");
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error) {
       addLog(`세션 가져오기 SWR 오류: ${error.message}`);
@@ -34,10 +35,57 @@ export default function LoginPage() {
     return session;
   };
 
-  const { data: currentSession, isLoading: isLoadingSession } = useSWR<Session | null>(
+  const { data: sessionData, isLoading: isLoadingSessionSWR, error: sessionError } = useSWR(
     'user_session',
-    sessionFetcher,
+    sessionFetcher
   );
+  const currentSession = sessionData;
+  const isLoadingSession = isLoadingSessionSWR;
+
+  // 로그 중복 방지를 위한 Ref
+  const noSessionMessageLogged = useRef(false);
+  const redirectingMessageLogged = useRef(false);
+  const sessionLoadingMessageLogged = useRef(false);
+
+  // addLog 함수를 useEffect보다 먼저 정의합니다.
+  const addLog = useCallback((message: string) => {
+    console.log(message);
+    setDebugLogs((prev) => [...prev, `${new Date().toISOString().split('T')[1].split('.')[0]}: ${message}`]);
+  }, []); // 의존성 배열이 비어있으므로, setDebugLogs는 안정적인 참조로 간주됩니다.
+
+  useEffect(() => {
+    addLog("로그인 페이지 useEffect 실행됨");
+
+    if (isLoadingSession) {
+      if (!sessionLoadingMessageLogged.current) {
+        addLog("SWR: 세션 로딩 중...");
+        sessionLoadingMessageLogged.current = true;
+      }
+      // 로딩 중일 때는 다른 플래그 초기화
+      noSessionMessageLogged.current = false;
+      redirectingMessageLogged.current = false;
+      return;
+    }
+
+    // 로딩이 완료되면 로딩 로그 플래그 리셋
+    sessionLoadingMessageLogged.current = false;
+
+    if (currentSession) {
+      if (!redirectingMessageLogged.current) {
+        addLog("SWR: 활성 세션 감지됨. 메인 페이지로 리다이렉트합니다.");
+        redirectingMessageLogged.current = true;
+      }
+      noSessionMessageLogged.current = false; // 다른 상태로 변경되었으므로 리셋
+      router.push('/');
+    } else {
+      // 세션 없고, 로딩 중도 아님
+      if (!noSessionMessageLogged.current) {
+        addLog("SWR: 활성 세션 없음.");
+        noSessionMessageLogged.current = true;
+      }
+      redirectingMessageLogged.current = false; // 다른 상태로 변경되었으므로 리셋
+    }
+  }, [currentSession, isLoadingSession, router, addLog]);
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('adminEmail');
@@ -46,11 +94,6 @@ export default function LoginPage() {
       setRememberMe(true);
     }
   }, []);
-
-  const addLog = (message: string) => {
-    console.log(message);
-    setDebugLogs((prev) => [...prev, `${new Date().toISOString().split('T')[1].split('.')[0]}: ${message}`]);
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,19 +137,7 @@ export default function LoginPage() {
     }
   };
 
-  useEffect(() => {
-    addLog("로그인 페이지 로드됨");
-    if (!isLoadingSession && currentSession) {
-      addLog("SWR: 활성 세션 감지됨. 메인 페이지로 리다이렉트합니다.");
-      router.push('/');
-    } else if (!isLoadingSession && !currentSession) {
-      addLog("SWR: 활성 세션 없음.");
-    } else if (isLoadingSession) {
-      addLog("SWR: 세션 로딩 중...");
-    }
-  }, [currentSession, isLoadingSession, router, addLog]);
-
-  if (isLoadingSession) {
+  if (isLoadingSession && !currentSession) {
     // 세션 로딩 중에는 로딩 스피너 등을 보여줄 수 있습니다.
     // return <div>Loading session...</div>; // 예시: 간단한 로딩 표시
   }
