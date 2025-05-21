@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react"; // useEffect, useRef 임포트 유지
 import { useRouter } from "next/navigation";
+import useSWR from 'swr'; // SWR 훅 임포트 (유지)
+import { createBrowserClient } from '@supabase/ssr'; // Supabase 클라이언트 임포트
+import { useQuery } from '@supabase-cache-helpers/postgrest-swr'; // Supabase Cache Helpers useQuery 훅 임포트
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "react-hot-toast";
-import { supabase } from "@/lib/supabase";
 import { categoryOptions, loadCategoryData } from "@/lib/category-options";
 import { categoryMappings, contextualCategoryMappings, reverseCategoryMappings } from "@/lib/category-mappings";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useRef } from "react";
+
 
 // Add this constant at the top of the file
 const PAGE_SIZE = 10; // or whatever number of items you want per page
@@ -70,138 +72,95 @@ const getTitleString = (title: string | { ko: string; en: string }): string => {
   return typeof title === 'object' ? title.ko : title;
 };
 
+// Supabase 클라이언트 인스턴스 생성 (lib/supabase.ts와 동일하게)
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+
 export default function AdminArticlesPage() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [deletedPosts, setDeletedPosts] = useState<Post[]>([]);
-  const [isFetchingPosts, setIsFetchingPosts] = useState(false); // Initial state is false, will be set to true in the new effect
-  const [isFetchingDeletedPosts, setIsFetchingDeletedPosts] = useState(false); // Initial state is false
+  const router = useRouter();
+  const { adminUser, loading: isLoadingAuth } = useAdminSession();
+  const { toast: useToastToast } = useToast();
+
+  // 필터 및 페이지네이션 상태
   const [currentPage, setCurrentPage] = useState(1);
   const [currentTrashPage, setCurrentTrashPage] = useState(1);
-  const [totalPosts, setTotalPosts] = useState(0);
-  const [totalDeletedPosts, setTotalDeletedPosts] = useState(0);
+  const [currentDraftPage, setCurrentDraftPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [trashSearchTerm, setTrashSearchTerm] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-  const [isTrashSearching, setIsTrashSearching] = useState(false);
-  const [updating, setUpdating] = useState<string | null>(null);
-  const postsPerPage = 10;
-  const totalPages = Math.ceil(totalPosts / postsPerPage);
-  const router = useRouter();
-
-  // New state for combined auth and data loading
-  const [isLoadingAuthAndData, setIsLoadingAuthAndData] = useState(true);
-
-  // 필터 상태: 기본값은 "all"
+  const [draftSearchTerm, setDraftSearchTerm] = useState("");
   const [selectedMainCategories, setSelectedMainCategories] = useState<string[]>([]);
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
   const [mainCategoryOpen, setMainCategoryOpen] = useState(false);
   const [subCategoryOpen, setSubCategoryOpen] = useState(false);
 
-  // 정렬 상태 추가 - 타입 명시
+  // 정렬 상태
   const [sortField, setSortField] = useState("updated_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  const { adminUser } = useAdminSession();
-  const { toast: useToastToast } = useToast();
+  // UI 상태
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isTrashSearching, setIsTrashSearching] = useState(false);
+  const [isDraftSearching, setIsDraftSearching] = useState(false);
 
-  // 카테고리 데이터를 저장할 상태 추가
-  const [categoriesData, setCategoriesData] = useState<Map<string, any>>(new Map());
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  // 카테고리 데이터 로딩
+  const { data: categoriesDataMap, isLoading: isLoadingCategories, error: categoriesError } = useSWR(
+    'categoriesData',
+    loadCategoryData // loadCategoryData 함수를 fetcher로 사용
+  );
+  const categoriesData = categoriesDataMap || new Map(); // 로딩 중일 때 기본값 설정
 
-  // 드롭다운 참조 추가
+  // 드롭다운 참조
   const mainCategoryRef = useRef<HTMLDivElement>(null);
   const subCategoryRef = useRef<HTMLDivElement>(null);
 
-  // 외부 클릭 감지 효과 추가
+  // 외부 클릭 감지 효과
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      // 메인 카테고리 드롭다운
       if (mainCategoryRef.current && !mainCategoryRef.current.contains(event.target as Node)) {
         setMainCategoryOpen(false);
       }
-      
-      // 서브 카테고리 드롭다운
       if (subCategoryRef.current && !subCategoryRef.current.contains(event.target as Node)) {
         setSubCategoryOpen(false);
       }
     }
-    
-    // 이벤트 리스너 추가
     document.addEventListener("mousedown", handleClickOutside);
-    
-    // 클린업 함수
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  // 컴포넌트 마운트 시 카테고리 데이터 로드
-  useEffect(() => {
-    async function fetchCategories() {
-      setIsLoadingCategories(true);
-      try {
-        const data = await loadCategoryData();
-        setCategoriesData(data);
-      } catch (error) {
-        console.error("카테고리 로드 실패:", error);
-      } finally {
-        setIsLoadingCategories(false);
-      }
-    }
-    
-    fetchCategories();
-  }, []);
-
   // 메인 카테고리 옵션 가져오기
   const getMainCategoryOptions = () => {
     const options: { value: string; label: string }[] = [];
-    
-    // 카테고리 데이터가 로드되지 않았으면 빈 배열 반환
     if (categoriesData.size === 0) return options;
-    
     for (const [categoryName, categoryData] of categoriesData.entries()) {
       const slug = categoryData.href?.replace(/^\//, '') || '';
-      options.push({
-        value: slug,
-        label: categoryName
-      });
+      options.push({ value: slug, label: categoryName });
     }
-    
     return options;
   };
 
   // 서브 카테고리 옵션 가져오기
   const getSubCategoryOptions = () => {
     const options: { value: string; label: string }[] = [];
-    
-    // Only show subcategories when exactly one main category is selected
     if (categoriesData.size === 0 || selectedMainCategories.length !== 1) {
       return options;
     }
-    
-    const selectedMainCategory = selectedMainCategories[0]; // Get the only selected main category
-    
-    // Find the selected main category data
+    const selectedMainCategory = selectedMainCategories[0];
     for (const [categoryName, categoryData] of categoriesData.entries()) {
       const slug = categoryData.href?.replace(/^\//, '') || '';
-      
-      // Check if this matches the selected main category
       if (slug === selectedMainCategory && categoryData.items) {
-        // Add all subcategories for this main category
         for (const subCategory of categoryData.items) {
-          const title = typeof subCategory.title === 'object' 
-            ? subCategory.title.ko 
-            : subCategory.title;
-            
-          options.push({
-            value: subCategory.slug,
-            label: title
-          });
+          const title = typeof subCategory.title === 'object' ? subCategory.title.ko : subCategory.title;
+          options.push({ value: subCategory.slug, label: title });
         }
         break;
       }
     }
-    
     return options;
   };
 
@@ -220,13 +179,10 @@ export default function AdminArticlesPage() {
   const getSubCategoryTitle = (mainSlug: string, subSlug: string): string => {
     for (const [categoryName, categoryData] of categoriesData.entries()) {
       const categorySlug = categoryData.href?.replace(/^\//, '') || '';
-      
       if (categorySlug === mainSlug && categoryData.items) {
         for (const subCategory of categoryData.items) {
           if (subCategory.slug === subSlug) {
-            return typeof subCategory.title === 'object'
-              ? subCategory.title.ko
-              : subCategory.title;
+            return typeof subCategory.title === 'object' ? subCategory.title.ko : subCategory.title;
           }
         }
       }
@@ -234,36 +190,13 @@ export default function AdminArticlesPage() {
     return subSlug;
   };
 
-  // 한글 카테고리명을 영문 슬러그로 변환하는 함수
-  const getCategorySlug = (categoryTitle: string): string => {
-    // 이미 영문인 경우 그대로 반환
-    if (!categoryTitle || !/[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(categoryTitle)) {
-      return categoryTitle;
-    }
-    
-    // 1. 카테고리 매핑에서 찾기
-    if (categoryMappings[categoryTitle]) {
-      return categoryMappings[categoryTitle];
-    }
-    
-    // 2. categoryOptions에서 찾기
-    if (categoryOptions.has(categoryTitle)) {
-      const option = categoryOptions.get(categoryTitle);
-      return option?.href?.replace(/^\//, '') || 
-             categoryTitle.toLowerCase().replace(/\s+/g, "-");
-    }
-    
-    // 3. 매핑에 없는 경우 기본 변환
-    return categoryTitle.toLowerCase().replace(/\s+/g, "-");
-  };
-
-  // 데이터 전처리 함수
-  const preprocessData = (data: Post[]): Post[] => {
+  // 데이터 전처리 함수 (SWR 데이터에 적용)
+  const preprocessPosts = (data: Post[] | undefined): Post[] => {
+    if (!data) return [];
     return data.map(post => {
       const displayMainCategory = getMainCategoryTitle(post.category);
       const displaySubCategory = post.subcategory ? getSubCategoryTitle(post.category, post.subcategory) : "";
       const displaySubSubCategory = post.subsubcategory ? getSubCategoryTitle(post.category, post.subsubcategory) : "";
-      
       return {
         ...post,
         displayMainCategory,
@@ -273,263 +206,128 @@ export default function AdminArticlesPage() {
     });
   };
 
-  // 정렬 함수
-  const sortData = (data: Post[], field: string | null, direction: 'asc' | 'desc'): Post[] => {
-    if (!field) return data;
-    
-    // 데이터 전처리로 표시값 미리 계산
-    const enhancedData = preprocessData(data);
-    
-    return [...enhancedData].sort((a, b) => {
-      let valueA, valueB;
-      
-      // 카테고리 열 정렬 시 한글 카테고리명으로 정렬
-      if (field === "category") {
-        valueA = a.displayMainCategory || "";
-        valueB = b.displayMainCategory || "";
-      }
-      // 서브카테고리 열 정렬 시 한글 서브카테고리명으로 정렬
-      else if (field === "subcategory") {
-        valueA = a.displaySubCategory || "";
-        valueB = b.displaySubCategory || "";
-      }
-      // 기타 열은 기존대로 정렬
-      else {
-        valueA = a[field as keyof Post] || "";
-        valueB = b[field as keyof Post] || "";
-      }
-      
-      // 날짜 필드 특별 처리
-      if (field === "date") {
-        const dateA = valueA ? new Date(valueA as string).getTime() : 0;
-        const dateB = valueB ? new Date(valueB as string).getTime() : 0;
-        return direction === "asc" ? dateA - dateB : dateB - dateA;
-      } 
-      // 다른 문자열 필드는 localeCompare 사용
-      else if (typeof valueA === "string" && typeof valueB === "string") {
-        return direction === "asc" 
-          ? valueA.localeCompare(valueB, "ko") 
-          : valueB.localeCompare(valueA, "ko");
-      } 
-      // 숫자 등 기타 타입 비교 (viewcnt 등)
-      else {
-        const numA = Number(valueA) || 0;
-        const numB = Number(valueB) || 0;
-        return direction === "asc" 
-          ? numA - numB
-          : numB - numA;
-      }
-    });
-  };
-
-  // 필터 조건이나 페이지 변경 시 게시글 다시 조회
-  useEffect(() => {
-    fetchPosts();
-  }, [currentPage, selectedMainCategories, selectedSubCategories, sortField, sortDirection]);
-
-  // DB 쿼리 함수 수정
-  const fetchPosts = async (page = currentPage, search = searchTerm) => {
-    setIsFetchingPosts(true);
-    const start = (page - 1) * postsPerPage;
-    const end = page * postsPerPage - 1;
-    setIsSearching(!!search);
-
+  // SWR 훅을 사용하여 게시글 데이터 가져오기
+  const postsQuery = adminUser ? (() => {
     let query = supabase
       .from("posts")
       .select("*", { count: "exact" })
       .eq("is_deleted", false)
       .eq("is_draft", false);
 
-    // 검색어 필터 추가
-    if (search) {
-      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
-    }
+    // 메인 카테고리 필터
+    // 선택된 메인 카테고리가 있으면 해당 카테고리들로 필터링
+    // 없으면 모든 메인 카테고리 (getMainCategoryOptions()가 빈 배열을 반환하면 .in("category", [])가 되어 정상적으로 0건 조회)
+    query = query.in("category", selectedMainCategories.length > 0 ? selectedMainCategories : getMainCategoryOptions().map(opt => opt.value));
 
-    if (selectedMainCategories.length > 0) {
-      query = query.in("category", selectedMainCategories);
+    // 서브 카테고리 필터
+    // 정확히 하나의 메인 카테고리가 선택된 경우에만 서브 카테고리 필터 적용
+    if (selectedMainCategories.length === 1) {
+      const subCategorySlugsForSelectedMain = getSubCategoryOptions().map(opt => opt.value);
+      // 선택된 서브 카테고리가 있으면 해당 서브 카테고리들로 필터링
+      // 없으면 (즉, "모든 서브 카테고리" 선택 시) 해당 메인 카테고리에 속하는 모든 서브 카테고리로 필터링
+      // (subCategorySlugsForSelectedMain이 빈 배열이면 .in("subcategory", [])가 되어 정상적으로 0건 조회)
+      query = query.in("subcategory", selectedSubCategories.length > 0 ? selectedSubCategories : subCategorySlugsForSelectedMain);
     }
-    if (selectedSubCategories.length > 0 && selectedMainCategories.length === 1) {
-      query = query.in("subcategory", selectedSubCategories);
-    }
+    // 메인 카테고리가 선택되지 않았거나 여러 개 선택된 경우에는 서브 카테고리 필터를 적용하지 않음
 
-    // 정렬 적용 - 항상 정렬 필드와 방향 적용
-    query = query.order(sortField, { ascending: sortDirection === 'asc' });
+    query = query
+      .ilike("title", `%${searchTerm}%`)
+      .order(sortField, { ascending: sortDirection === 'asc' })
+      .range((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE - 1);
     
-    // 페이지네이션 적용
-    query = query.range(start, end);
+    return query;
+  })() : null;
 
-    const { data, error, count } = await query;
+  const { 
+    data: rawPosts, 
+    error: postsError, 
+    isLoading: isLoadingPosts, 
+    count: postsCount, 
+    mutate: mutatePosts 
+  } = useQuery(
+    postsQuery
+    // SWR 옵션이 필요하다면 여기에 추가합니다. 예: { revalidateOnFocus: false }
+  );
+  const posts = preprocessPosts(rawPosts);
+  const totalPosts = postsCount || 0;
+  const totalPages = Math.ceil(totalPosts / PAGE_SIZE);
 
-    if (error) {
-      console.error("Error fetching posts:", error);
-      toast.error("Failed to fetch articles: " + error.message);
-    } else if (data) {
-      console.log("검색 결과:", data.length);
-      
-      // 정렬 적용
-      const sortedData = sortData(data, sortField, sortDirection);
-      
-      setPosts(sortedData);
-      
-      if (count !== null) {
-        setTotalPosts(count);
-      }
-    }
-    setIsFetchingPosts(false);
-  };
+  // SWR 훅을 사용하여 임시저장 게시글 데이터 가져오기
+  const draftsQuery = adminUser ?
+    supabase
+      .from("posts")
+      .select("*", { count: "exact" })
+      .eq("is_draft", true)
+      .eq("is_deleted", false)
+      .ilike("title", `%${draftSearchTerm}%`)
+      .order("created_at", { ascending: false })
+      .range((currentDraftPage - 1) * PAGE_SIZE, currentDraftPage * PAGE_SIZE - 1)
+    : null;
 
-  // 휴지통 게시글 조회 함수 추가
-  const fetchDeletedPosts = async (page = currentTrashPage, search = trashSearchTerm) => {
-    setIsFetchingDeletedPosts(true);
-    const start = (page - 1) * postsPerPage;
-    const end = page * postsPerPage - 1;
-    setIsTrashSearching(!!search);
+  const { 
+    data: rawDrafts, 
+    error: draftsError, 
+    isLoading: isLoadingDrafts, 
+    count: draftsCount, 
+    mutate: mutateDrafts 
+  } = useQuery(
+    draftsQuery
+  );
+  const drafts = preprocessPosts(rawDrafts);
+  const totalDrafts = draftsCount || 0;
+  const totalDraftPages = Math.ceil(totalDrafts / PAGE_SIZE);
 
-    let query = supabase
+  // SWR 훅을 사용하여 휴지통 게시글 데이터 가져오기
+  const deletedPostsQuery = adminUser ?
+    supabase
       .from("posts")
       .select("*", { count: "exact" })
       .eq("is_deleted", true)
+      .ilike("title", `%${trashSearchTerm}%`)
       .order("deleted_at", { ascending: false })
-      .range(start, end);
+      .range((currentTrashPage - 1) * PAGE_SIZE, currentTrashPage * PAGE_SIZE - 1)
+    : null;
 
-    // 검색어 필터 추가
-    if (search) {
-      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%`);
-    }
+  const { 
+    data: rawDeletedPosts, 
+    error: deletedPostsError, 
+    isLoading: isLoadingDeletedPosts, 
+    count: deletedPostsCount, 
+    mutate: mutateDeletedPosts 
+  } = useQuery(
+    deletedPostsQuery
+  );
+  const deletedPosts = preprocessPosts(rawDeletedPosts);
+  const totalDeletedPosts = deletedPostsCount || 0;
+  const totalTrashPages = Math.ceil(totalDeletedPosts / PAGE_SIZE);
 
-    const { data, error, count } = await query;
 
-    if (error) {
-      console.error("Error fetching deleted posts:", error);
-      toast.error("삭제된 게시글을 불러오는데 실패했습니다: " + error.message);
-    } else if (data) {
-      console.log("휴지통 검색 결과:", data.length);
-      
-      // 데이터 전처리 적용
-      const processedData = preprocessData(data);
-      setDeletedPosts(processedData);
-      
-      if (count !== null) {
-        setTotalDeletedPosts(count);
-      }
-    }
-    setIsFetchingDeletedPosts(false);
-  };
+  // 모든 데이터 로딩 상태 확인
+  const isLoading = isLoadingAuth || isLoadingCategories || isLoadingPosts || isLoadingDrafts || isLoadingDeletedPosts;
 
-  // 휴지통 페이지 변경 시 삭제된 게시글 다시 조회
+  // 인증되지 않은 경우 로그인 페이지로 리다이렉트
   useEffect(() => {
-    fetchDeletedPosts();
-  }, [currentTrashPage]);
-
-  const handleEdit = (id: string) => {
-    router.push(`/admin/articles/edit/${id}`);
-  };
-
-  // 임시저장 게시글 편집 함수도 동일한 경로 사용
-  const handleEditDraft = (id: string) => {
-    router.push(`/admin/articles/edit/${id}`);
-  };
-
-  // 게시글 복원 함수
-  const handleRestore = async (id: string) => {
-    const confirmRestore = confirm("이 게시글을 복원하시겠습니까?");
-    if (confirmRestore) {
-      const { error } = await supabase
-        .from("posts")
-        .update({ 
-          is_deleted: false, 
-          deleted_at: null 
-        })
-        .eq("id", id);
-        
-      if (error) {
-        console.error("게시글 복원 중 오류:", error);
-        toast.error("게시글 복원에 실패했습니다");
-      } else {
-        toast.success("게시글이 복원되었습니다");
-        fetchDeletedPosts();
-        fetchPosts(currentPage, searchTerm); // 현재 페이지와 검색어로 다시 조회
-      }
+    if (!isLoadingAuth && !adminUser) {
+      router.replace("/admin/login");
     }
-  };
+  }, [adminUser, isLoadingAuth, router]);
 
-  // 게시글 영구 삭제 함수
-  const handlePermanentDelete = async (id: string) => {
-    const confirmDelete = confirm("이 게시글을 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.");
-    if (confirmDelete) {
-      const { error } = await supabase
-        .from("posts")
-        .delete()
-        .eq("id", id);
-        
-      if (error) {
-        console.error("게시글 영구 삭제 중 오류:", error);
-        toast.error("게시글 영구 삭제에 실패했습니다");
-      } else {
-        toast.success("게시글이 영구적으로 삭제되었습니다");
-        fetchDeletedPosts();
-      }
-    }
-  };
+  // 로딩 중 또는 에러 발생 시 UI
+  if (isLoading) {
+    return <div className="container mx-auto px-4 py-8">로딩 중...</div>;
+  }
 
-  // 휴지통 검색 핸들러
-  const handleTrashSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentTrashPage(1); // 검색 시 첫 페이지로 이동
-    fetchDeletedPosts(1, trashSearchTerm);
-  };
+  if (postsError || draftsError || deletedPostsError || categoriesError) {
+    console.error("Error fetching data:", postsError || draftsError || deletedPostsError || categoriesError);
+    return <div className="container mx-auto px-4 py-8 text-red-500">데이터 로딩 중 오류가 발생했습니다.</div>;
+  }
 
-  // 휴지통 검색 초기화
-  const handleResetTrashSearch = () => {
-    setTrashSearchTerm("");
-    setIsTrashSearching(false);
-    setCurrentTrashPage(1);
-    fetchDeletedPosts(1, "");
-  };
-
-  // 메인 카테고리 필터 변경 핸들러
-  const handleFilterMainCategoryChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const value = e.target.value;
-    setSelectedMainCategories([value]);
-    
-    // 디버깅 로그
-    console.log("선택된 메인 카테고리:", value);
-    
-    // 메인 카테고리 변경 시 서브 카테고리 초기화
-    setSelectedSubCategories([]);
-    setCurrentPage(1);
-  };
-
-  // 서브 카테고리 필터 변경 핸들러
-  const handleFilterSubCategoryChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    setSelectedSubCategories([e.target.value]);
-    setCurrentPage(1);
-  };
-
-  // 정렬 토글 함수
-  const toggleSort = (field: string) => {
-    if (sortField === field) {
-      // 같은 필드면 방향만 전환
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      // 다른 필드면 필드 변경하고 오름차순으로 시작
-      setSortField(field);
-      setSortDirection('asc');
-    }
-    
-    // 정렬 시에도 항상 is_deleted와 is_draft 필터링 유지
-    fetchPosts(currentPage, searchTerm);
-  };
-
-  // 검색 핸들러
+  // 검색 핸들러 (SWR은 캐시 키 변경 시 자동 재검증)
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1); // 검색 시 첫 페이지로 이동
-    fetchPosts(1, searchTerm);
+    setIsSearching(!!searchTerm);
+    // searchTerm 상태가 변경되면 SWR 훅이 자동으로 데이터를 다시 가져옵니다.
   };
 
   // 검색 초기화
@@ -537,12 +335,77 @@ export default function AdminArticlesPage() {
     setSearchTerm("");
     setIsSearching(false);
     setCurrentPage(1);
-    fetchPosts(1, "");
+    // searchTerm 상태가 빈 문자열로 변경되면 SWR 훅이 자동으로 데이터를 다시 가져옵니다.
+  };
+
+  // 휴지통 검색 핸들러
+  const handleTrashSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentTrashPage(1); // 검색 시 첫 페이지로 이동
+    setIsTrashSearching(!!trashSearchTerm);
+    // trashSearchTerm 상태가 변경되면 SWR 훅이 자동으로 데이터를 다시 가져옵니다.
+  };
+
+  // 휴지통 검색 초기화
+  const handleResetTrashSearch = () => {
+    setTrashSearchTerm("");
+    setIsTrashSearching(false);
+    setCurrentTrashPage(1);
+    // trashSearchTerm 상태가 빈 문자열로 변경되면 SWR 훅이 자동으로 데이터를 다시 가져옵니다.
+  };
+
+  // 임시저장 검색 핸들러
+  const handleDraftSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentDraftPage(1); // 검색 시 첫 페이지로 이동
+    setIsDraftSearching(!!draftSearchTerm);
+    // draftSearchTerm 상태가 변경되면 SWR 훅이 자동으로 데이터를 다시 가져옵니다.
+  };
+
+  // 임시저장 검색 초기화
+  const handleResetDraftSearch = () => {
+    setDraftSearchTerm("");
+    setIsDraftSearching(false);
+    setCurrentDraftPage(1);
+    // draftSearchTerm 상태가 빈 문자열로 변경되면 SWR 훅이 자동으로 데이터를 다시 가져옵니다.
+  };
+
+  // 메인 카테고리 필터 변경 핸들러
+  const handleFilterMainCategoryChange = (value: string) => {
+    const newSelected = selectedMainCategories.includes(value)
+      ? selectedMainCategories.filter(c => c !== value)
+      : [...selectedMainCategories, value];
+    setSelectedMainCategories(newSelected);
+    setSelectedSubCategories([]); // 메인 카테고리 변경 시 서브 카테고리 초기화
+    setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+    setMainCategoryOpen(false); // 드롭다운 닫기
+    // selectedMainCategories 상태가 변경되면 SWR 훅이 자동으로 데이터를 다시 가져옵니다.
+  };
+
+  // 서브 카테고리 필터 변경 핸들러
+  const handleFilterSubCategoryChange = (value: string) => {
+    const newSelected = selectedSubCategories.includes(value)
+      ? selectedSubCategories.filter(c => c !== value)
+      : [...selectedSubCategories, value];
+    setSelectedSubCategories(newSelected);
+    setCurrentPage(1); // 필터 변경 시 첫 페이지로 이동
+    setSubCategoryOpen(false); // 드롭다운 닫기
+    // selectedSubCategories 상태가 변경되면 SWR 훅이 자동으로 데이터를 다시 가져옵니다.
+  };
+
+  // 정렬 토글 함수
+  const toggleSort = (field: string) => {
+    const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+    setSortField(field);
+    setSortDirection(newDirection);
+    setCurrentPage(1); // 정렬 변경 시 첫 페이지로 이동
+    // sortField 또는 sortDirection 상태가 변경되면 SWR 훅이 자동으로 데이터를 다시 가져옵니다.
   };
 
   // 슬라이드 표시 상태 토글
   const toggleSlideStatus = async (id: string, currentStatus: boolean) => {
     try {
+      setUpdating(id);
       const { error } = await supabase
         .from("posts")
         .update({ is_slide: !currentStatus })
@@ -550,19 +413,17 @@ export default function AdminArticlesPage() {
       
       if (error) throw error;
       
-      // 로컬 상태 업데이트
-      setPosts(prev => prev.map(post => 
-        post.id === id ? { ...post, is_slide: !currentStatus } : post
-      ));
-      
       toast.success(`슬라이드 표시가 ${!currentStatus ? '활성화' : '비활성화'}되었습니다.`);
+      mutatePosts(); // 데이터 변경 후 SWR 캐시 갱신
     } catch (error) {
       console.error("Error updating slide status:", error);
       toast.error("슬라이드 상태 변경에 실패했습니다.");
+    } finally {
+      setUpdating(null);
     }
   };
 
-  // 이미지 업로드 함수 수정
+  // 이미지 업로드 함수
   const handleImageUpload = async (postId: string) => {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -574,42 +435,24 @@ export default function AdminArticlesPage() {
       
       try {
         setUpdating(postId);
-        
-        // 파일 이름 생성
         const fileName = `${Date.now()}-${file.name}`;
-        
-        // 기존 코드와 동일한 경로 사용
         const { data, error: uploadError } = await supabase.storage
           .from('images')
           .upload(`articles/${fileName}`, file);
         
-        if (uploadError) {
-          throw uploadError;
-        }
+        if (uploadError) throw uploadError;
         
-        // 이미지 URL 가져오기
         const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/articles/${fileName}`;
         
-        // 게시물 정보 업데이트
         const { error: updateError } = await supabase
           .from('posts')
           .update({ image_url: imageUrl })
           .eq('id', postId);
           
-        if (updateError) {
-          throw updateError;
-        }
-        
-        // 로컬 상태 업데이트
-        setPosts(prev => 
-          prev.map(post => 
-            post.id === postId 
-              ? { ...post, image_url: imageUrl } 
-              : post
-          )
-        );
+        if (updateError) throw updateError;
         
         toast.success("슬라이드 이미지가 업로드되었습니다.");
+        mutatePosts(); // 데이터 변경 후 SWR 캐시 갱신
       } catch (error) {
         console.error('이미지 업로드 중 오류 발생:', error);
         toast.error("이미지 업로드에 실패했습니다");
@@ -617,33 +460,22 @@ export default function AdminArticlesPage() {
         setUpdating(null);
       }
     };
-    
-    // 파일 선택 다이얼로그 열기
     fileInput.click();
   };
 
-  // 슬라이드 순서 변경 함수 추가
+  // 슬라이드 순서 변경 함수
   const updateSlideOrder = async (postId: string, order: number) => {
     try {
       setUpdating(postId);
-      
       const { error } = await supabase
         .from("posts")
         .update({ slide_order: order })
         .eq("id", postId);
         
-      if (error) {
-        throw error;
-      }
-      
-      // 로컬 상태 업데이트
-      setPosts(prev => 
-        prev.map(post => 
-          post.id === postId ? { ...post, slide_order: order } : post
-        )
-      );
+      if (error) throw error;
       
       toast.success(`슬라이드 순서가 ${order}번으로 변경되었습니다.`);
+      mutatePosts(); // 데이터 변경 후 SWR 캐시 갱신
     } catch (error) {
       console.error("슬라이드 순서 변경 중 오류:", error);
       toast.error("슬라이드 순서 변경에 실패했습니다.");
@@ -652,185 +484,77 @@ export default function AdminArticlesPage() {
     }
   };
 
-  // Add this function to toggle sort order
-  const toggleSortOrder = () => {
-    const newOrder = sortDirection === 'asc' ? 'desc' : 'asc';
-    setSortDirection(newOrder);
-    
-    // Sort the posts based on date
-    const sortedPosts = [...posts].sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      return newOrder === 'asc' ? dateA - dateB : dateB - dateA;
-    });
-    
-    setPosts(sortedPosts);
-  };
-
-  // Modify your useEffect or fetch function to apply the initial sort
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('posts')
-          .select('*');
-          
-        if (error) throw error;
-        
-        // Sort posts by date based on current sortOrder
-        const sortedPosts = data.sort((a, b) => {
-          const dateA = new Date(a.date).getTime();
-          const dateB = new Date(b.date).getTime();
-          return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
-        });
-        
-        setPosts(sortedPosts);
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-      }
-    };
-    
-    fetchPosts();
-  }, [sortDirection]);
-
-  // Add this function to handle toggling main categories
-  const toggleMainCategory = (category: string) => {
-    setSelectedMainCategories(prev => 
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    );
-  };
-
-  // Add this function to handle toggling sub categories
-  const toggleSubCategory = (category: string) => {
-    setSelectedSubCategories(prev => 
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    );
-  };
-
-  // Add this function to handle moving posts to trash
+  // 게시글 휴지통 이동 함수
   const handleDelete = async (id: string) => {
     const confirmDelete = confirm("이 게시글을 휴지통으로 이동하시겠습니까?");
     if (confirmDelete) {
-      const { error } = await supabase
-        .from("posts")
-        .update({ 
-          is_deleted: true, 
-          deleted_at: new Date().toISOString() 
-        })
-        .eq("id", id);
+      try {
+        const { error } = await supabase
+          .from("posts")
+          .update({ 
+            is_deleted: true, 
+            deleted_at: new Date().toISOString() 
+          })
+          .eq("id", id);
         
-      if (error) {
+        if (error) throw error;
+        
+        toast.success("게시글이 휴지통으로 이동되었습니다");
+        mutatePosts(); // 게시글 목록 갱신
+        mutateDeletedPosts(); // 휴지통 목록 갱신
+      } catch (error) {
         console.error("게시글 삭제 중 오류:", error);
         toast.error("게시글을 휴지통으로 이동하는데 실패했습니다");
-      } else {
-        toast.success("게시글이 휴지통으로 이동되었습니다");
-        fetchPosts();
       }
     }
   };
 
-  // 임시저장 게시글 관련 상태 추가
-  const [drafts, setDrafts] = useState<Post[]>([]);
-  const [isFetchingDrafts, setIsFetchingDrafts] = useState(false);
-  const [totalDrafts, setTotalDrafts] = useState(0);
-  const [currentDraftPage, setCurrentDraftPage] = useState(1);
-  const [totalDraftPages, setTotalDraftPages] = useState(1);
-  const [draftSearchTerm, setDraftSearchTerm] = useState("");
-  const [isDraftSearching, setIsDraftSearching] = useState(false);
-  
-  // 임시저장 게시글 불러오기 함수
-  const fetchDrafts = async (page = 1, search = "") => {
-    setIsFetchingDrafts(true);
-    setIsDraftSearching(!!search);
-    
-    try {
-      // 카운트 쿼리
-      let countQuery = supabase
-        .from("posts")
-        .select("id", { count: "exact" })
-        .eq("is_draft", true)
-        .eq("is_deleted", false);
+  // 게시글 복원 함수
+  const handleRestore = async (id: string) => {
+    const confirmRestore = confirm("이 게시글을 복원하시겠습니까?");
+    if (confirmRestore) {
+      try {
+        const { error } = await supabase
+          .from("posts")
+          .update({ 
+            is_deleted: false, 
+            deleted_at: null 
+          })
+          .eq("id", id);
         
-      if (search) {
-        countQuery = countQuery.ilike("title", `%${search}%`);
-      }
-      
-      const { count: totalCount, error: countError } = await countQuery;
-      
-      if (countError) {
-        console.error("임시저장 게시글 수 조회 실패:", countError);
-        return;
-      }
-      
-      setTotalDrafts(totalCount || 0);
-      setTotalDraftPages(Math.ceil((totalCount || 0) / PAGE_SIZE));
-      
-      // 데이터 쿼리
-      let query = supabase
-        .from("posts")
-        .select("*")
-        .eq("is_draft", true)
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: false })
-        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+        if (error) throw error;
         
-      if (search) {
-        query = query.ilike("title", `%${search}%`);
+        toast.success("게시글이 복원되었습니다");
+        mutateDeletedPosts(); // 휴지통 목록 갱신
+        mutatePosts(); // 게시글 목록 갱신
+      } catch (error) {
+        console.error("게시글 복원 중 오류:", error);
+        toast.error("게시글 복원에 실패했습니다");
       }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error("임시저장 게시글 로드 실패:", error);
-        return;
-      }
-      
-      // 메인 카테고리와 서브 카테고리 표시 이름 추가
-      const draftsWithDisplay = data?.map((draft) => ({
-        ...draft,
-        displayMainCategory: getMainCategoryTitle(draft.category),
-        displaySubCategory: draft.subcategory 
-          ? getSubCategoryTitle(draft.category, draft.subcategory) 
-          : null
-      })) || [];
-      
-      setDrafts(draftsWithDisplay);
-    } catch (error) {
-      console.error("임시저장 게시글 로드 중 오류:", error);
-    } finally {
-      setIsFetchingDrafts(false);
     }
   };
 
-  // 컴포넌트 마운트 시 임시저장 게시글 로드
-  useEffect(() => {
-    fetchDrafts();
-  }, []);
-  
-  // 임시저장 페이지 변경 시 데이터 다시 로드
-  useEffect(() => {
-    fetchDrafts(currentDraftPage, draftSearchTerm);
-  }, [currentDraftPage]);
-  
-  // 임시저장 검색 핸들러
-  const handleDraftSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentDraftPage(1);
-    fetchDrafts(1, draftSearchTerm);
+  // 게시글 영구 삭제 함수
+  const handlePermanentDelete = async (id: string) => {
+    const confirmDelete = confirm("이 게시글을 영구적으로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.");
+    if (confirmDelete) {
+      try {
+        const { error } = await supabase
+          .from("posts")
+          .delete()
+          .eq("id", id);
+        
+        if (error) throw error;
+        
+        toast.success("게시글이 영구적으로 삭제되었습니다");
+        mutateDeletedPosts(); // 휴지통 목록 갱신
+      } catch (error) {
+        console.error("게시글 영구 삭제 중 오류:", error);
+        toast.error("게시글 영구 삭제에 실패했습니다");
+      }
+    }
   };
-  
-  // 임시저장 검색 초기화
-  const handleResetDraftSearch = () => {
-    setDraftSearchTerm("");
-    setIsDraftSearching(false);
-    setCurrentDraftPage(1);
-    fetchDrafts(1, "");
-  };
-  
+
   // 임시저장 게시글 발행 함수
   const handlePublishDraft = async (id: string) => {
     const confirmPublish = confirm("이 임시저장 게시글을 발행하시겠습니까?");
@@ -845,14 +569,11 @@ export default function AdminArticlesPage() {
           })
           .eq("id", id);
           
-        if (error) {
-          console.error("게시글 발행 중 오류:", error);
-          toast.error("게시글 발행에 실패했습니다");
-        } else {
-          toast.success("게시글이 성공적으로 발행되었습니다");
-          fetchDrafts(currentDraftPage, draftSearchTerm);
-          fetchPosts(currentPage, searchTerm); // 현재 페이지와 검색어로 다시 조회
-        }
+        if (error) throw error;
+        
+        toast.success("게시글이 성공적으로 발행되었습니다");
+        mutateDrafts(); // 임시저장 목록 갱신
+        mutatePosts(); // 게시글 목록 갱신
       } catch (error) {
         console.error("게시글 발행 중 오류:", error);
         toast.error("게시글 발행에 실패했습니다");
@@ -873,13 +594,11 @@ export default function AdminArticlesPage() {
           })
           .eq("id", id);
           
-        if (error) {
-          console.error("임시저장 게시글 삭제 중 오류:", error);
-          toast.error("임시저장 게시글 삭제에 실패했습니다");
-        } else {
-          toast.success("임시저장 게시글이 삭제되었습니다");
-          fetchDrafts(currentDraftPage, draftSearchTerm);
-        }
+        if (error) throw error;
+        
+        toast.success("임시저장 게시글이 삭제되었습니다");
+        mutateDrafts(); // 임시저장 목록 갱신
+        mutateDeletedPosts(); // 휴지통 목록 갱신
       } catch (error) {
         console.error("임시저장 게시글 삭제 중 오류:", error);
         toast.error("임시저장 게시글 삭제에 실패했습니다");
@@ -887,35 +606,6 @@ export default function AdminArticlesPage() {
     }
   };
 
-  // New useEffect to handle authentication and initial data fetching
-  useEffect(() => {
-    async function loadAuthAndData() {
-      setIsLoadingAuthAndData(true);
-      try {
-        const adminUser = await authenticateAdmin(); // Authenticate and get user
-        if (adminUser) {
-          // Fetch data only if authenticated
-          await fetchPosts(1, ""); // Pass initial page and search term
-          await fetchDeletedPosts();
-          await fetchDrafts();
-        } else {
-          // Handle unauthenticated state, redirect to login
-          router.push('/admin/login');
-        }
-      } catch (error) {
-        console.error("Error during auth or data fetching:", error);
-        // Handle errors, maybe show an error message
-        toast.error("데이터 로딩 중 오류가 발생했습니다.");
-      } finally {
-        setIsLoadingAuthAndData(false);
-      }
-    }
-    loadAuthAndData();
-  }, []); // Empty dependency array, runs once on mount
-
-  if (isLoadingAuthAndData) {
-    return <div className="container mx-auto px-4 py-8">로딩 중...</div>;
-  }
 
   return (
     <div className="container mx-auto py-8">
@@ -969,9 +659,7 @@ export default function AdminArticlesPage() {
                       type="checkbox"
                       checked={selectedMainCategories.includes(option.value)}
                       onChange={() => {
-                        toggleMainCategory(option.value);
-                        // When changing main categories, clear subcategories
-                        setSelectedSubCategories([]);
+                        handleFilterMainCategoryChange(option.value); // 핸들러 사용
                       }}
                       className="mr-2"
                     />
@@ -1010,7 +698,7 @@ export default function AdminArticlesPage() {
                   <input
                     type="checkbox"
                     checked={selectedSubCategories.length === 0}
-                    onChange={() => setSelectedSubCategories([])}
+                    onChange={() => handleFilterSubCategoryChange("")} // 모든 서브 카테고리 선택 시 빈 문자열 전달
                     className="mr-2"
                   />
                   모든 서브 카테고리
@@ -1020,7 +708,7 @@ export default function AdminArticlesPage() {
                     <input
                       type="checkbox"
                       checked={selectedSubCategories.includes(option.value)}
-                      onChange={() => toggleSubCategory(option.value)}
+                      onChange={() => handleFilterSubCategoryChange(option.value)} // 핸들러 사용
                       className="mr-2"
                     />
                     {option.label}
@@ -1095,30 +783,29 @@ export default function AdminArticlesPage() {
             </TableRow>
             </TableHeader>
             <TableBody>
-              {isFetchingPosts ? (
+              {isLoadingPosts ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">
+                  <TableCell colSpan={8} className="text-center">
                     로딩 중...
                   </TableCell>
                 </TableRow>
               ) : posts.length === 0 ? (
                 <TableRow>
-                <TableCell colSpan={5} className="text-center">
+                <TableCell colSpan={8} className="text-center">
                   {isSearching ? "검색 결과가 없습니다." : "등록된 기사가 없습니다."}
                 </TableCell>
               </TableRow>
             ) : (
               posts
-                .filter(post => !post.is_deleted && !post.is_draft)
                 .map((post) => (
                   <TableRow key={post.id}>
                     <TableCell className="font-medium flex items-center">
                       {post.is_deleted && <Trash size={14} className="mr-2 text-red-500" />} {/* 휴지통 아이콘 조건부 추가 */}
                       {post.title}
                     </TableCell>
-                    <TableCell>{getMainCategoryTitle(post.category)}</TableCell>
+                    <TableCell>{post.displayMainCategory}</TableCell>
                     <TableCell>
-                      {post.subcategory ? getSubCategoryTitle(post.category, post.subcategory) : "-"}
+                      {post.displaySubCategory || "-"}
                     </TableCell>
                     <TableCell>{formatDate(post.date)}</TableCell>
                     <TableCell className="text-center">
@@ -1199,7 +886,7 @@ export default function AdminArticlesPage() {
                       <TableCell>
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleEdit(post.id)}
+                            onClick={() => router.push(`/admin/articles/edit/${post.id}`)} // Link 대신 router.push 사용
                             className="text-blue-600 hover:text-blue-800"
                           >
                             수정
@@ -1223,7 +910,7 @@ export default function AdminArticlesPage() {
       <div className="flex justify-center mt-6">
         <button
           onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-          disabled={currentPage === 1}
+          disabled={currentPage === 1 || isLoadingPosts}
           className="px-3 py-1 border rounded mr-2 disabled:opacity-50"
         >
           Previous
@@ -1233,27 +920,10 @@ export default function AdminArticlesPage() {
         </span>
         <button
           onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-          disabled={currentPage >= totalPages}
+          disabled={currentPage >= totalPages || isLoadingPosts}
           className="px-3 py-1 border rounded ml-2 disabled:opacity-50"
         >
           Next
-        </button>
-      </div>
-
-      {/* Add this to your UI */}
-      <div className="flex justify-center mt-6">
-        <button 
-          onClick={toggleSortOrder}
-          className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm flex items-center"
-        >
-          날짜 정렬: {sortDirection === 'asc' ? '오래된순' : '최신순'} 
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            {sortDirection === 'asc' ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            )}
-          </svg>
         </button>
       </div>
 
@@ -1265,12 +935,12 @@ export default function AdminArticlesPage() {
             <div className="text-sm text-gray-500">
               임시저장 게시글: {totalDrafts}개
             </div>
-            <Link 
-              href="/article/new" 
+            <button // Link 대신 button과 router.push 사용
+              onClick={() => router.push("/admin/articles/create")}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
             >
               새 게시글 작성
-            </Link>
+            </button>
           </div>
         </div>
         
@@ -1313,7 +983,7 @@ export default function AdminArticlesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isFetchingDrafts ? (
+              {isLoadingDrafts ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center">
                     로딩 중...
@@ -1340,7 +1010,7 @@ export default function AdminArticlesPage() {
                     <TableCell>
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => handleEditDraft(draft.id)}
+                          onClick={() => router.push(`/admin/articles/edit/${draft.id}`)} // Link 대신 router.push 사용
                           className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
                           title="수정"
                         >
@@ -1376,7 +1046,7 @@ export default function AdminArticlesPage() {
         <div className="flex justify-center mt-6">
           <button
             onClick={() => setCurrentDraftPage(p => Math.max(p - 1, 1))}
-            disabled={currentDraftPage === 1}
+            disabled={currentDraftPage === 1 || isLoadingDrafts}
             className="px-3 py-1 border rounded mr-2 disabled:opacity-50"
           >
             이전
@@ -1386,7 +1056,7 @@ export default function AdminArticlesPage() {
           </span>
           <button
             onClick={() => setCurrentDraftPage(p => Math.min(p + 1, totalDraftPages))}
-            disabled={currentDraftPage >= totalDraftPages}
+            disabled={currentDraftPage >= totalDraftPages || isLoadingDrafts}
             className="px-3 py-1 border rounded ml-2 disabled:opacity-50"
           >
             다음
@@ -1443,7 +1113,7 @@ export default function AdminArticlesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isFetchingDeletedPosts ? (
+              {isLoadingDeletedPosts ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">
                     로딩 중...
@@ -1497,17 +1167,17 @@ export default function AdminArticlesPage() {
         <div className="flex justify-center mt-6">
           <button
             onClick={() => setCurrentTrashPage(p => Math.max(p - 1, 1))}
-            disabled={currentTrashPage === 1}
+            disabled={currentTrashPage === 1 || isLoadingDeletedPosts}
             className="px-3 py-1 border rounded mr-2 disabled:opacity-50"
           >
             이전
           </button>
           <span className="px-3 py-1">
-            {currentTrashPage} / {totalPages || 1} 페이지
+            {currentTrashPage} / {totalTrashPages || 1} 페이지
           </span>
           <button
-            onClick={() => setCurrentTrashPage(p => Math.min(p + 1, totalPages))}
-            disabled={currentTrashPage >= totalPages}
+            onClick={() => setCurrentTrashPage(p => Math.min(p + 1, totalTrashPages))}
+            disabled={currentTrashPage >= totalTrashPages || isLoadingDeletedPosts}
             className="px-3 py-1 border rounded ml-2 disabled:opacity-50"
           >
             다음
