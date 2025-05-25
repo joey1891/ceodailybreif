@@ -75,6 +75,15 @@ export default function Home() {
   );
   const slides: Post[] = slidesData || [];
 
+  // Format slides data to match HeroSlider prop type
+  const formattedSlides = slides.map(slide => ({
+    id: slide.id,
+    title: slide.title || '', // Provide default empty string if title is null/undefined
+    image_url: slide.image_url || '', // Provide default empty string if image_url is null/undefined
+    description: slide.description || '', // Provide default empty string if description is null/undefined
+    slide_order: slide.slide_order || 0, // Provide default 0 if slide_order is null/undefined
+  }));
+
   // Fetch recent posts using useQuery
   const {
     data: recentPostsData,
@@ -159,7 +168,7 @@ export default function Home() {
         ) : (
           <>
             <section className="mb-12 w-full max-w-full overflow-x-hidden">
-              <HeroSlider slides={slides} />
+              <HeroSlider slides={formattedSlides} />
             </section>
 
             <section className="mb-12 container-mobile max-w-full">
