@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+const plugin = require('tailwindcss/plugin');
 
 const config: Config = {
   darkMode: 'class',
@@ -61,6 +62,65 @@ const config: Config = {
           '5': 'hsl(var(--chart-5))',
         },
       },
+      typography: (theme: any) => ({
+        DEFAULT: {
+          css: {
+            // 기본 스타일 (라이트 모드)
+            '--tw-prose-body': 'hsl(var(--foreground))',
+            '--tw-prose-headings': 'hsl(var(--primary))',
+            '--tw-prose-lead': 'hsl(var(--muted-foreground))',
+            '--tw-prose-links': 'hsl(var(--primary))',
+            '--tw-prose-bold': 'hsl(var(--foreground))',
+            '--tw-prose-counters': 'hsl(var(--muted-foreground))',
+            '--tw-prose-bullets': 'hsl(var(--muted-foreground))',
+            '--tw-prose-hr': 'hsl(var(--border))',
+            '--tw-prose-quotes': 'hsl(var(--foreground))',
+            '--tw-prose-quote-borders': 'hsl(var(--border))',
+            '--tw-prose-captions': 'hsl(var(--muted-foreground))',
+            '--tw-prose-code': 'hsl(var(--foreground))',
+            '--tw-prose-pre-code': 'hsl(var(--foreground))',
+            '--tw-prose-pre-bg': 'hsl(var(--muted))', // Or a slightly darker bg for code blocks
+            '--tw-prose-th-borders': 'hsl(var(--border))',
+            '--tw-prose-td-borders': 'hsl(var(--border))',
+            // 기존 링크 스타일 유지 또는 필요시 CSS 변수 사용
+            a: {
+              color: 'hsl(var(--primary))', // 링크 색상
+              '&:hover': {
+                // hover 시 색상은 필요에 따라 조정
+                color: 'hsl(var(--primary))', // 예시: 기본 링크 색상 유지
+              },
+            },
+            // 기타 기본 prose 스타일...
+          },
+        },
+        dark: { // 다크 모드 prose 스타일 정의
+          css: {
+            '--tw-prose-body': 'hsl(var(--foreground))',
+            '--tw-prose-headings': 'hsl(var(--primary))',
+            '--tw-prose-lead': 'hsl(var(--muted-foreground))',
+            '--tw-prose-links': 'hsl(var(--primary))',
+            '--tw-prose-bold': 'hsl(var(--foreground))',
+            '--tw-prose-counters': 'hsl(var(--muted-foreground))',
+            '--tw-prose-bullets': 'hsl(var(--muted-foreground))',
+            '--tw-prose-hr': 'hsl(var(--border))',
+            '--tw-prose-quotes': 'hsl(var(--foreground))',
+            '--tw-prose-quote-borders': 'hsl(var(--border))',
+            '--tw-prose-captions': 'hsl(var(--muted-foreground))',
+            '--tw-prose-code': 'hsl(var(--foreground))',
+            '--tw-prose-pre-code': 'hsl(var(--foreground))',
+            '--tw-prose-pre-bg': 'hsl(var(--background))', // 다크모드 코드 블록 배경은 페이지 배경과 유사하게
+            '--tw-prose-th-borders': 'hsl(var(--border))',
+            '--tw-prose-td-borders': 'hsl(var(--border))',
+            // 다크 모드 링크 스타일
+            a: {
+              color: 'hsl(var(--primary))',
+              '&:hover': {
+                color: 'hsl(var(--primary))',
+              },
+            },
+          },
+        },
+      }),
       keyframes: {
         'accordion-down': {
           from: {
@@ -85,6 +145,20 @@ const config: Config = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [
+    require('tailwindcss-animate'),
+    require('@tailwindcss/typography'),
+    plugin(function({ addUtilities }: { addUtilities: any }) {
+      const newUtilities = {
+        '.text-black': {
+          color: '#000 !important',
+        },
+        '.dark .text-black': {
+          color: '#000 !important',
+        },
+      }
+      addUtilities(newUtilities)
+    }),
+  ],
 };
 export default config;

@@ -58,7 +58,7 @@ export function ArticlesSection({
           <div key={typeof mainCat.title === 'string' ? mainCat.title : mainCat.slug || mainCat.title.ko} className="mb-12 max-w-full overflow-x-hidden">
 <div className="flex justify-between items-center mb-8 relative overflow-hidden before:absolute before:bottom-0 before:left-0 before:w-full before:h-1 before:bg-gradient-to-r before:from-gray-400 before:to-transparent">
 <h2 className="text-2xl font-semibold leading-none tracking-tight relative overflow-hidden">
-<span className="relative z-10 bg-clip-text text-transparent bg-gradient-to-r from-gray-600 via-gray-700 to-gray-800">
+<span className="relative z-10 text-foreground">
     {typeof mainCat.title === 'string' ? mainCat.title : mainCat.title.ko}
   </span>
 </h2>
@@ -85,12 +85,12 @@ export function ArticlesSection({
                   )}
                   <div className={`w-full p-4 ${(latestPost.image_url || extractImageUrl(latestPost.content)) ? 'sm:w-[51%]' : 'text-center h-24 sm:h-36 flex flex-col justify-center'}`}>
                     <CardHeader className="p-0 max-w-full">
-                      <CardTitle className="line-clamp-2 text-lg md:text-xl font-semibold break-words">
+                      <CardTitle className="line-clamp-2 text-lg md:text-xl font-semibold break-words text-gray-900">
                         {latestPost.title}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="flex-grow p-0 max-w-full">
-                      <div className="text-xs text-muted-foreground mt-1 select-none">
+                      <div className="text-xs text-gray-500 mt-1 select-none">
                         {new Date(
                           latestPost.updated_at || latestPost.created_at
                         ).toLocaleDateString()}
@@ -118,12 +118,12 @@ export function ArticlesSection({
                     )}
                     <div className={`p-2 sm:p-4 flex flex-col justify-center ${(post.image_url || extractImageUrl(post.content)) ? 'w-2/3' : 'w-full text-center'}`} style={{ minHeight: "150px" }}>
                       <CardHeader className="p-0">
-                        <CardTitle className="line-clamp-2 text-base sm:text-lg font-semibold break-words">
+                        <CardTitle className="line-clamp-2 text-base sm:text-lg font-semibold break-words text-gray-900">
                           {post.title}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="flex-grow p-0">
-                        <div className="text-xs text-muted-foreground mt-1 select-none">
+                        <div className="text-xs text-gray-500 mt-1 select-none">
                           {new Date(
                             post.updated_at || post.created_at
                           ).toLocaleDateString()}

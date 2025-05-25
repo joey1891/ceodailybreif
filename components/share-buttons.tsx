@@ -53,7 +53,7 @@ export function ShareButtons({ post }: { post: Post }) {
       <div className="flex flex-wrap gap-2">
         {/* 링크 복사 */}
         <button
-          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:text-black"
           onClick={() => {
             navigator.clipboard.writeText(shareData.url);
             alert("링크가 복사되었습니다.");
@@ -64,7 +64,7 @@ export function ShareButtons({ post }: { post: Post }) {
         
         {/* 트위터 */}
         <button
-          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:text-black"
           onClick={() => handleShare('twitter')}
         >
           트위터
@@ -72,7 +72,7 @@ export function ShareButtons({ post }: { post: Post }) {
         
         {/* 페이스북 */}
         <button
-          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:text-black"
           onClick={() => handleShare('facebook')}
         >
           페이스북
@@ -80,7 +80,7 @@ export function ShareButtons({ post }: { post: Post }) {
         
         {/* 링크드인 */}
         <button
-          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+          className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:text-black"
           onClick={() => handleShare('linkedin')}
         >
           링크드인
@@ -89,7 +89,7 @@ export function ShareButtons({ post }: { post: Post }) {
         {/* 카카오톡 */}
         {isKakaoReady && (
           <button
-            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 dark:text-black"
             onClick={() => {
               if (window.Kakao?.Share) {
                 window.Kakao.Share.sendDefault({
@@ -130,4 +130,4 @@ export function ShareButtons({ post }: { post: Post }) {
       </div>
     </div>
   );
-} 
+}

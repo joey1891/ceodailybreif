@@ -511,26 +511,40 @@ export default function AdminArticlesPage() {
 
   // 게시글 복원 함수
   const handleRestore = async (id: string) => {
+    console.log("handleRestore called with id:", id); // <-- 함수 호출 및 ID 확인 로그
     const confirmRestore = confirm("이 게시글을 복원하시겠습니까?");
+    console.log("confirmRestore result:", confirmRestore); // <-- confirm 결과 확인 로그
+
     if (confirmRestore) {
+      console.log("Attempting to restore post with id:", id); // <-- 복원 시도 로그
       try {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("posts")
           .update({ 
             is_deleted: false, 
             deleted_at: null 
           })
-          .eq("id", id);
+          .eq("id", id)
+          .select(); // <-- select()를 추가하여 업데이트 결과를 받아볼 수 있습니다.
         
-        if (error) throw error;
+        console.log("Supabase update data:", data); // <-- Supabase 응답 데이터 로그
+        console.log("Supabase update error:", error); // <-- Supabase 에러 로그
+
+        if (error) {
+          console.error("Supabase error details:", error); // <-- 에러 상세 정보
+          throw error;
+        }
         
         toast.success("게시글이 복원되었습니다");
-        mutateDeletedPosts(); // 휴지통 목록 갱신
-        mutatePosts(); // 게시글 목록 갱신
+        mutateDeletedPosts(); 
+        mutatePosts();      
+        mutateDrafts();     
       } catch (error) {
-        console.error("게시글 복원 중 오류:", error);
-        toast.error("게시글 복원에 실패했습니다");
+        console.error("게시글 복원 중 오류 발생:", error); // <-- catch 블록 에러 로그
+        toast.error("게시글 복원에 실패했습니다. 콘솔을 확인해주세요.");
       }
+    } else {
+      console.log("Restore cancelled by user."); // <-- 사용자가 취소한 경우 로그
     }
   };
 

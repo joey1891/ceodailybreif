@@ -1,11 +1,6 @@
 "use client";
 
-import { useState } from "react"; // useEffect 제거
-import useSWR from 'swr'; // SWR 훅 임포트
-import { createBrowserClient } from '@supabase/ssr'; // Supabase 클라이언트 임포트
-import { Post } from "@/types/supabase"; // Post 타입 임포트
-import { getAllCategories } from "@/lib/category-loader"; // getAllCategories 임포트
-
+import { useState } from "react";
 import { ArrowRight, Calendar } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -21,143 +16,167 @@ import { ArticlesSection } from "@/components/ArticlesSection";
 import { FinanceInfo } from "@/components/finance-info";
 import { Sidebar } from "@/components/sidebar";
 import { CalendarSection } from "@/components/calendar-section";
+import { getAllCategories } from "@/lib/category-loader"; // Category type { id: string, slug: string, ... }
+import { Post } from "@/types/supabase";
+import { supabase } from "@/lib/supabase";
 import PopupDisplay from "@/components/popup-display";
+import useSWR from 'swr';
+import { useQuery } from '@supabase-cache-helpers/postgrest-swr';
 
-
-// Supabase 클라이언트 인스턴스 생성 (lib/supabase.ts와 동일하게)
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
+// Helper function to fetch category posts for useSWR
+// This function is defined outside the component to maintain a stable reference
+const fetchCategoryPostsSWR = async (
+  categories: { id: string; slug: string }[],
+  supabaseClient: typeof supabase
+): Promise<Record<string, Post[]>> => {
+  if (!categories || categories.length === 0) {
+    return {};
+  }
+  const postsBySlug: Record<string, Post[]> = {};
+  const fetchPromises = categories.map(category =>
+    supabaseClient
+      .from("posts")
+      .select("*") // Fetches all columns to match the Post type
+      .eq("category", category.id)
+      .eq("is_deleted", false)
+      .eq("status", "published") // <--- 'status'가 'published'인 게시물만 선택
+      .order("updated_at", { ascending: false })
+      .limit(7)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error(`Error fetching posts for category ${category.slug}:`, error);
+          throw error; // Propagate error to Promise.all
+        }
+        postsBySlug[category.slug] = (data as Post[]) || [];
+      })
+  );
+  
+  await Promise.all(fetchPromises);
+  return postsBySlug;
+};
 
 export default function Home() {
   const [mainCategories] = useState(() => Array.from(getAllCategories()));
 
-  // SWR 훅을 사용하여 슬라이드 데이터 가져오기
-  const { data: slides, error: slidesError, isLoading: isLoadingSlides } = useSWR(
-    'slides', // 캐시 키
-    async () => {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('id, title, image_url, description, slide_order')
-        .eq('is_slide', true)
-        .eq('is_deleted', false)
-        .order('slide_order', { ascending: true });
-      
-      if (error) throw error;
-      return data || [];
-    }
+  // Fetch slides using useQuery from supabase-cache-helpers
+  const {
+    data: slidesData,
+    isLoading: isLoadingSlides,
+    error: errorSlides,
+  } = useQuery(
+    supabase
+      .from('posts')
+      .select('*') // Select all fields to match Post type
+      .eq('is_slide', true)
+      .eq('is_deleted', false)
+      .eq('status', 'published') // <--- 'status'가 'published'인 게시물만 선택
+      .order('slide_order', { ascending: true }),
+    { revalidateOnFocus: false } // SWR options
   );
+  const slides: Post[] = slidesData || [];
 
-  // SWR 훅을 사용하여 최근 게시물 데이터 가져오기
-  const { data: recentPosts, error: recentPostsError, isLoading: isLoadingRecentPosts } = useSWR(
-    'recentPosts', // 캐시 키
-    async () => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return data || [];
-    }
+  // Fetch recent posts using useQuery
+  const {
+    data: recentPostsData,
+    isLoading: isLoadingRecent,
+    error: errorRecent,
+  } = useQuery(
+    supabase
+      .from("posts")
+      .select("*")
+      .eq("is_deleted", false)
+      .eq("status", "published") // <--- 'status'가 'published'인 게시물만 선택
+      .order("created_at", { ascending: false })
+      .limit(5),
+    { revalidateOnFocus: false }
   );
+  const recentPosts: Post[] = recentPostsData || [];
 
-  // SWR 훅을 사용하여 인기 게시물 데이터 가져오기
-  const { data: popularPosts, error: popularPostsError, isLoading: isLoadingPopularPosts } = useSWR(
-    'popularPosts', // 캐시 키
-    async () => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("is_deleted", false)
-        .order("viewcnt", { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return data || [];
-    }
+  // Fetch popular posts using useQuery
+  const {
+    data: popularPostsData,
+    isLoading: isLoadingPopular,
+    error: errorPopular,
+  } = useQuery(
+    supabase
+      .from("posts")
+      .select("*")
+      .eq("is_deleted", false)
+      .eq("status", "published") // <--- 'status'가 'published'인 게시물만 선택
+      .order("viewcnt", { ascending: false })
+      .limit(5),
+    { revalidateOnFocus: false }
   );
+  const popularPosts: Post[] = popularPostsData || [];
 
-  // 각 카테고리별 게시물을 가져오기 위한 SWR 훅 (동적으로 생성)
-  const categoryPostsResults = mainCategories.map(category => {
-    const { data, error, isLoading } = useSWR(
-      `categoryPosts-${category.slug}`, // 카테고리 slug를 포함한 캐시 키
-      async () => {
-        const { data, error } = await supabase
-          .from("posts")
-          .select("*")
-          .eq("category", category.id)
-          .eq("is_deleted", false)
-          .order("updated_at", { ascending: false })
-          .limit(7);
-        
-        if (error) throw error;
-        return data || [];
-      }
+  // Fetch category posts using useSWR with the custom fetcher
+  // Create a stable key based on category IDs
+  const categoryIdsKey = mainCategories.length > 0 
+    ? mainCategories.map(c => c.id).sort().join('-') 
+    : null;
+
+  const {
+    data: categoryPostsData,
+    isLoading: isLoadingCategoryPosts,
+    error: errorCategoryPosts,
+  } = useSWR(
+    // The key for SWR. If null, SWR will not fetch.
+    categoryIdsKey ? ['category_posts', categoryIdsKey] : null,
+    // Fetcher function
+    () => fetchCategoryPostsSWR(mainCategories, supabase),
+    { revalidateOnFocus: false }
+  );
+  const categoryPosts: Record<string, Post[]> = categoryPostsData || {};
+  
+  // Combined loading state
+  const isLoading = isLoadingSlides || 
+                    isLoadingRecent || 
+                    isLoadingPopular || 
+                    (mainCategories.length > 0 && isLoadingCategoryPosts);
+
+  // Combined error state
+  const combinedError = errorSlides || errorRecent || errorPopular || (mainCategories.length > 0 && errorCategoryPosts);
+
+  // Early return for error state
+  if (combinedError) {
+    console.error("Data fetching error:", combinedError);
+    // You might want to render a more user-friendly error message here
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p>데이터를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>
+      </div>
     );
-    return { category, data, error, isLoading };
-  });
-
-  // 모든 데이터 로딩 상태 확인
-  const isLoading = isLoadingSlides || isLoadingRecentPosts || isLoadingPopularPosts || categoryPostsResults.some(res => res.isLoading);
-
-  // 카테고리별 게시물 데이터를 객체 형태로 변환
-  const categoryPosts: Record<string, Post[]> = {};
-  categoryPostsResults.forEach(res => {
-    if (res.data) {
-      categoryPosts[res.category.slug] = res.data;
-    }
-  });
-
-  // 에러 처리 (필요에 따라 더 상세하게 처리 가능)
-  if (slidesError || recentPostsError || popularPostsError || categoryPostsResults.some(res => res.error)) {
-    console.error("Error fetching data:", slidesError || recentPostsError || popularPostsError || categoryPostsResults.find(res => res.error)?.error);
-    // 에러 메시지를 표시하거나 다른 에러 처리 UI를 렌더링할 수 있습니다.
-    return <div>데이터 로딩 중 오류가 발생했습니다.</div>;
   }
-
 
   return (
     <>
       <PopupDisplay />
       <main className="min-h-screen bg-white overflow-x-hidden max-w-full overflow-guard">
         {isLoading ? (
-          // 로딩 중일 때 표시할 UI (예: 스피너 또는 로딩 메시지)
           <div className="flex justify-center items-center h-screen">
-            <p>로딩 중...</p> {/* 간단한 로딩 메시지 */}
+            <p>로딩 중...</p>
           </div>
         ) : (
-          // 로딩 완료 시 실제 콘텐츠 표시
           <>
-            {/* Hero Slider - 슬라이드 데이터 전달 */}
             <section className="mb-12 w-full max-w-full overflow-x-hidden">
-              <HeroSlider slides={slides || []} /> {/* slides가 undefined일 경우 빈 배열 전달 */}
+              <HeroSlider slides={slides} />
             </section>
 
-            {/* 나머지 섹션들에 max-width 제약 추가 */}
             <section className="mb-12 container-mobile max-w-full">
               <div className="flex flex-col lg:flex-row gap-6 md:gap-8 max-w-full">
-                {/* Main Content */}
                 <ArticlesSection
                   mainCategories={mainCategories}
                   categoryPosts={categoryPosts}
                 />
-
-                {/* Sidebar */}
                 <div className="w-full lg:w-1/3">
                   <Sidebar
-                    recentPosts={recentPosts || []} // recentPosts가 undefined일 경우 빈 배열 전달
-                    popularPosts={popularPosts || []} // popularPosts가 undefined일 경우 빈 배열 전달
+                    recentPosts={recentPosts}
+                    popularPosts={popularPosts}
                   />
                 </div>
               </div>
             </section>
 
-            {/* Finance & Calendar 섹션도 동일하게 제약 추가 */}
             <section className="mb-12 container-mobile max-w-full">
               <FinanceInfo />
             </section>

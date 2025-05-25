@@ -66,38 +66,38 @@
  
   .dark {
     --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --foreground: 215 25% 27%;
  
     --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card-foreground: 215 25% 27%;
  
     --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover-foreground: 215 25% 27%;
  
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 20%;
+    --primary-foreground: 210 40% 98%;
  
     --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary-foreground: 215 25% 27%;
  
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 215 25% 46.9%;
  
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 215 25% 27%;
  
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
  
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --ring: 221 83% 53%;
 
-    --chart-1: 217.2 91.2% 59.8%;
+    --chart-1: 221 83% 53%;
     --chart-2: 210 40% 98%;
-    --chart-3: 215 20.2% 65.1%;
-    --chart-4: 217.2 91.2% 59.8%;
-    --chart-5: 217.2 32.6% 17.5%;
+    --chart-3: 215 25% 46.9%;
+    --chart-4: 221 83% 53%;
+    --chart-5: 210 40% 96.1%;
   }
 
   a:focus {

@@ -35,7 +35,7 @@ import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import { common, createLowlight } from 'lowlight';
 import { supabase } from "@/lib/supabase";
-import { Node } from '@tiptap/core';
+import { Node, Mark, mergeAttributes, Extension } from '@tiptap/core';
 import BulletList from '@tiptap/extension-bullet-list';
 import OrderedList from '@tiptap/extension-ordered-list';
 import ListItem from '@tiptap/extension-list-item';
@@ -45,6 +45,62 @@ import ListItem from '@tiptap/extension-list-item';
 const lowlight = createLowlight(common);
 
 // Quill 관련 임포트 모두 제거
+
+// --- CustomFontSize Extension ---
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    customFontSize: {
+      setCustomFontSize: (fontSize: string) => ReturnType;
+      unsetCustomFontSize: () => ReturnType;
+    };
+  }
+}
+
+const CustomFontSize = Extension.create({
+  name: 'customFontSize',
+
+  addOptions() {
+    return {
+      types: ['textStyle'],
+    };
+  },
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: this.options.types,
+        attributes: {
+          fontSize: {
+            default: null,
+            parseHTML: element => element.style.fontSize,
+            renderHTML: attributes => {
+              if (!attributes.fontSize) {
+                return {};
+              }
+              return { style: `font-size: ${attributes.fontSize}` };
+            },
+          },
+        },
+      },
+    ];
+  },
+
+  addCommands() {
+    return {
+      setCustomFontSize: (fontSize: string) => ({ chain }) => {
+        return chain()
+          .setMark('textStyle', { fontSize })
+          .run();
+      },
+      unsetCustomFontSize: () => ({ chain }) => {
+        return chain()
+          .setMark('textStyle', { fontSize: null })
+          .run();
+      },
+    };
+  },
+});
+// --- End CustomFontSize Extension ---
 
 // 상수 및 타입 정의
 interface Props {
@@ -285,6 +341,39 @@ export default function EditorWithUploader({
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [editorData, setEditorData] = useState(value);
 
+  // 이미지 업로드 핸들러 (기존 함수 재사용)
+  const handleUpload = async (file: File) => {
+    try {
+      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9_.]/g, '')}`;
+      const filePath = `articles/${fileName}`;
+      
+      const { data, error } = await supabase.storage
+        .from('images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (error) throw error;
+      
+      const { data: urlData } = supabase.storage
+        .from('images')
+        .getPublicUrl(filePath);
+      
+      // 이 부분은 handlePaste 내에서 호출될 때 editor가 사용 가능해야 합니다.
+      // editor?.chain().focus().setImage({ src: urlData.publicUrl }).run(); 
+      
+      if (onImageUpload) {
+        onImageUpload(urlData.publicUrl);
+      }
+      
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("이미지 업로드 실패:", error);
+      return '';
+    }
+  };
+
   // 에디터 설정
   const editor = useEditor({
     extensions: [
@@ -321,6 +410,7 @@ export default function EditorWithUploader({
       }),
       Subscript,
       Superscript,
+      CustomFontSize,
       BulletListWithSpacing.configure({
         keepMarks: true,
         keepAttributes: true,
@@ -354,44 +444,62 @@ export default function EditorWithUploader({
     },
     editable: true,
     autofocus: 'end',
+    editorProps: {
+      handlePaste: (view, event, slice) => {
+        const items = Array.from(event.clipboardData?.items || []);
+        let imagePasted = false;
+
+        for (const item of items) {
+          if (item.type.indexOf('image') === 0) {
+            event.preventDefault(); // 기본 붙여넣기 동작 방지
+            const file = item.getAsFile();
+            if (file) {
+              imagePasted = true;
+              handleUpload(file).then(imageUrl => {
+                if (imageUrl && editor) {
+                  editor.chain().focus().setImage({ src: imageUrl }).run();
+                }
+              }).catch(error => {
+                console.error("붙여넣은 이미지 업로드 실패:", error);
+                // 오류 처리 (예: 사용자에게 알림)
+              });
+            }
+          }
+        }
+        // 이미지가 성공적으로 처리되었으면 true를 반환하여 Tiptap의 기본 paste 핸들러를 중지합니다.
+        // 그렇지 않으면 false를 반환하여 다른 콘텐츠(텍스트 등)가 정상적으로 붙여넣어지도록 합니다.
+        return imagePasted; 
+      },
+    },
   });
 
-  // 이미지 업로드 핸들러
-  const handleUpload = async (file: File) => {
-    try {
-      const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9_.]/g, '')}`;
-      const filePath = `articles/${fileName}`;
-      
-      const { data, error } = await supabase.storage
-        .from('images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-      
-      if (error) throw error;
-      
-      const { data: urlData } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
-      
-      editor?.chain().focus().setImage({ src: urlData.publicUrl }).run();
-      
-      if (onImageUpload) {
-        onImageUpload(urlData.publicUrl);
-      }
-      
-      return urlData.publicUrl;
-    } catch (error) {
-      console.error("이미지 업로드 실패:", error);
-      return '';
+  // 이미지 업로드 핸들러 (파일 입력용)
+  const handleFileUpload = async (file: File) => {
+    const imageUrl = await handleUpload(file);
+    if (imageUrl && editor) {
+      editor.chain().focus().setImage({ src: imageUrl }).run();
     }
   };
 
   // 링크 추가 핸들러
   const addLink = () => {
     if (linkUrl) {
-      editor?.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run();
+      // 현재 커서 위치를 가져옵니다.
+      const currentPos = editor?.state.selection.anchor || 0;
+
+      editor?.chain().focus()
+        // "링크" 텍스트를 삽입합니다.
+        .insertContent('링크')
+        // 삽입된 "링크" 텍스트를 선택합니다.
+        // insertContent는 텍스트 삽입 후 커서를 삽입된 텍스트 끝으로 이동시킵니다.
+        // 따라서 삽입된 텍스트의 시작 위치는 현재 커서 위치와 같습니다.
+        .setTextSelection({ from: currentPos, to: currentPos + '링크'.length })
+        // 선택된 "링크" 텍스트에 링크를 적용합니다.
+        .setLink({ href: linkUrl })
+        // 링크 뒤에 커서를 위치시킵니다.
+        .setTextSelection(currentPos + '링크'.length)
+        .run();
+        
       setLinkUrl('');
       setShowLinkModal(false);
     }
@@ -412,6 +520,9 @@ export default function EditorWithUploader({
   const renderToolbar = () => {
     if (!editor) return null;
     
+    const FONT_SIZES = ['Default', '8px', '9px', '10px', '11px', '12px', '14px', '16px', '18px', '20px', '24px', '30px', '36px', '48px'];
+    const currentFontSize = editor.getAttributes('textStyle').fontSize || 'Default';
+
     return (
       <div className="editor-toolbar" style={{ 
         marginBottom: '10px', 
@@ -473,6 +584,35 @@ export default function EditorWithUploader({
           
           {/* 구분선 */}
           <div style={{ width: '1px', backgroundColor: '#ced4da', margin: '0 10px' }}></div>
+          
+          {/* 글꼴 크기 선택 */}
+          <select
+            value={FONT_SIZES.includes(currentFontSize) ? currentFontSize : 'Default'}
+            onChange={(e) => {
+              const newSize = e.target.value;
+              if (newSize === 'Default') {
+                editor.chain().focus().unsetCustomFontSize().run();
+              } else {
+                editor.chain().focus().setCustomFontSize(newSize).run();
+              }
+            }}
+            style={{
+              marginRight: '5px',
+              padding: '5px 10px',
+              border: '1px solid #ced4da',
+              borderRadius: '4px',
+              backgroundColor: '#fff',
+              fontSize: '12px',
+              cursor: 'pointer'
+            }}
+            title="글꼴 크기"
+          >
+            {FONT_SIZES.map(size => (
+              <option key={size} value={size}>
+                {size === 'Default' ? '기본 크기' : size}
+              </option>
+            ))}
+          </select>
           
           {/* 제목 버튼 */}
           <select 
@@ -652,7 +792,8 @@ export default function EditorWithUploader({
             accept="image/*" 
             onChange={(e) => {
               if (e.target.files?.length) {
-                handleUpload(e.target.files[0]);
+                // handleUpload(e.target.files[0]); // 이 부분을 handleFileUpload로 변경
+                handleFileUpload(e.target.files[0]);
               }
             }}
           />

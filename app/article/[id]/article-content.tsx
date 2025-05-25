@@ -269,7 +269,6 @@ export function ArticleContent({ params }: { params: { id: string } }) {
                 <span className="font-medium">이 기사 공유하기</span>
               </div>
               
-              {/* 단순화된 조건으로 변경 & 인라인 스타일 추가 */}
               <div className="flex flex-wrap gap-2" style={{display: 'flex !important'}}>
                 <button 
                   onClick={() => {
@@ -280,8 +279,8 @@ export function ArticleContent({ params }: { params: { id: string } }) {
                     padding: '0.5rem 1rem',
                     border: '1px solid #ccc',
                     borderRadius: '0.375rem',
-                    backgroundColor: 'white',
-                    color: '#333',
+                    backgroundColor: 'white', 
+                    color: '#000',
                     fontWeight: '500',
                     display: 'block'
                   }}
@@ -323,12 +322,21 @@ export function ArticleContent({ params }: { params: { id: string } }) {
                     border: '1px solid #ccc',
                     borderRadius: '0.375rem',
                     backgroundColor: 'white',
-                    color: '#333',
+                    color: '#000',
                     fontWeight: '500',
                     display: 'block'
                   }}
                 >
                   카카오톡
+                </button>
+                {/* Facebook Button - Using inline style to ensure black text in all modes */}
+                <button 
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  style={{ 
+                    color: '#000',
+                  }}
+                >
+                  페이스북
                 </button>
               </div>
             </div>
