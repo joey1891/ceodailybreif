@@ -140,7 +140,6 @@ export default function ArticleForm({
   const [subCategory, setSubCategory] = useState(formData.subcategory);
   const [subSubCategory, setSubSubCategory] = useState(formData.subsubcategory);
   const [content, setContent] = useState(formData.content);
-  const [imgUrl, setImgUrl] = useState(formData.image_url);
   const [description, setDescription] = useState(formData.description);
   const [loading, setLoading] = useState(false);
   const [isSlide, setIsSlide] = useState(formData.is_slide);
@@ -298,28 +297,21 @@ export default function ArticleForm({
       
       // 이미지 URL 설정
       if (data.image_url) {
-        setImgUrl(data.image_url);
         setThumbnailUrl(data.image_url);
       }
       
-      // 컨텐츠에서 모든 이미지 추출하여 업로드된 이미지 목록에 추가
-      if (data.content) {
-        const extractedImages = extractAllImages(data.content);
-        const imagesList = extractedImages.map(url => ({
-          url,
-          timestamp: Date.now() - Math.floor(Math.random() * 1000) // 고유 타임스탬프 생성
-        }));
-        
-        setUploadedImages(imagesList);
-        console.log("컨텐츠에서 추출된 이미지:", imagesList.length);
-      }
+      // 컨텐츠에서 모든 이미지 추출하여 업로드된 이미지 목록에 추가 (중복 제거 로직은 handleEditorContentChange에서 처리)
+      // 이 부분은 handleEditorContentChange가 content 상태 변경 시 처리하므로,
+      // 초기 content 설정 후 handleEditorContentChange가 호출되도록 유도하거나,
+      // 여기서 직접 uploadedImages를 설정한다면 중복 제거 로직을 적용해야 합니다.
+      // 현재는 content가 설정되면 handleEditorContentChange가 호출되어 uploadedImages를 동기화합니다.
       
       if (data.category === "Report" || data.category === "report") {
         setDescription(data.description || "");
       }
     }
     fetchArticle();
-  }, [id, router, useToastToast]);
+  }, [id, router, useToastToast]); // setContent는 의존성 배열에 포함하지 않아도 됨 (useState setter는 안정적)
 
   // 메인 카테고리 변경 핸들러 업데이트
   const handleMainCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -353,93 +345,101 @@ export default function ArticleForm({
     const initialContent = post?.content || "";
     setContent(initialContent); // Set initial content for the editor state
 
-    const imagesFromInitialContent = extractAllImages(initialContent);
-    const initialUploadedImages = imagesFromInitialContent.map(url => ({
-      url,
-      timestamp: Date.now() 
-    }));
-    setUploadedImages(initialUploadedImages.sort((a, b) => a.timestamp - b.timestamp));
+    // 초기 콘텐츠를 기반으로 uploadedImages 및 thumbnailUrl 설정
+    // handleEditorContentChange가 초기 content에 대해 호출되도록 하여 uploadedImages를 동기화
+    // 이 useEffect는 post가 변경될 때 실행되므로, 초기 로드 및 post 데이터 변경 시 모두 처리
+    handleEditorContentChange(initialContent); // 초기 콘텐츠로 이미지 목록 동기화
 
     if (post?.image_url) {
       setThumbnailUrl(post.image_url);
-    } else if (initialUploadedImages.length > 0) {
-      // If no explicit thumbnail from post, but content has images, set the first one.
-      setThumbnailUrl(initialUploadedImages[0].url);
     } else {
-      // No images in content, no explicit thumbnail from post
-      setThumbnailUrl("");
+      // 초기 콘텐츠에 이미지가 있고, 명시적 썸네일이 없다면 첫 번째 이미지를 썸네일로 설정
+      const imagesFromInitialContent = extractAllImages(initialContent);
+      if (imagesFromInitialContent.length > 0) {
+        setThumbnailUrl(imagesFromInitialContent[0]);
+      } else {
+        setThumbnailUrl("");
+      }
     }
-  }, [post]);
+  }, [post]); // handleEditorContentChange를 의존성 배열에 추가할 필요는 없음 (useCallback으로 안정화)
 
   // Callback for when editor content changes (typing, undo, redo, paste, image add/delete etc.)
   const handleEditorContentChange = useCallback((newEditorContent: string) => {
     setContent(newEditorContent); // Update our local content state
 
-    // Synchronize uploadedImages based on the new editor content
+    // Synchronize uploadedImages based on the new editor content, ensuring uniqueness
     const currentImageUrlsInEditor = extractAllImages(newEditorContent);
+    
     setUploadedImages(prevUploadedImages => {
-      // Create a map of previous images for quick lookup
-      const prevImageMap = new Map(prevUploadedImages.map(img => [img.url, img]));
-      
-      const updatedImages = currentImageUrlsInEditor.map(url => {
-        return prevImageMap.get(url) || { url, timestamp: Date.now() };
-      });
-      
-      return updatedImages.sort((a, b) => a.timestamp - b.timestamp);
+      const newUploadedImages: UploadedImage[] = [];
+      const processedUrls = new Set<string>(); // 중복 URL 처리를 위한 Set
+
+      // 에디터 내 현재 이미지 URL 순서대로 처리
+      for (const url of currentImageUrlsInEditor) {
+        if (!processedUrls.has(url)) { // 아직 처리되지 않은 URL인 경우에만 추가
+          const existingImage = prevUploadedImages.find(img => img.url === url);
+          if (existingImage) {
+            newUploadedImages.push(existingImage); // 기존 객체 재사용 (타임스탬프 유지)
+          } else {
+            newUploadedImages.push({ url, timestamp: Date.now() - Math.random() * 1000 }); // 새 객체
+          }
+          processedUrls.add(url);
+        }
+      }
+      return newUploadedImages;
     });
-  }, [setContent]); // setContent is stable
+  }, [extractAllImages]); // setContent는 안정적이므로 의존성 배열에서 제외 가능
 
   // Effect to manage the thumbnail URL whenever the editor's content changes
   useEffect(() => {
-    const currentImageUrlsInEditor = extractAllImages(content);
+    // uploadedImages가 업데이트된 후 이 useEffect가 실행되어 썸네일 로직을 처리
+    const currentImageUrlsInEditor = uploadedImages.map(img => img.url); // uploadedImages에서 URL 목록 가져오기
 
     if (thumbnailUrl && !currentImageUrlsInEditor.includes(thumbnailUrl)) {
       // Current thumbnail is no longer in the editor
       if (currentImageUrlsInEditor.length > 0) {
-        // Pick the last image in the current content as the new thumbnail
-        setThumbnailUrl(currentImageUrlsInEditor[currentImageUrlsInEditor.length - 1]);
+        // Pick the last image (or first, by convention) in the current content as the new thumbnail
+        setThumbnailUrl(currentImageUrlsInEditor[0]); // 첫 번째 이미지로 설정
         toast("썸네일이 편집기에서 삭제되어 다른 이미지로 자동 변경되었습니다.");
       } else {
         setThumbnailUrl(""); // No images left
         toast("썸네일이 편집기에서 삭제되었고 다른 이미지가 없어 해제되었습니다.");
       }
     } else if (!thumbnailUrl && currentImageUrlsInEditor.length > 0) {
-      // No thumbnail is set, but editor has images (e.g., after undoing a deletion of all images, or pasting content with images)
-      // Set the first image from the current content as the thumbnail
+      // No thumbnail is set, but editor has images
       setThumbnailUrl(currentImageUrlsInEditor[0]);
-      // Using react-hot-toast for consistency if you prefer
       // toast.success("편집기에 이미지가 있어 첫 번째 이미지를 썸네일로 자동 설정했습니다.");
     }
-  }, [content, thumbnailUrl, setThumbnailUrl]); // Rerun when content or current thumbnail changes
+  }, [uploadedImages, thumbnailUrl]); // Rerun when uploadedImages or current thumbnail changes
 
   // Callback for when a new image is explicitly uploaded via the button
   const handleImageUpload = useCallback((imageUrl: string) => {
-    const newImage = { url: imageUrl, timestamp: Date.now() };
-    // Add to uploadedImages. The editor content change will also trigger,
-    // so handleEditorContentChange will ensure it's synced.
-    setUploadedImages(prev => {
-      if (prev.find(img => img.url === imageUrl)) return prev; // Avoid duplicate
-      return [...prev, newImage].sort((a,b) => a.timestamp - b.timestamp);
+    // 에디터에 이미지가 삽입되면, 에디터의 onChange 콜백 (handleEditorContentChange)이 호출되어
+    // content 상태와 uploadedImages 상태를 동기화합니다.
+    // 따라서 여기서 uploadedImages를 직접 조작할 필요는 줄어듭니다.
+    // handleEditorContentChange가 이미 중복을 처리하고 타임스탬프를 관리합니다.
+
+    // 만약 업로드된 이미지가 현재 썸네일이 없는 경우, 이 이미지를 썸네일로 설정할 수 있습니다.
+    setUploadedImages(prev => { // 혹시 모를 동기화 지연을 위해, 여기서도 추가는 하되 중복은 방지
+        if (prev.find(img => img.url === imageUrl)) return prev;
+        return [...prev, { url: imageUrl, timestamp: Date.now() }].sort((a,b) => a.timestamp - b.timestamp);
     });
-    
-    if (!thumbnailUrl) { // If no thumbnail is currently set, make this new upload the thumbnail.
+
+    if (!thumbnailUrl) { 
       setThumbnailUrl(imageUrl);
     }
-  }, [thumbnailUrl, setThumbnailUrl]);
+  }, [thumbnailUrl]); // setUploadedImages, setThumbnailUrl은 안정적
 
   // Callback for when EditorWithUploader signals an image was deleted from the editor
   const handleImageDeleteFromEditorSignal = useCallback((deletedImageUrl: string) => {
-    // This is primarily a signal for immediate feedback.
     // The actual synchronization of uploadedImages and thumbnailUrl will be handled
     // by handleEditorContentChange and the subsequent useEffect when the editor's content updates.
+    // 이 함수는 즉각적인 피드백(예: toast 메시지)을 위해 유지할 수 있습니다.
     if (thumbnailUrl === deletedImageUrl) {
       toast("선택된 썸네일이 편집기에서 삭제되었습니다. 잠시 후 썸네일 목록이 업데이트됩니다.");
     }
-    // We can also choose to update uploadedImages here for quicker UI response for the list of images,
-    // but it will be reconciled by handleEditorContentChange anyway.
-        setUploadedImages(prev => prev.filter(img => img.url !== deletedImageUrl));
-
-  }, [thumbnailUrl]); // Dependency on thumbnailUrl to check if the deleted one was the current thumbnail.
+    // uploadedImages는 handleEditorContentChange에 의해 동기화되므로 여기서 직접 필터링할 필요는 없음
+  }, [thumbnailUrl]); // useToastToast 제거 (toast 직접 사용)
 
   // 임시 저장 상태 추가
   const [isDraft, setIsDraft] = useState(post?.is_draft || false);
