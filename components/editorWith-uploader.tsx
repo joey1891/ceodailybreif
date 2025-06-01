@@ -14,7 +14,7 @@ if (process.env.NODE_ENV === 'production') {
   };
 }
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -102,11 +102,24 @@ const CustomFontSize = Extension.create({
 });
 // --- End CustomFontSize Extension ---
 
+// Helper function to extract image URLs from HTML
+const getImageUrlsFromHtml = (html: string): Set<string> => {
+  const urls = new Set<string>();
+  if (!html) return urls;
+  const imgRegex = /<img[^>]+src="([^">]+)"/g;
+  let match;
+  while ((match = imgRegex.exec(html)) !== null) {
+    urls.add(match[1]);
+  }
+  return urls;
+};
+
 // 상수 및 타입 정의
 interface Props {
   value: string;
   onChangeAction: (value: string) => void;
   onImageUpload?: (imageUrl: string) => void;
+  onImageDelete?: (imageUrl: string) => void;
   style?: React.CSSProperties;
 }
 
@@ -334,12 +347,20 @@ export default function EditorWithUploader({
   value, 
   onChangeAction, 
   onImageUpload,
+  onImageDelete,
   style 
 }: Props) {
   const [isMounted, setIsMounted] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [editorData, setEditorData] = useState(value);
+  // State to keep track of current image URLs in the editor
+  const [currentImageUrls, setCurrentImageUrls] = useState<Set<string>>(() => getImageUrlsFromHtml(value));
+
+  // Effect to update currentImageUrls if the initial 'value' prop changes
+  useEffect(() => {
+    setCurrentImageUrls(getImageUrlsFromHtml(value));
+  }, [value]);
 
   // 이미지 업로드 핸들러 (기존 함수 재사용)
   const handleUpload = async (file: File) => {
@@ -381,6 +402,7 @@ export default function EditorWithUploader({
         heading: {
           levels: [1, 2, 3, 4, 5, 6],
         },
+        history: {},
       }),
       Image,
       TableWithStyle.configure({
@@ -431,6 +453,17 @@ export default function EditorWithUploader({
         // HTML 가져오기 (정제 작업 최소화)
         const html = editor.getHTML();
         const sanitizedHtml = sanitizeHtml(html);
+        
+        // Detect deleted images
+        if (onImageDelete) {
+          const newImageUrls = getImageUrlsFromHtml(html);
+          currentImageUrls.forEach(oldUrl => {
+            if (!newImageUrls.has(oldUrl)) {
+              onImageDelete(oldUrl); // Call callback for deleted image
+            }
+          });
+          setCurrentImageUrls(newImageUrls); // Update the current image URLs state
+        }
         
         // editor-content 클래스를 추가하지 않고 HTML만 전달
         setEditorData(sanitizedHtml);

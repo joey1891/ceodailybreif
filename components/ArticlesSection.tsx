@@ -62,7 +62,7 @@ export function ArticlesSection({
     {typeof mainCat.title === 'string' ? mainCat.title : mainCat.title.ko}
   </span>
 </h2>
-<Button variant="outline" asChild className="px-4 py-2 mb-2">
+<Button variant="outline" asChild className="px-4 py-2 mb-2 border-gray-200">
                 <Link href={`/${mainPath}`}>
                   View All 
                 </Link>
@@ -153,7 +153,8 @@ export function ArticlesSection({
         <div className="flex justify-center my-8">
           <Button 
             onClick={() => setShowAllCategories(!showAllCategories)}
-            className="px-6 py-2 bg-gradient-to-r from-gray-600 to-gray-800 text-white hover:from-gray-700 hover:to-gray-900"
+            variant="outline"
+            className="px-6 py-2 border-gray-200"
           >
             {showAllCategories ? "간략히 보기" : "전체 카테고리 보기"} 
           </Button>

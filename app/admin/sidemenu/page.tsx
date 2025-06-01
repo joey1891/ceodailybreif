@@ -1468,7 +1468,7 @@ export default function SideMenuManagement() {
         {/* 게시물 추가 */}
         <div className="flex gap-2 mb-6">
           <select
-            className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-black"
             value={selectedPostId}
             onChange={(e) => setSelectedPostId(e.target.value)}
           >
@@ -1771,4 +1771,4 @@ export default function SideMenuManagement() {
       </div>
     </div>
   );
-} 
+}

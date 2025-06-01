@@ -305,10 +305,10 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
               <div className="flex justify-center mt-4">
                 <Button 
                   variant="outline"
-                  className="w-full text-sm"
-                  onClick={() => setShowAllYoutube(!showAllYoutube)}
+                  className="w-full text-sm border-gray-200"
+                  onClick={() => setShowAllBlogs(!showAllBlogs)}
                 >
-                  {showAllYoutube ? "간략히 보기" : "전체 보기"}
+                  {showAllBlogs ? "간략히 보기" : "전체 보기"}
                 </Button>
               </div>
             )}
@@ -354,7 +354,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
               <div className="flex justify-center mt-4">
                 <Button 
                   variant="outline"
-                  className="w-full text-sm"
+                  className="w-full text-sm border-gray-200"
                   onClick={() => setShowAllBlogs(!showAllBlogs)}
                 >
                   {showAllBlogs ? "간략히 보기" : "전체 보기"}
@@ -382,9 +382,10 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
               required
               disabled={subscribeStatus === "loading"}
             />
-            <Button 
-              type="submit" 
-              className="text-sm flex items-center"
+            <Button
+              type="submit"
+              variant="outline"
+              className="flex-grow border-gray-300"
               disabled={subscribeStatus === "loading"}
             >
               {subscribeStatus === "loading" ? "처리 중..." : "Subscribe"}
@@ -422,9 +423,9 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
                 placeholder="검색어를 입력하세요"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-grow"
+                className="flex-grow border-gray-200"
               />
-              <Button type="submit" variant="outline">
+              <Button type="submit" variant="outline" className="border-gray-200">
                 <Search className="h-4 w-4" />
               </Button>
             </div>
@@ -563,7 +564,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
                   <div className="flex justify-center mt-4">
                     <Button
                       variant="outline"
-                      className="w-full text-sm"
+                      className="w-full text-sm border-gray-200"
                       onClick={() => setShowAllBooks(!showAllBooks)}
                     >
                       {showAllBooks ? "간략히 보기" : "전체 보기"}

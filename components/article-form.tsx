@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -348,27 +348,98 @@ export default function ArticleForm({
     // 다른 카테고리의 서브 카테고리 추가
   };
 
-  // 이미지 업로드 콜백 핸들러
-  const handleImageUpload = (imageUrl: string) => {
-    // 새 이미지를 목록에 추가
-    const newImage = {
-      url: imageUrl,
-      timestamp: Date.now()
-    };
+  // Initialize content, uploadedImages, and thumbnail from post data on load or when post changes
+  useEffect(() => {
+    const initialContent = post?.content || "";
+    setContent(initialContent); // Set initial content for the editor state
+
+    const imagesFromInitialContent = extractAllImages(initialContent);
+    const initialUploadedImages = imagesFromInitialContent.map(url => ({
+      url,
+      timestamp: Date.now() 
+    }));
+    setUploadedImages(initialUploadedImages.sort((a, b) => a.timestamp - b.timestamp));
+
+    if (post?.image_url) {
+      setThumbnailUrl(post.image_url);
+    } else if (initialUploadedImages.length > 0) {
+      // If no explicit thumbnail from post, but content has images, set the first one.
+      setThumbnailUrl(initialUploadedImages[0].url);
+    } else {
+      // No images in content, no explicit thumbnail from post
+      setThumbnailUrl("");
+    }
+  }, [post]);
+
+  // Callback for when editor content changes (typing, undo, redo, paste, image add/delete etc.)
+  const handleEditorContentChange = useCallback((newEditorContent: string) => {
+    setContent(newEditorContent); // Update our local content state
+
+    // Synchronize uploadedImages based on the new editor content
+    const currentImageUrlsInEditor = extractAllImages(newEditorContent);
+    setUploadedImages(prevUploadedImages => {
+      // Create a map of previous images for quick lookup
+      const prevImageMap = new Map(prevUploadedImages.map(img => [img.url, img]));
+      
+      const updatedImages = currentImageUrlsInEditor.map(url => {
+        return prevImageMap.get(url) || { url, timestamp: Date.now() };
+      });
+      
+      return updatedImages.sort((a, b) => a.timestamp - b.timestamp);
+    });
+  }, [setContent]); // setContent is stable
+
+  // Effect to manage the thumbnail URL whenever the editor's content changes
+  useEffect(() => {
+    const currentImageUrlsInEditor = extractAllImages(content);
+
+    if (thumbnailUrl && !currentImageUrlsInEditor.includes(thumbnailUrl)) {
+      // Current thumbnail is no longer in the editor
+      if (currentImageUrlsInEditor.length > 0) {
+        // Pick the last image in the current content as the new thumbnail
+        setThumbnailUrl(currentImageUrlsInEditor[currentImageUrlsInEditor.length - 1]);
+        toast("썸네일이 편집기에서 삭제되어 다른 이미지로 자동 변경되었습니다.");
+      } else {
+        setThumbnailUrl(""); // No images left
+        toast("썸네일이 편집기에서 삭제되었고 다른 이미지가 없어 해제되었습니다.");
+      }
+    } else if (!thumbnailUrl && currentImageUrlsInEditor.length > 0) {
+      // No thumbnail is set, but editor has images (e.g., after undoing a deletion of all images, or pasting content with images)
+      // Set the first image from the current content as the thumbnail
+      setThumbnailUrl(currentImageUrlsInEditor[0]);
+      // Using react-hot-toast for consistency if you prefer
+      // toast.success("편집기에 이미지가 있어 첫 번째 이미지를 썸네일로 자동 설정했습니다.");
+    }
+  }, [content, thumbnailUrl, setThumbnailUrl]); // Rerun when content or current thumbnail changes
+
+  // Callback for when a new image is explicitly uploaded via the button
+  const handleImageUpload = useCallback((imageUrl: string) => {
+    const newImage = { url: imageUrl, timestamp: Date.now() };
+    // Add to uploadedImages. The editor content change will also trigger,
+    // so handleEditorContentChange will ensure it's synced.
+    setUploadedImages(prev => {
+      if (prev.find(img => img.url === imageUrl)) return prev; // Avoid duplicate
+      return [...prev, newImage].sort((a,b) => a.timestamp - b.timestamp);
+    });
     
-    setUploadedImages(prev => [...prev, newImage]);
-    
-    // 아직 썸네일이 선택되지 않았다면 첫 이미지를 자동으로 썸네일로 설정
-    if (!thumbnailUrl) {
+    if (!thumbnailUrl) { // If no thumbnail is currently set, make this new upload the thumbnail.
       setThumbnailUrl(imageUrl);
     }
-  };
+  }, [thumbnailUrl, setThumbnailUrl]);
 
-  // 썸네일 선택 핸들러
-  const handleSelectThumbnail = (url: string) => {
-    setThumbnailUrl(url);
-    toast.success("썸네일 이미지가 선택되었습니다");
-  };
+  // Callback for when EditorWithUploader signals an image was deleted from the editor
+  const handleImageDeleteFromEditorSignal = useCallback((deletedImageUrl: string) => {
+    // This is primarily a signal for immediate feedback.
+    // The actual synchronization of uploadedImages and thumbnailUrl will be handled
+    // by handleEditorContentChange and the subsequent useEffect when the editor's content updates.
+    if (thumbnailUrl === deletedImageUrl) {
+      toast("선택된 썸네일이 편집기에서 삭제되었습니다. 잠시 후 썸네일 목록이 업데이트됩니다.");
+    }
+    // We can also choose to update uploadedImages here for quicker UI response for the list of images,
+    // but it will be reconciled by handleEditorContentChange anyway.
+        setUploadedImages(prev => prev.filter(img => img.url !== deletedImageUrl));
+
+  }, [thumbnailUrl]); // Dependency on thumbnailUrl to check if the deleted one was the current thumbnail.
 
   // 임시 저장 상태 추가
   const [isDraft, setIsDraft] = useState(post?.is_draft || false);
@@ -702,7 +773,7 @@ export default function ArticleForm({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+            className="mt-1 block w-full border border-gray-300 rounded-md p-2 dark:bg-white dark:text-gray-900 dark:border-gray-400"
           />
         </div>
         {/* Category Selection */}
@@ -721,7 +792,7 @@ export default function ArticleForm({
                 id="mainCategory"
                 value={mainCategory}
                 onChange={handleMainCategoryChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2 dark:bg-white dark:text-gray-900 dark:border-gray-400"
                 disabled={isLoadingCategories}
               >
                 <option value="">Select Category</option>
@@ -745,7 +816,7 @@ export default function ArticleForm({
                 id="subCategory"
                 value={subCategory}
                 onChange={(e) => setSubCategory(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+                className="mt-1 block w-full border border-gray-300 rounded-md p-2 dark:bg-white dark:text-gray-900 dark:border-gray-400"
                 disabled={isLoadingCategories || !mainCategory}
               >
                 <option value="">Select Subcategory</option>
@@ -795,28 +866,16 @@ export default function ArticleForm({
             value={formData.date ? formData.date.split('T')[0] : ""} // Format date for input type="date"
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             required
-            className="mt-1 block w-full border border-gray-300 rounded-md p-2"
+            className="mt-1 block w-full border border-gray-300 rounded-md p-2 dark:bg-white dark:text-gray-900 dark:border-gray-400"
           />
         </div>
         {/* Content */}
         <div>
           <EditorWithUploader
             value={content}
-            onChangeAction={(newContent) => {
-              setContent(newContent);
-              
-              // 콘텐츠가 변경될 때마다 첫 번째 이미지 추출하여 image_url 설정
-              // 썸네일이 아직 설정되지 않은 경우에만 자동 설정
-              if (!thumbnailUrl || thumbnailUrl.trim() === "") {
-                const firstImage = extractFirstImage(newContent);
-                if (firstImage) {
-                  setImgUrl(firstImage);
-                  setThumbnailUrl(firstImage); // imgUrl과 thumbnailUrl 모두 설정
-                  console.log("첫 번째 이미지를 대표 이미지로 설정:", firstImage);
-                }
-              }
-            }}
+            onChangeAction={handleEditorContentChange}
             onImageUpload={handleImageUpload}
+            onImageDelete={handleImageDeleteFromEditorSignal}
           />
         </div>
         <div className="flex items-center space-x-2">
@@ -861,7 +920,7 @@ export default function ArticleForm({
                       ? 'border-blue-500 ring-2 ring-blue-300 shadow-lg' 
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
-                  onClick={() => handleSelectThumbnail(image.url)}
+                  onClick={() => setThumbnailUrl(image.url)}
                 >
                   <img 
                     src={image.url} 
@@ -883,7 +942,7 @@ export default function ArticleForm({
                       }`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleSelectThumbnail(image.url);
+                        setThumbnailUrl(image.url);
                       }}
                     >
                       {thumbnailUrl === image.url ? '선택됨' : '썸네일 이미지로 선택'}

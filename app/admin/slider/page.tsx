@@ -150,7 +150,7 @@ export default function SliderSpeedManagement() {
                     ...settings,
                     interval_seconds: parseInt(e.target.value) || 5
                   })}
-                  className="w-full p-3 border rounded-md"
+                  className="w-full p-3 border rounded-md bg-white text-black"
                 />
               </div>
               

@@ -18,7 +18,7 @@ export default function AdminHeader({ adminUser }: { adminUser: User }) {
     <header className="bg-white shadow">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <div className="flex items-center">
-          <Link href="/admin" className="font-bold text-xl text-gray-800">
+          <Link href="/admin" className="font-bold text-xl text-black">
             관리자
           </Link>
           <span className="ml-4 text-sm text-gray-500">
@@ -28,7 +28,7 @@ export default function AdminHeader({ adminUser }: { adminUser: User }) {
         <div className="flex items-center">
           <button
             onClick={handleSignOut}
-            className="text-sm px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-gray-700"
+            className="text-sm px-3 py-1 bg-white rounded hover:bg-gray-300 text-black"
           >
             로그아웃
           </button>
@@ -36,4 +36,4 @@ export default function AdminHeader({ adminUser }: { adminUser: User }) {
       </div>
     </header>
   );
-} 
+}

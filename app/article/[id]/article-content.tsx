@@ -52,29 +52,6 @@ export function ArticleContent({ params }: { params: { id: string } }) {
   }, [params.id]);
 
   useEffect(() => {
-    const 게시글조회수증가 = async () => {
-      if (!post || !post.id) return;
-      
-      try {
-        const { error } = await supabase
-          .from('posts')
-          .update({ viewcnt: (post.viewcnt || 0) + 1 })
-          .eq('id', post.id);
-          
-        if (error) {
-          console.error('게시글 조회수 증가 실패:', error);
-        }
-      } catch (err) {
-        console.error('게시글 조회수 증가 처리 중 오류:', err);
-      }
-    };
-    
-    if (post && !loading) {
-      게시글조회수증가();
-    }
-  }, [post, loading]);
-
-  useEffect(() => {
     // Poll to check if Kakao SDK is initialized
     const intervalId = setInterval(() => {
       if (window.Kakao && window.Kakao.isInitialized()) {

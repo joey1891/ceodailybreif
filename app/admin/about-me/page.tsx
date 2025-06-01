@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { getAdminUser } from "@/lib/admin-auth";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
+import Image from "next/image";
 
 interface AboutMeData {
   id: string;
@@ -297,64 +298,61 @@ export default function AdminAboutMePage() {
   if (!aboutMeData) return <p>프로필 데이터를 불러올 수 없습니다</p>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">프로필 관리</h1>
+    <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-white">
+      <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-900">프로필 관리</h1>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 이미지 업로드 섹션 */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">프로필 이미지</label>
-          <div className="flex items-start space-x-4">
-            <div className="w-32 h-32 relative rounded-md overflow-hidden border">
-              <img 
-                src={imagePreview || aboutMeData.profile_image_url || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"} 
-                alt="Profile preview" 
-                className="w-full h-full object-cover"
-              />
+        <div className="p-4 border rounded-lg bg-white dark:bg-white">
+          <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-900">프로필 이미지</h2>
+          <input 
+            type="file" 
+            accept="image/*" 
+            onChange={handleImageChange} 
+            className="mb-2 text-gray-900 dark:text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-slate-700 dark:file:text-slate-50 dark:hover:file:bg-slate-600"
+          />
+          {imagePreview && (
+            <div className="mt-2">
+              <p className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-700">현재 이미지 미리보기:</p>
+              <Image src={imagePreview} alt="Preview" width={150} height={150} className="rounded" />
             </div>
-            <div className="flex flex-col space-y-2">
-              <input
-                id="profile-image"
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="max-w-xs"
-              />
-              <p className="text-xs text-gray-500">
-                권장 크기: 400x400px. 최대 크기: 2MB
-              </p>
+          )}
+          {aboutMeData?.profile_image_url && !imagePreview && (
+            <div className="mt-2">
+              <p className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-700">현재 프로필 이미지:</p>
+              <Image src={aboutMeData.profile_image_url} alt={aboutMeData.name} width={150} height={150} className="rounded" />
             </div>
-          </div>
+          )}
         </div>
         
         {/* 기본 정보 */}
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">이름</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-700">이름</label>
             <input
               type="text"
               value={aboutMeData.name}
               onChange={(e) => handleChange(e, "name")}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-white text-gray-900 dark:text-gray-900"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">직함</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-700">직함</label>
             <input
               type="text"
               value={aboutMeData.title}
               onChange={(e) => handleChange(e, "title")}
-              className="w-full p-2 border rounded"
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-white text-gray-900 dark:text-gray-900"
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">소개</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-700">소개</label>
             <textarea
               value={aboutMeData.introduction}
               onChange={(e) => handleChange(e, "introduction")}
-              className="w-full p-2 border rounded h-24"
+              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-white text-gray-900 dark:text-gray-900"
             />
           </div>
         </div>
@@ -368,7 +366,7 @@ export default function AdminAboutMePage() {
                 type="text"
                 value={item}
                 onChange={(e) => handleArrayChange("career", index, e.target.value)}
-                className="flex-1 p-2 border rounded"
+                className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-white text-gray-900 dark:text-gray-900"
               />
               <button 
                 type="button" 
@@ -397,7 +395,7 @@ export default function AdminAboutMePage() {
                 type="text"
                 value={item}
                 onChange={(e) => handleArrayChange("industry_expertise", index, e.target.value)}
-                className="flex-1 p-2 border rounded"
+                className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-white text-gray-900 dark:text-gray-900"
               />
               <button 
                 type="button" 
@@ -426,7 +424,7 @@ export default function AdminAboutMePage() {
                 type="text"
                 value={item}
                 onChange={(e) => handleArrayChange("area_of_expertise", index, e.target.value)}
-                className="flex-1 p-2 border rounded"
+                className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-white text-gray-900 dark:text-gray-900"
               />
               <button 
                 type="button" 

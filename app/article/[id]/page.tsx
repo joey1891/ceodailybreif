@@ -49,83 +49,52 @@ const YouTubeEmbed = ({ videoId }: { videoId: string }) => {
   );
 };
 
-// YouTube 비디오 ID 추출 함수 (기존 것 활용 또는 개선)
-const extractYouTubeVideoIdsInContent = (content: string): string[] => {
-  if (!content) return [];
-  // 이 정규식은 일반 텍스트 내의 유튜브 URL에서 ID를 추출합니다.
-  // 만약 HTML 내의 <a> 태그 href 에서만 찾아야 한다면, article-content-client.tsx의 findYouTubeUrls 와 유사한 접근이 필요합니다.
-  // 여기서는 일반 텍스트 내 URL을 가정합니다.
+// YouTube 비디오 ID 추출 함수
+const extractYouTubeVideoId = (content: string) => {
   const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-  const matches: string[] = [];
+  const matches = [];
   let match;
+  
   while ((match = youtubeRegex.exec(content)) !== null) {
     matches.push(match[1]);
   }
+  
   return matches;
 };
 
-// 콘텐츠 처리: HTML 엔티티 디코딩 및 YouTube 첫번째 비디오 상단 임베드
-const processAndEmbedYouTubeContent = (content: string): string => {
+// 콘텐츠 처리 간소화 - 최소한의 정리만 수행
+const processArticleContent = (content: string) => {
   if (!content) return '';
-
-  let processed = content
+  
+  // 기본 정리만 수행
+  return content
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#039;/g, "'")
     .replace(/&#39;/g, "'");
-
-  const videoIds = extractYouTubeVideoIdsInContent(processed); // 본문 전체에서 ID 추출
-  
-  if (videoIds.length > 0) {
-    const firstVideoId = videoIds[0];
-    const embedHtml = `
-      <div class="aspect-video w-full my-6">
-        <iframe
-          src="https://www.youtube.com/embed/${firstVideoId}"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          class="w-full h-full rounded-md"
-          style="border:0;"
-        ></iframe>
-      </div>
-    `;
-    // 첫 번째 비디오를 콘텐츠 상단에 추가
-    processed = embedHtml + processed;
-  }
-  
-  return processed;
 };
 
 export default async function ArticlePage({ params }: Props) {
   console.log("Loading article with ID:", params.id);
 
-  // 병렬 데이터 로딩
-  const [isAdminUser, postData, relatedData] = await Promise.all([
-    isAdmin(),
-    supabase
-      .from("posts")
-      .select("*")
-      .eq("id", params.id)
-      .single(),
-    supabase // 관련 기사 로딩
-      .from("posts")
-      .select("*")
-      // .eq("category", post?.category) // post.category를 사용하려면 post를 먼저 가져와야 하므로, 이 부분은 조정 필요
-      .eq("is_deleted", false)
-      .neq("id", params.id)
-      .order("created_at", { ascending: false })
-      .limit(3)
-  ]);
-
+  // 관리자 여부 확인
+  const isAdminUser = await isAdmin();
   console.log("Is admin user:", isAdminUser);
 
-  const { data: post, error: postError } = postData;
-
-  if (postError) {
-    console.error("Error fetching article:", postError);
+  // 기사 데이터 가져오기
+  const { data: post, error } = await supabase
+    .from("posts")
+    .select("*")
+    .eq("id", params.id)
+    .single();
+  
+  // 에러 로깅
+  if (error) {
+    console.error("Error fetching article:", error);
   }
 
+  // 오류 처리 추가
   if (!post || !post.content) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -140,38 +109,29 @@ export default async function ArticlePage({ params }: Props) {
     );
   }
 
-  // 조회수 증가는 페이지 렌더링을 차단하지 않도록 처리 (예: 응답 후 비동기 처리 또는 에러만 로깅)
-  // 이 작업은 페이지 로딩 속도에 민감하므로, 가능하다면 API 엔드포인트를 만들어 클라이언트에서 호출하거나,
-  // Next.js의 revalidate 또는 다른 백그라운드 작업으로 처리하는 것을 고려할 수 있습니다.
-  // 여기서는 일단 에러만 로깅하고 넘어갑니다.
-  supabase
-    .from("posts")
-    .update({ viewcnt: (post.viewcnt || 0) + 1 })
-    .eq("id", params.id)
-    .then(({ error: viewCntError }) => {
-      if (viewCntError) {
-        console.error("Error updating view count:", viewCntError);
-      }
-    });
+  // 조회수 증가 (에러 발생해도 페이지 표시에는 영향 없게)
+  try {
+    await supabase
+      .from("posts")
+      .update({ viewcnt: (post.viewcnt || 0) + 1 })
+      .eq("id", params.id);
+  } catch (e) {
+    console.error("Error updating view count:", e);
+  }
 
-  // post.category가 필요하므로, related 기사 로딩은 post를 가져온 후 실행하거나,
-  // 카테고리 없이 가져오거나, 별도의 로직으로 처리해야 합니다.
-  // 여기서는 post.category를 사용하기 위해 postData 이후에 related를 가져오도록 수정합니다.
-  // 또는, Promise.all 외부에서 post.category를 사용하여 다시 호출합니다.
-  // 더 나은 방법은 category ID를 알고 있다면 Promise.all에 포함시키는 것입니다.
-  // 여기서는 간단하게 post.category를 사용합니다.
+  // 연관 기사 가져오기 (최대 3개, 같은 카테고리)
   const { data: related } = await supabase
     .from("posts")
     .select("*")
-    .eq("category", post.category) // post.category 사용
+    .eq("category", post.category)
     .eq("is_deleted", false)
     .neq("id", params.id)
     .order("created_at", { ascending: false })
     .limit(3);
 
-  // 서버에서 콘텐츠 처리 (YouTube 임베드 포함)
-  const processedContent = processAndEmbedYouTubeContent(post.content);
-  console.log("서버에서 처리된 콘텐츠 (첫 100자):", processedContent.substring(0, 100));
+  // 최소한으로 처리된 콘텐츠
+  const processedContent = processArticleContent(post.content);
+  console.log("서버에서 처리된 콘텐츠:", processedContent.substring(0, 100)); // 디버깅용 (처음 100자만)
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -183,7 +143,7 @@ export default async function ArticlePage({ params }: Props) {
       <ArticleHeader post={post as Post} />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
         <div className="md:col-span-2">
-          <ArticleContent content={processedContent} /> {/* 서버에서 처리된 콘텐츠 전달 */}
+          <ArticleContent content={processedContent} />
           <ShareButtons post={post as Post} />
         </div>
         <div className="space-y-8 relative">

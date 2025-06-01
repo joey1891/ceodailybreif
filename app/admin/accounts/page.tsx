@@ -80,38 +80,38 @@ export default function AdminAccountsManagement() {
   };
   
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold mb-6">관리자 계정 관리</h1>
+    <div className="p-6 bg-white dark:bg-white rounded-lg shadow-md">
+      <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-900">관리자 계정 관리</h1>
       
       {/* 현재 관리자 정보 */}
-      <div className="mb-8 p-4 bg-blue-50 rounded-lg">
-        <h2 className="text-lg font-medium mb-2">현재 로그인 정보</h2>
+      <div className="mb-8 p-4 bg-white dark:bg-white rounded-lg border">
+        <h2 className="text-lg font-medium mb-2 text-gray-900 dark:text-gray-900">현재 로그인 정보</h2>
         <div className="grid grid-cols-[0.5fr,14fr] gap-2">
-          <div className="text-gray-600">이메일:</div>
-          <div className="font-medium">{adminUser?.email}</div>
-          <div className="text-gray-600">권한:</div>
-          <div className="font-medium">{adminUser?.role === 'super_admin' ? '슈퍼 관리자' : '서브 관리자'}</div>
+          <div className="text-gray-700 dark:text-gray-700">이메일:</div>
+          <div className="font-medium text-gray-900 dark:text-gray-900">{adminUser?.email}</div>
+          <div className="text-gray-700 dark:text-gray-700">권한:</div>
+          <div className="font-medium text-gray-900 dark:text-gray-900">{adminUser?.role === 'super_admin' ? '슈퍼 관리자' : '서브 관리자'}</div>
         </div>
       </div>
       
       {/* 비밀번호 변경 폼 */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">비밀번호 변경</h2>
+      <div className="p-6 bg-white dark:bg-white rounded-lg shadow-md border">
+        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-900">비밀번호 변경</h2>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">현재 비밀번호</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-700">현재 비밀번호</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md bg-white dark:bg-white text-gray-900 dark:text-gray-900 bg-white text-black"
                 required
               />
               <button
                 type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2"
                 onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 dark:text-gray-400"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -119,24 +119,24 @@ export default function AdminAccountsManagement() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">새 비밀번호</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-700">새 비밀번호</label>
             <input
               type={showPassword ? "text" : "password"}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full p-2 border rounded-md"
+              className="w-full p-2 border rounded-md bg-white dark:bg-white text-gray-900 dark:text-gray-900 bg-white text-black"
               required
               minLength={6}
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">새 비밀번호 확인</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-700">새 비밀번호 확인</label>
             <input
               type={showPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full p-2 border rounded-md"
+              className="w-full p-2 border rounded-md bg-white dark:bg-white text-gray-900 dark:text-gray-900 bg-white text-black"
               required
               minLength={6}
             />

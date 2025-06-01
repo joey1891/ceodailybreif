@@ -618,7 +618,7 @@ export default function CalendarManagement() {
                   name="title"
                   value={newEvent.title}
                   onChange={handleChange}
-                  className="border p-2 w-full rounded"
+                  className="border p-2 w-full rounded bg-white text-black"
                   placeholder="일정 제목 입력"
                   required
                 />

@@ -349,7 +349,7 @@ export default function MembersManagement() {
               placeholder="검색어 입력 (이메일, 연락처, 직장 등)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="border p-2 rounded flex-1"
+              className="border p-2 rounded flex-1 bg-white text-black"
             />
             <button
               onClick={() => fetchSubscribers()}
@@ -588,4 +588,4 @@ export default function MembersManagement() {
       </div>
     </div>
   );
-} 
+}
