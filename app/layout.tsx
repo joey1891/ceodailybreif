@@ -1,5 +1,3 @@
-"use client";
-
 // app/layout.tsx
 import './globals.css';
 import React from 'react';
@@ -10,8 +8,10 @@ import { Footer } from "@/components/footer";
 import { TopHeader } from "@/components/top-header";
 import SearchDropdown from "@/components/search-dropdown";
 import Providers from './providers';
-import { useEffect } from 'react';
-import { metadata } from './metadata';
+import { metadata as appMetadata } from './metadata';
+import { KakaoScriptInitializer } from '@/components/KakaoScriptInitializer';
+
+export const metadata = appMetadata;
 
 export type RootLayoutProps = {
   children: React.ReactNode
@@ -19,30 +19,17 @@ export type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
 
-  useEffect(() => {
-    if (!window.Kakao) {
-      const script = document.createElement('script');
-      script.src = "https://developers.kakao.com/sdk/js/kakao.js";
-      script.onload = () => {
-        window.Kakao.init('0bbb8e7bb04d99385a87998c64580b1b');
-      };
-      document.head.appendChild(script);
-    } else if (!window.Kakao.isInitialized()) {
-      window.Kakao.init('0bbb8e7bb04d99385a87998c64580b1b');
-      console.log("Kakao SDK initialized");
-    }
-  }, []);
-
   return (
     <html lang="en">
       <body className="overflow-x-hidden max-w-full">
-       <Providers>
+        <Providers>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
             enableSystem
             disableTransitionOnChange
           >
+            <KakaoScriptInitializer />
             <div className="min-h-screen flex flex-col overflow-x-hidden max-w-full">
               <header>
                 <TopHeader />
