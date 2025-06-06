@@ -7,6 +7,7 @@ import { ShareButtons } from "@/components/share-buttons";
 import { isAdmin } from "@/lib/admin-auth-server";
 import AdminStatusClient from "./admin-status-client";
 import ArticleContent from "./article-content-client";
+import RelatedArticles from "@/components/related-articles";
 
 interface Props {
   params: { id: string };
@@ -125,6 +126,7 @@ export default async function ArticlePage({ params }: Props) {
     .select("*")
     .eq("category", post.category)
     .eq("is_deleted", false)
+    .eq("is_draft", false)
     .neq("id", params.id)
     .order("created_at", { ascending: false })
     .limit(3);
@@ -175,30 +177,6 @@ function ArticleHeader({ post }: { post: Post }) {
       <div className="text-sm text-gray-500">
         {new Date(post.created_at).toLocaleDateString()}
       </div>
-    </div>
-  );
-}
-
-function RelatedArticles({ articles }: { articles: Post[] }) {
-  return (
-    <div className="bg-gray-50 p-6 rounded-lg">
-      <h3 className="text-xl font-bold mb-4">관련 기사</h3>
-      {articles.length > 0 ? (
-        <ul className="space-y-3">
-          {articles.map((article) => (
-            <li key={article.id}>
-              <Link 
-                href={`/article/${article.id}`}
-                className="block hover:text-blue-600"
-              >
-                {article.title}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-gray-500">관련 기사가 없습니다.</p>
-      )}
     </div>
   );
 }
