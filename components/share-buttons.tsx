@@ -104,9 +104,6 @@ export function ShareButtons({ post }: { post: Post }) {
                     },
                   },
                   social: {
-                    likeCount: post.viewcnt || 0,
-                    commentCount: 0,
-                    sharedCount: 0,
                   },
                   buttons: [
                     {
