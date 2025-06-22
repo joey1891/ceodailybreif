@@ -306,9 +306,9 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
                 <Button 
                   variant="outline"
                   className="w-full text-sm border-gray-200"
-                  onClick={() => setShowAllBlogs(!showAllBlogs)}
+                  onClick={() => setShowAllYoutube(!showAllYoutube)}
                 >
-                  {showAllBlogs ? "간략히 보기" : "전체 보기"}
+                  {showAllYoutube ? "간략히 보기" : "전체 보기"}
                 </Button>
               </div>
             )}
