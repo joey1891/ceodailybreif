@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation'; // 🔥 현재 페이지 경로 확인을 위해 추가
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,10 @@ interface SidebarSettings {
 }
 
 export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: SidebarProps) {
+  // 🔥 현재 경로가 메인 페이지('/')인지 확인하는 변수
+  const pathname = usePathname();
+  const isMainPage = pathname === '/';
+
   const [popularPosts] = useState<Post[]>(propPopularPosts || []);
   const [aboutMeData, setAboutMeData] = useRecoilState(aboutMeDataState);
   const [email, setEmail] = useState("");
@@ -50,10 +55,8 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
   const [searchResults, setSearchResults] = useState<Post[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   
-  // All posts for search functionality
   const [allPosts, setAllPosts] = useState<Post[]>([]);
 
-  // HTML tags stripper function
   const stripHtml = (html: string): string => {
     if (!html) return '';
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -64,9 +67,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
   useEffect(() => {
     const fetchSidebarData = async () => {
       setLoading(true);
-      
       try {
-        // Fetch multiple resources in parallel for better performance
         const [
           aboutMeResult,
           recommendedBooksResult,
@@ -81,7 +82,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
           fetchAllPosts()
         ]);
         
-        // Update state with results
         if (aboutMeResult) setAboutMeData(aboutMeResult);
         setRecommendedBooks(recommendedBooksResult || []);
         setYoutubeEntries(youtubeEntriesResult || []);
@@ -97,7 +97,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
     fetchSidebarData();
   }, []);
 
-  // Separate fetch functions for cleaner code and better error isolation
   const fetchAboutMe = async () => {
     try {
       const { data, error } = await supabase
@@ -177,10 +176,8 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
     }
   };
 
-  // Search functionality
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!searchQuery.trim()) {
       setSearchResults([]);
       setIsSearching(false);
@@ -189,16 +186,12 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
     
     setIsSearching(true);
     const query = searchQuery.toLowerCase();
-    
-    // Search in title - could be extended to search in content too
     const results = allPosts.filter(post => 
       post.title.toLowerCase().includes(query)
     );
-    
     setSearchResults(results);
   };
   
-  // Email subscription handler
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
@@ -233,36 +226,33 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
     }
   };
 
+  // 🔥 핵심 로직: 메인 페이지이면서 관리자가 숨김 처리(true)를 했는지 확인
+  const shouldHideProfile = isMainPage && ((aboutMeData as any)?.is_hidden_on_main === true);
+
   return (
     <div className="w-full space-y-6 select-none md:border-l-2 md:border-gray-200 md:pl-4">
-      {/* Author Profile - Always visible */}
-      <Card className="bg-white border-0 shadow-sm">
-        <CardHeader className="flex flex-col items-center space-y-1.5 p-6">
-          <Link href="/about">
-            <Image
-              src={aboutMeData?.profile_image_url || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
-              alt="신원종"
-              width={300}
-              height={300}
-              // 모서리 둥글기 조절: rounded-sm, rounded-md, rounded-lg, rounded-xl, rounded-2xl, rounded-3xl 등 사용 가능
-              className="rounded-xl shadow-3xl mb-5 cursor-pointer" 
-            />
-          </Link>
-        </CardHeader>
-        <CardContent className="p-6 pt-0 text-center">
-          {/* <h3 className="text-lg font-medium mb-2">{aboutMeData?.name || "신원종"}</h3> */}
-          {/* <p className="text-sm text-gray-600 mb-3">{aboutMeData?.title || "블로그 운영자"}</p> */}
-          {/* <p className="text-sm text-gray-500 leading-relaxed">
-            {aboutMeData?.introduction ? 
-              (aboutMeData.introduction.length > 100 ? 
-                `${aboutMeData.introduction.substring(0, 100)}...` : 
-                aboutMeData.introduction) : 
-              "프로필을 방문하여 더 자세한 정보를 확인하세요."}
-          </p> */}
-        </CardContent>
-      </Card>
+      
+      {/* Author Profile - 조건부 렌더링 적용 (shouldHideProfile이 false일 때만 보임) */}
+      {!shouldHideProfile && (
+        <Card className="bg-white border-0 shadow-sm">
+          <CardHeader className="flex flex-col items-center space-y-1.5 p-6">
+            <Link href="/about">
+              <Image
+                src={aboutMeData?.profile_image_url || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
+                alt="신원종"
+                width={300}
+                height={300}
+                className="rounded-xl shadow-3xl mb-5 cursor-pointer" 
+              />
+            </Link>
+          </CardHeader>
+          <CardContent className="p-6 pt-0 text-center">
+            {/* 프로필 텍스트 영역 (주석 처리됨) */}
+          </CardContent>
+        </Card>
+      )}
 
-      {/* YouTube Links - Shows multiple entries */}
+      {/* YouTube Links */}
       {youtubeEntries.length > 0 && (
         <Card className="bg-white border-0 shadow-sm">
           <CardHeader className="space-y-1.5 p-6">
@@ -272,7 +262,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0 space-y-4">
-            {/* Display either all YouTube entries or just the first one based on showAllYoutube */}
             {(showAllYoutube ? youtubeEntries : youtubeEntries.slice(0, 1)).map((entry, index) => (
               <div key={entry.id || index} className="flex flex-col">
                 <div className="aspect-video relative w-full overflow-hidden rounded-lg mb-3">
@@ -300,7 +289,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
               </div>
             ))}
             
-            {/* Only show toggle button if there are more than 1 YouTube entry */}
             {youtubeEntries.length > 1 && (
               <div className="flex justify-center mt-4">
                 <Button 
@@ -316,7 +304,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
         </Card>
       )}
 
-      {/* Blog Recommendations - Shows multiple entries */}
+      {/* Blog Recommendations */}
       {blogEntries.length > 0 && (
         <Card className="bg-white border-0 shadow-sm">
           <CardHeader className="space-y-1.5 p-6">
@@ -326,7 +314,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6 pt-0 space-y-4">
-            {/* Display either all blog entries or just the first one based on showAllBlogs */}
             {(showAllBlogs ? blogEntries : blogEntries.slice(0, 1)).map((entry, index) => (
               <div key={entry.id || index} className="flex flex-col">
                 <div className="aspect-video relative w-full overflow-hidden rounded-lg mb-3">
@@ -349,7 +336,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
               </div>
             ))}
             
-            {/* Only show toggle button if there are more than 1 blog entry */}
             {blogEntries.length > 1 && (
               <div className="flex justify-center mt-4">
                 <Button 
@@ -365,7 +351,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
         </Card>
       )}
 
-      {/* Email Subscription - Always visible */}
+      {/* Email Subscription */}
       <Card className="bg-white border-0 shadow-sm">
         <CardHeader className="space-y-1.5 p-6">
           <CardTitle className="text-xl font-semibold">이메일로 새 글 받아보기</CardTitle>
@@ -406,7 +392,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
         </CardContent>
       </Card>
 
-      {/* Search Section - Now positioned after email subscription */}
+      {/* Search Section */}
       <Card className="bg-white border-0 shadow-sm">
         <CardHeader className="space-y-1.5 p-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
@@ -430,7 +416,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
             </div>
           </form>
           
-          {/* 검색 결과 표시 */}
           {isSearching && (
             <div className="mt-4">
               <h3 className="text-sm font-medium mb-2">검색 결과 ({searchResults.length})</h3>
@@ -458,7 +443,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
         </CardContent>
       </Card>
 
-      {/* Recent Posts - Always visible */}
+      {/* Recent Posts */}
       <Card className="bg-white border-0 shadow-sm">
         <CardHeader className="space-y-1.5 p-6">
           <CardTitle className="text-xl font-semibold flex items-center gap-2">
@@ -475,7 +460,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
                     {post.title || `최신 게시물 ${index + 1}`}
                   </Link>
                 </h3>
-                {/* Content preview commented out */}
                 <div className="text-xs text-muted-foreground mt-2">
                   {post.created_at 
                     ? `작성일: ${new Date(post.created_at).toLocaleDateString()}` 
@@ -491,7 +475,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
         </CardContent>
       </Card>
 
-      {/* Most Viewed Posts - Always visible */}
+      {/* Most Viewed Posts */}
       <Card className="bg-white border-0 shadow-sm">
         <CardHeader className="space-y-1.5 p-6">
           <CardTitle className="text-xl font-semibold">조회수 순위</CardTitle>
@@ -507,7 +491,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
                     {post.title || `인기 게시물 ${index + 1}`}
                   </Link>
                 </h3>
-                {/* Content preview commented out */}
                 <div className="text-xs text-muted-foreground mt-2 flex justify-between">
                   <span>
                     {post.created_at 
@@ -522,7 +505,7 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
         </CardContent>
       </Card>
 
-      {/* Recommended Books - 맨 아래에 배치 */}
+      {/* Recommended Books */}
       {recommendedBooks.length > 0 && (
         <Card className="bg-white border-0 shadow-sm">
           <CardHeader className="space-y-1.5 p-6">
@@ -536,7 +519,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
               <div className="text-sm text-muted-foreground">추천 도서가 없습니다.</div>
             ) : (
               <>
-                {/* Display either all books or just the first one based on showAllBooks */}
                 {(showAllBooks ? recommendedBooks : recommendedBooks.slice(0, 1)).map((book, index) => (
                   <div key={book.id || index} className="flex flex-col">
                     <div className="aspect-[2/3] relative w-full overflow-hidden rounded-lg mb-3">
@@ -558,7 +540,6 @@ export function Sidebar({ recentPosts, popularPosts: propPopularPosts }: Sidebar
                   </div>
                 ))}
 
-                {/* Only show toggle button if there are more than 1 book */}
                 {recommendedBooks.length > 1 && (
                   <div className="flex justify-center mt-4">
                     <Button
