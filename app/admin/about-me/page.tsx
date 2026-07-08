@@ -20,6 +20,7 @@ interface AboutMeData {
   career: string[];
   industry_expertise: string[];
   area_of_expertise: string[];
+  is_hidden_on_main: boolean; // 추가됨
 }
 
 export default function AdminAboutMePage() {
@@ -99,7 +100,8 @@ export default function AdminAboutMePage() {
               introduction: "보건의료산업 관련 전반에 영향을 미치는 주요 변수들의 동향들을 살펴보고,\n관련 의사결정자들이 더 나은 판단을 할 수 있게 도움주고자 개설된 정보 플랫폼입니다.",
               career: ["바이오플러스인터내셔널 대표이사", "바이오플러스 전략기획조정실장", "GC녹십자웰빙 비즈니스이노베이션 유닛장", "코스맥스비티아이 전략기획팀장", "GC(녹십자홀딩스) 전략기획실"],
               industry_expertise: ["의료서비스", "의약품", "의료기기", "건강기능식품", "화장품", "디지털헬스케어", "디지털마케팅"],
-              area_of_expertise: ["경영관리", "경영진단", "전략수립", "투자", "신사업", "사업개발"]
+              area_of_expertise: ["경영관리", "경영진단", "전략수립", "투자", "신사업", "사업개발"],
+              is_hidden_on_main: true // 추가됨: 기본값 숨김
             }
           ])
           .select()
@@ -271,7 +273,8 @@ export default function AdminAboutMePage() {
           introduction: aboutMeData.introduction,
           career: aboutMeData.career,
           industry_expertise: aboutMeData.industry_expertise,
-          area_of_expertise: aboutMeData.area_of_expertise
+          area_of_expertise: aboutMeData.area_of_expertise,
+          is_hidden_on_main: aboutMeData.is_hidden_on_main // 추가됨: 숨김 상태 저장
         })
         .eq('id', aboutMeData.id);
         
@@ -329,6 +332,24 @@ export default function AdminAboutMePage() {
         
         {/* 기본 정보 */}
         <div className="space-y-4">
+          
+          {/* 🎯 추가된 설정: 메인 페이지 프로필 표시 여부 토글 */}
+          <div className="flex items-center space-x-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <input
+              type="checkbox"
+              id="hide-on-main"
+              checked={aboutMeData.is_hidden_on_main}
+              onChange={(e) => setAboutMeData(prev => prev ? { ...prev, is_hidden_on_main: e.target.checked } : prev)}
+              className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="hide-on-main" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+              메인 페이지(홈 화면)에서 내 프로필 숨기기
+            </label>
+            <span className="text-xs text-gray-500 ml-2">
+              (체크하면 메인에서는 안 보이고, 글 상세 페이지 등에서만 보입니다)
+            </span>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">이름</label>
             <input
