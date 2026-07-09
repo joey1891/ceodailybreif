@@ -1,278 +1,181 @@
-"use client";
+import { supabase } from '@/utils/supabase';
+import Link from 'next/link';
 
-import { useEffect, useState } from "react";
-import { ArrowRight, Calendar } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { HeroSlider } from "@/components/hero-slider";
-import { ArticlesSection } from "@/components/ArticlesSection";
-import { FinanceInfo } from "@/components/finance-info";
-import { Sidebar } from "@/components/sidebar";
-import { CalendarSection } from "@/components/calendar-section";
-import { getAllCategories } from "@/lib/category-loader";
-import { Post } from "@/types/supabase";
-import { supabase } from "@/lib/supabase";
-import PopupDisplay from "@/components/popup-display";
-import { PostgrestSingleResponse } from "@supabase/supabase-js";
+// 캐시 주기를 설정하여 빠른 페이지 로딩 보장 (ISR 방식)
+export const revalidate = 60; 
 
-export default function Home() {
-  const [mainCategories] = useState(() => Array.from(getAllCategories()));
-  const [categoryPosts, setCategoryPosts] = useState<Record<string, Post[]>>({});
-  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
-  const [popularPosts, setPopularPosts] = useState<Post[]>([]);
-  const [slides, setSlides] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default async function Home() {
+  // 메인 화면에 노출될 헤드라인 기사들을 가져옵니다.
+  const { data: headlines } = await supabase
+    .from('headlines')
+    .select(`
+      position,
+      articles ( id, title, content, category, image_url, author_name, created_at )
+    `);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      console.log("--- Starting fetchData ---");
-      setIsLoading(true);
-      try {
-        console.log("Fetching data with mainCategories:", mainCategories);
-        
-        console.log("--- Calling fetchSlides and fetchAllPostsData ---"); // Added log
-        
-        console.log("--- Calling fetchSlides ---"); // Added log
-        const slidesPromise = fetchSlides();
-        console.log("--- Calling fetchAllPostsData ---"); // Added log
-        const postsDataPromise = fetchAllPostsData();
+  // 위치별 기사 매핑
+  const mainHero = headlines?.find(h => h.position === 'MAIN_HERO')?.articles;
+  const sub1 = headlines?.find(h => h.position === 'SUB_1')?.articles;
+  const sub2 = headlines?.find(h => h.position === 'SUB_2')?.articles;
 
-        // Parallel data fetching with Promise.all
-        const [slidesResult, postsData] = await Promise.all([
-          slidesPromise,
-          postsDataPromise
-        ]);
-        console.log("--- Promise.all completed ---"); // Added log
-        
-        console.log("Slides fetched:", slidesResult?.length || 0);
-        console.log("Posts data fetched:", Boolean(postsData));
-        
-        setSlides(slidesResult || []);
-        
-        if (postsData) {
-          setCategoryPosts(postsData.categoryPosts);
-          setRecentPosts(postsData.recentPosts);
-          setPopularPosts(postsData.popularPosts);
-        }
-      } catch (error: any) {
-        console.error('[fetchData] 데이터 로딩 중 오류:', error);
-      } finally {
-        setIsLoading(false);
-        console.log("Fetch complete, isLoading set to false");
-      }
-    };
-
-    // Only fetch if we have categories to fetch for
-    if (mainCategories && mainCategories.length > 0) {
-      fetchData();
-    } else {
-      setIsLoading(false);
-      console.log("No mainCategories, skipping fetch");
-    }
-  }, [mainCategories]);
-
-  // Fetch slides using a dedicated function
-  const fetchSlides = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('id, title, image_url, description, slide_order')
-        .eq('is_slide', true)
-        .eq('is_deleted', false)
-        .order('slide_order', { ascending: true });
-      
-      if (error) throw error;
-      return data || [];
-    } catch (error: any) {
-      console.error('Error fetching slides:', error);
-      return [];
-    }
-  };
-
-  // Consolidated posts data fetching
-  const fetchAllPostsData = async () => {
-    try {
-      // Fetch category posts in parallel
-      const categoryPostsData = await fetchCategoryPosts();
-      
-      // Get all posts by combining all category posts
-      const allPosts = Object.values(categoryPostsData).flat();
-      
-      // Get recent posts (directly from DB instead of client-side filtering)
-      const { data: recentPostsData } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("is_deleted", false)
-        .order("created_at", { ascending: false })
-        .limit(5);
-        
-      // Get popular posts (directly from DB)
-      const { data: popularPostsData } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("is_deleted", false)
-        .order("viewcnt", { ascending: false })
-        .limit(5);
-      
-      return {
-        categoryPosts: categoryPostsData,
-        recentPosts: recentPostsData || [],
-        popularPosts: popularPostsData || []
-      };
-    } catch (error) {
-      console.error("Error fetching posts data:", error);
-      return {
-        categoryPosts: {},
-        recentPosts: [],
-        popularPosts: []
-      };
-    }
-  };
-
-  // Fetch posts by category
-  const fetchCategoryPosts = async () => {
-    const posts: Record<string, Post[]> = {};
-
-    try {
-      console.log("--- Starting fetchCategoryPosts ---"); // Added log
-      // Fetch posts for each category in parallel
-      const fetchPromises = mainCategories.map(category => {
-        console.log(`Fetching posts for category: ${category.slug} (${category.id})`); // Added log
-
-        const fetchWithRetry = async (retries: number): Promise<any> => {
-          try {
-            const fetchPromise = supabase
-              .from("posts")
-              .select("*")
-              .eq("category", category.id)
-              .eq("is_deleted", false)
-              .order("updated_at", { ascending: false })
-              .limit(7);
-
-            // Add a timeout to the fetch promise
-            const timeoutPromise = new Promise<[]>( (_, reject) =>
-              setTimeout(() => reject(new Error(`Fetch timeout for category ${category.slug}`)), 60000) // 60초 타임아웃
-            );
-
-            // Use Promise.race to race the fetch promise against the timeout promise
-            const result = await Promise.race([fetchPromise, timeoutPromise]);
-
-            // Check if the result is a Supabase response object
-            if (result && typeof result === 'object' && ('data' in result || 'error' in result)) {
-              const { data, error } = result as PostgrestSingleResponse<any[]>; // Cast to the expected type
-
-              console.log(`Fetch result for category ${category.slug}:`, { data: data?.length, error }); // Added log
-              if (error) {
-                console.error(`Error fetching posts for category ${category.slug}:`, error); // Log specific category error
-                throw error; // Throw to trigger retry
-              }
-              if (data) {
-                posts[category.slug] = data;
-              }
-              return data || []; // Ensure data is returned even if empty
-            } else {
-              // This case should ideally not happen if timeout throws an error,
-              // but as a fallback, handle unexpected results.
-              console.error(`Unexpected result from Promise.race for category ${category.slug}:`, result);
-              throw new Error(`Unexpected fetch result for category ${category.slug}`);
-            }
-          } catch (error: any) {
-            if (retries > 0) {
-              console.warn(`Retrying fetch for category ${category.slug}. Retries left: ${retries}`);
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retrying
-              return fetchWithRetry(retries - 1);
-            } else {
-              console.error(`Max retries reached for category ${category.slug}. Fetch failed:`, error);
-              // Ensure this category's entry is an empty array if it failed after retries
-              if (!posts[category.slug]) {
-                posts[category.slug] = [];
-              }
-              throw error; // Re-throw error after max retries
-            }
-          }
-        };
-
-        return fetchWithRetry(3); // Retry up to 3 times
-      });
-
-      // Use Promise.allSettled to wait for all promises to settle (fulfilled or rejected)
-      const results = await Promise.allSettled(fetchPromises);
-
-      // Process results - errors are already handled within fetchWithRetry
-      results.forEach((result, index) => {
-        const category = mainCategories[index];
-        if (result.status === 'fulfilled') {
-          console.log(`Category ${category.slug} fetch fulfilled.`); // Added log
-        } else {
-          // This case is for errors that weren't caught and handled within fetchWithRetry,
-          // or if fetchWithRetry re-threw after max retries.
-          // The error is already logged within fetchWithRetry.
-          console.log(`Category ${category.slug} fetch settled with rejection.`); // Added log
-        }
-      });
-
-      console.log("--- fetchCategoryPosts completed ---"); // Added log
-      return posts;
-    } catch (error) {
-      console.error("Error fetching category posts:", error);
-      return {};
-    }
-  };
+  // Format date to English style
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long'
+  });
 
   return (
-    <>
-      <PopupDisplay />
-      <main className="min-h-screen bg-white overflow-x-hidden max-w-full overflow-guard">
-        {isLoading ? (
-          // 로딩 중일 때 표시할 UI (예: 스피너 또는 로딩 메시지)
-          <div className="flex justify-center items-center h-screen">
-            <p>로딩 중...</p> {/* 간단한 로딩 메시지 */}
+    <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white">
+      
+      {/* === MASTHEAD === */}
+      <header className="max-w-7xl mx-auto px-4 pt-4 sm:pt-6 pb-2">
+        {/* Top Utility Bar */}
+        <div className="flex flex-col sm:flex-row justify-between items-center text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-300 pb-2 gap-2 sm:gap-0">
+          <span>{currentDate}</span>
+          <span className="flex space-x-4">
+            <Link href="#" className="hover:text-black transition-colors">Global Edition</Link>
+            <Link href="#" className="hover:text-black transition-colors">Newsletter</Link>
+          </span>
+        </div>
+        
+        {/* Main Logo Title */}
+        <div className="text-center py-4 sm:py-6">
+          <Link href="/">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black font-serif tracking-tighter uppercase leading-none break-words" style={{ letterSpacing: '-0.05em' }}>
+              CEO Daily Brief
+            </h1>
+          </Link>
+          <p className="mt-2 sm:mt-3 text-xs sm:text-sm md:text-base font-serif italic text-gray-600 px-2">
+            The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence
+          </p>
+        </div>
+
+        {/* Section Navigation */}
+        <nav className="border-t-2 border-b border-black py-2 sm:py-3 mt-2 sm:mt-4">
+          <ul className="flex flex-wrap justify-center gap-3 sm:gap-6 md:gap-10 text-xs sm:text-sm md:text-base font-bold tracking-wider uppercase">
+            <li><Link href="#politics" className="hover:text-red-800 transition-colors">Politics & Policy</Link></li>
+            <li><Link href="#economy" className="hover:text-red-800 transition-colors">Economy & Markets</Link></li>
+            <li><Link href="#industry" className="hover:text-red-800 transition-colors">Chaebol & Industry</Link></li>
+            <li><Link href="#tech" className="hover:text-red-800 transition-colors">Tech & Innovation</Link></li>
+            <li><Link href="#beauty" className="hover:text-red-800 transition-colors">K-Beauty</Link></li>
+            <li><Link href="#culture" className="hover:text-red-800 transition-colors">K-Culture & Society</Link></li>
+          </ul>
+        </nav>
+      </header>
+
+      {/* === MAIN CONTENT GRID === */}
+      <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+        
+        {/* Top Section: Hero (Left/Center) + Sidebar (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 border-b border-gray-300 pb-8 sm:pb-12">
+          
+          {/* Main Content Area (8 Columns) */}
+          <div className="lg:col-span-8 flex flex-col gap-8 sm:gap-10">
+            
+            {/* The Lead Story */}
+            <section>
+              {mainHero ? (
+                <article className="group cursor-pointer">
+                  <div className="w-full h-[250px] sm:h-[350px] md:h-[450px] bg-gray-200 mb-4 sm:mb-6 overflow-hidden">
+                    {mainHero.image_url ? (
+                      <img 
+                        src={mainHero.image_url} 
+                        alt="Lead story" 
+                        className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 ease-in-out grayscale-[20%]"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400">No Image Available</div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <span className="text-red-800 font-bold text-xs sm:text-sm tracking-widest uppercase">{mainHero.category}</span>
+                    <span className="text-gray-400 text-xs hidden sm:inline">|</span>
+                    <span className="text-gray-500 font-bold text-[10px] sm:text-xs uppercase">{new Date(mainHero.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-black font-serif leading-[1.15] mb-3 sm:mb-5 group-hover:text-gray-700 transition-colors break-words">
+                    {mainHero.title}
+                  </h2>
+                  <p className="text-base sm:text-lg text-gray-700 leading-relaxed md:w-11/12 font-serif line-clamp-3">
+                    {mainHero.content}
+                  </p>
+                  <div className="mt-4 text-xs sm:text-sm font-bold text-black border-l-2 border-red-800 pl-3 uppercase">
+                    By {mainHero.author_name}
+                  </div>
+                </article>
+              ) : (
+                <div className="h-64 flex items-center justify-center bg-gray-100 text-gray-500 font-bold font-serif">No Lead Story Published Yet.</div>
+              )}
+            </section>
           </div>
-        ) : (
-          // 로딩 완료 시 실제 콘텐츠 표시
-          <>
-            {/* Hero Slider - 슬라이드 데이터 전달 */}
-            <section className="mb-12 w-full max-w-full overflow-x-hidden">
-              <HeroSlider slides={slides} />
-            </section>
 
-            {/* 나머지 섹션들에 max-width 제약 추가 */}
-            <section className="mb-12 container-mobile max-w-full">
-              <div className="flex flex-col lg:flex-row gap-6 md:gap-8 max-w-full">
-                {/* Main Content */}
-                <ArticlesSection
-                  mainCategories={mainCategories}
-                  categoryPosts={categoryPosts}
-                />
+          {/* Right Sidebar (4 Columns) */}
+          <div className="lg:col-span-4 flex flex-col">
+            
+            {/* Markets & Policy Briefing (SUB_1, SUB_2) */}
+            <div className="px-2 sm:px-0">
+              <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase border-b-2 border-black pb-2 mb-4 sm:mb-5">
+                Executive Briefing
+              </h3>
+              
+              <div className="flex flex-col gap-6 sm:gap-8">
+                {sub1 && (
+                  <article className="border-b border-gray-200 pb-6 group cursor-pointer">
+                    <span className="text-red-800 font-bold text-[10px] sm:text-xs tracking-widest mb-2 block uppercase">{sub1.category}</span>
+                    <h4 className="text-xl sm:text-2xl font-bold font-serif mb-2 group-hover:text-red-700 leading-snug transition-colors">
+                      {sub1.title}
+                    </h4>
+                    <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">
+                      {sub1.author_name}
+                    </div>
+                  </article>
+                )}
 
-                {/* Sidebar */}
-                <div className="w-full lg:w-1/3">
-                  <Sidebar
-                    recentPosts={recentPosts}
-                    popularPosts={popularPosts}
-                  />
-                </div>
+                {sub2 && (
+                  <article className="group cursor-pointer">
+                    <span className="text-red-800 font-bold text-[10px] sm:text-xs tracking-widest mb-2 block uppercase">{sub2.category}</span>
+                    <h4 className="text-xl sm:text-2xl font-bold font-serif mb-2 group-hover:text-red-700 leading-snug transition-colors">
+                      {sub2.title}
+                    </h4>
+                    <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2">
+                      {sub2.author_name}
+                    </div>
+                  </article>
+                )}
+
+                {!sub1 && !sub2 && (
+                   <p className="text-sm text-gray-500 italic font-serif">Awaiting breaking news updates.</p>
+                )}
               </div>
-            </section>
+            </div>
 
-            {/* Finance & Calendar 섹션도 동일하게 제약 추가 */}
-            <section className="mb-12 container-mobile max-w-full">
-              <FinanceInfo />
-            </section>
+          </div>
+        </div>
 
-            <section className="container-mobile max-w-full">
-              <CalendarSection />
-            </section>
-          </>
-        )}
       </main>
-    </>
+
+      {/* === FOOTER === */}
+      <footer className="bg-[#111] text-white py-12 sm:py-16 mt-12 sm:mt-16 border-t-[8px] sm:border-t-[12px] border-red-800">
+        <div className="max-w-7xl mx-auto px-4 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-8 sm:gap-6">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-serif font-black mb-2 uppercase tracking-tighter">CEO Daily Brief</h2>
+            <p className="text-gray-400 text-xs sm:text-sm font-serif italic">The Global Executive's Guide to South Korea.</p>
+          </div>
+          <div className="flex flex-wrap justify-center md:justify-end gap-4 sm:gap-6 text-[10px] sm:text-sm font-bold text-gray-400 uppercase tracking-wider">
+            <Link href="#" className="hover:text-white transition-colors">About Us</Link>
+            <Link href="#" className="hover:text-white transition-colors">Subscribe</Link>
+            <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link href="#" className="hover:text-white transition-colors">Terms of Service</Link>
+            {/* Admin Link Moved to Footer */}
+            <Link href="/admin" className="hover:text-white transition-colors text-red-700">Admin Login</Link>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 mt-8 text-center md:text-left text-[10px] sm:text-xs text-gray-600">
+          © {new Date().getFullYear()} CEO Daily Brief Media Group. All rights reserved. Reproduction without permission is prohibited.
+        </div>
+      </footer>
+
+    </div>
   );
 }
