@@ -1,207 +1,340 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/utils/supabase';
+import { useEffect, useState, useRef } from 'react';
+
+// === [프리뷰 환경을 위한 임시 Mock 설정] ===
+// 현재 화면(Canvas)에서 UI를 확인하기 위해 추가된 임시 코드입니다.
+// ※ 실제 프로젝트에 적용하실 때는 아래 Mock 변수들을 지우고, 주석 처리된 원래 import 문을 사용해 주세요.
+/* import { supabase } from '@/utils/supabase';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+*/
 
-export default function CEODailyBrief() {
-  const [headlines, setHeadlines] = useState<any>({ MAIN_HERO: null, SUB_1: null, SUB_2: null });
-  const [briefingArticles, setBriefingArticles] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+const supabase = {
+  from: (table: string) => ({
+    select: (cols: string) => ({ eq: (col: string, val: string) => ({ single: async () => ({ data: null, error: null }) }) }),
+    insert: async (data: any) => ({ error: null }),
+    update: (data: any) => ({ eq: (col: string, val: string) => async () => ({ error: null }) })
+  }),
+  storage: {
+    from: (bucket: string) => ({
+      upload: async (path: string, file: File) => ({ error: null }),
+      getPublicUrl: (path: string) => ({ data: { publicUrl: 'https://via.placeholder.com/150' } })
+    })
+  }
+} as any;
 
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
-  }).toUpperCase();
+const useRouter = () => ({ push: (path: string) => console.log('라우팅 이동: ', path) });
+const useSearchParams = () => ({ get: (key: string) => null });
+const Link = ({ href, children, className }: any) => <a href={href} className={className}>{children}</a>;
+// ============================================
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric'
-    }).toUpperCase();
+export default function WriteArticlePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const articleId = searchParams?.get('id');
+
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [category, setCategory] = useState('News');
+  const [author, setAuthor] = useState('Editor-in-Chief');
+  
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  
+  // 에디터 모드: 'visual' (일반 글쓰기), 'html' (HTML 직접 입력), 'preview' (미리보기)
+  const [editorMode, setEditorMode] = useState<'visual' | 'html' | 'preview'>('visual');
+  const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  // 수정 모드일 경우 기존 데이터 불러오기
+  useEffect(() => {
+    if (articleId) {
+      fetchArticle(articleId);
+    }
+  }, [articleId]);
+
+  const fetchArticle = async (id: string) => {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (data && !error) {
+      setTitle(data.title || '');
+      const fetchedContent = data.content || '';
+      setContent(fetchedContent);
+      setCategory(data.category || 'News');
+      setAuthor(data.author_name || 'Editor-in-Chief'); // DB 구조에 맞게 author_name 사용
+      setThumbnailUrl(data.image_url || ''); // DB 구조에 맞게 image_url 사용
+      
+      // 시각적 에디터가 마운트되어 있다면 초기 콘텐츠 삽입
+      if (editorRef.current && editorMode === 'visual') {
+        editorRef.current.innerHTML = fetchedContent;
+      }
+    }
   };
 
+  // 탭 변경 시 시각적 에디터 내용 동기화
   useEffect(() => {
-    const fetchNews = async () => {
-      const { data: headlineMap } = await supabase.from('headlines').select('*');
-      const { data: articles } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false });
-
-      if (articles && headlineMap) {
-        const newHeadlines = { MAIN_HERO: null, SUB_1: null, SUB_2: null };
-        const usedArticleIds = new Set();
-        
-        // 1. 헤드라인 기사 매핑
-        headlineMap.forEach(h => {
-          const matchedArticle = articles.find(a => a.id === h.article_id);
-          if (matchedArticle) {
-            newHeadlines[h.position as keyof typeof newHeadlines] = matchedArticle;
-            usedArticleIds.add(matchedArticle.id);
-          }
-        });
-        setHeadlines(newHeadlines);
-
-        // 2. 헤드라인에 안 들어간 최신 기사 7개를 사이드바(Briefing)용으로 추출
-        const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id)).slice(0, 7);
-        setBriefingArticles(remainingArticles);
+    if (editorMode === 'visual' && editorRef.current) {
+      if (editorRef.current.innerHTML !== content) {
+        editorRef.current.innerHTML = content;
       }
-      setIsLoading(false);
+    }
+  }, [editorMode, content]);
+
+  // 이미지 업로드 핸들러
+  const handleImageUpload = async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `thumbnails/${fileName}`;
+
+    setIsUploading(true);
+
+    const { error: uploadError } = await supabase.storage
+      .from('article_images')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      alert('이미지 업로드에 실패했습니다: ' + uploadError.message);
+      setIsUploading(false);
+      return null;
+    }
+
+    const { data } = supabase.storage.from('article_images').getPublicUrl(filePath);
+    setIsUploading(false);
+    return data.publicUrl;
+  };
+
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setThumbnailFile(file);
+      setThumbnailUrl(URL.createObjectURL(file));
+    }
+  };
+
+  // 에디터 서식 적용 명령어
+  const executeCommand = (command: string, value: string = '') => {
+    document.execCommand(command, false, value);
+    if (editorRef.current) {
+      editorRef.current.focus();
+      setContent(editorRef.current.innerHTML);
+    }
+  };
+
+  // 일반 에디터 입력 처리
+  const handleVisualInput = (e: React.FormEvent<HTMLDivElement>) => {
+    setContent(e.currentTarget.innerHTML);
+  };
+
+  // 기사 저장
+  const saveArticle = async (isPublished: boolean) => {
+    if (!title) {
+      alert('제목을 입력해주세요.');
+      return;
+    }
+
+    setIsLoading(true);
+    let finalThumbnailUrl = thumbnailUrl;
+
+    if (thumbnailFile) {
+      const uploadedUrl = await handleImageUpload(thumbnailFile);
+      if (uploadedUrl) {
+        finalThumbnailUrl = uploadedUrl;
+      }
+    }
+
+    const articleData = {
+      title,
+      content,
+      category,
+      author_name: author,
+      image_url: finalThumbnailUrl,
+      is_published: isPublished,
+      updated_at: new Date().toISOString(),
     };
 
-    fetchNews();
-  }, []);
+    let result;
 
-  const categories = [
-    "Politics & Policy", "Economy & Markets", "Chaebol & Industry", 
-    "Tech & Innovation", "K-Beauty", "K-Culture & Society"
-  ];
+    if (articleId) {
+      result = await supabase.from('articles').update(articleData).eq('id', articleId);
+    } else {
+      result = await supabase.from('articles').insert([articleData]);
+    }
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading CEO Daily Brief...</div>;
+    setIsLoading(false);
+
+    if (result.error) {
+      alert('저장 중 오류가 발생했습니다: ' + result.error.message);
+    } else {
+      alert(isPublished ? '기사가 발행되었습니다!' : '임시 저장되었습니다.');
+      router.push('/admin');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white">
-      <header className="max-w-7xl mx-auto px-4 pt-4 sm:pt-6 pb-2">
-        <div className="flex flex-col sm:flex-row justify-between items-center text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-300 pb-2">
-          <span>{currentDate}</span>
-          <span className="flex space-x-4">
-            <Link href="/news" className="hover:text-black transition-colors">All News (전체기사)</Link>
-            <Link href="/admin" className="hover:text-red-700 transition-colors">Admin Login</Link>
-          </span>
-        </div>
-        
-        <div className="text-center py-4 sm:py-6 cursor-pointer">
-          <Link href="/">
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black font-serif tracking-tighter uppercase leading-none break-words hover:text-gray-800 transition-colors" style={{ letterSpacing: '-0.05em' }}>
-              CEO Daily Brief
-            </h1>
-          </Link>
-          <p className="mt-2 sm:mt-3 text-xs sm:text-sm md:text-base font-serif italic text-gray-600 px-2">
-            The Executive&apos;s Window into South Korea&apos;s Markets, Policy, and Industry Intelligence
-          </p>
+    <div className="max-w-5xl mx-auto bg-white p-8 rounded-lg shadow border border-gray-200">
+      <div className="flex justify-between items-center mb-6 border-b pb-4">
+        <h1 className="text-3xl font-bold font-serif text-black">
+          {articleId ? '기사 수정' : '새 기사 작성'}
+        </h1>
+        <Link href="/admin" className="text-gray-500 hover:text-black transition">
+          목록으로 돌아가기
+        </Link>
+      </div>
+
+      <div className="space-y-6">
+        {/* 기본 정보 */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">카테고리</label>
+            <input 
+              type="text" 
+              value={category} 
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+              placeholder="예: Op-Ed, News, Tech..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">작성자 (Author)</label>
+            <input 
+              type="text" 
+              value={author} 
+              onChange={(e) => setAuthor(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+              placeholder="작성자 이름"
+            />
+          </div>
         </div>
 
-        <nav className="border-t-2 border-b border-black py-2 sm:py-3 mt-2 sm:mt-4">
-          <ul className="flex flex-wrap justify-center gap-3 sm:gap-6 md:gap-8 lg:gap-10 text-xs sm:text-sm md:text-[15px] font-bold tracking-wider uppercase">
-            {categories.map(cat => (
-              <li key={cat}>
-                <Link href={`/news?category=${encodeURIComponent(cat)}`} className="hover:text-red-800 cursor-pointer transition-colors">
-                  {cat}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
+        {/* 제목 */}
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-1">제목</label>
+          <input 
+            type="text" 
+            value={title} 
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded text-lg font-serif focus:outline-none focus:ring-2 focus:ring-black"
+            placeholder="기사 제목을 입력하세요"
+          />
+        </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 border-b border-gray-300 pb-8 sm:pb-12">
-          
-          <div className="lg:col-span-8 flex flex-col gap-8 sm:gap-10">
-            {headlines.MAIN_HERO ? (
-              <Link href={`/article?id=${headlines.MAIN_HERO.id}`}>
-                <article className="group cursor-pointer">
-                  {headlines.MAIN_HERO.image_url && (
-                    <div className="w-full h-[350px] md:h-[450px] bg-gray-200 mb-4 sm:mb-6 overflow-hidden">
-                      <img 
-                        src={headlines.MAIN_HERO.image_url} 
-                        alt="Lead story" 
-                        className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 ease-in-out grayscale-[20%]"
-                      />
-                    </div>
-                  )}
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                    <span className="text-red-800 font-bold text-xs sm:text-sm tracking-widest uppercase">{headlines.MAIN_HERO.category}</span>
-                    <span className="text-gray-400 text-xs hidden sm:inline">|</span>
-                    <span className="text-gray-500 font-bold text-[10px] sm:text-xs uppercase">{formatTime(headlines.MAIN_HERO.created_at)}</span>
-                  </div>
-                  <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-black font-serif leading-[1.15] mb-3 sm:mb-5 group-hover:text-red-800 transition-colors break-words">
-                    {headlines.MAIN_HERO.title}
-                  </h2>
-                  <div 
-                    className="text-base sm:text-lg text-gray-700 leading-relaxed md:w-11/12 font-serif line-clamp-3"
-                    dangerouslySetInnerHTML={{ __html: headlines.MAIN_HERO.content }}
-                  />
-                </article>
-              </Link>
-            ) : (
-              <div className="h-64 flex items-center justify-center bg-gray-50 border border-gray-200 text-gray-400 font-serif italic text-xl">
-                No Lead Story Published Yet.
+        {/* 썸네일 업로드 */}
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지</label>
+          <div className="flex items-start space-x-6">
+            <div className="flex-1">
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={handleThumbnailChange}
+                className="w-full p-2 border border-gray-300 rounded focus:outline-none"
+              />
+              <p className="text-xs text-gray-500 mt-2">jpg, png, webp 형식의 이미지를 업로드해주세요.</p>
+            </div>
+            {thumbnailUrl && (
+              <div className="w-48 h-32 relative border border-gray-200 rounded overflow-hidden shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={thumbnailUrl} alt="Thumbnail Preview" className="w-full h-full object-cover" />
               </div>
             )}
-
-            <hr className="border-gray-200" />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
-              {[headlines.SUB_1, headlines.SUB_2].map((subArticle, idx) => (
-                subArticle ? (
-                  <Link key={idx} href={`/article?id=${subArticle.id}`}>
-                    <article className="group cursor-pointer flex flex-col h-full">
-                      {subArticle.image_url && (
-                        <div className="w-full h-40 sm:h-48 bg-gray-200 mb-3 sm:mb-4 overflow-hidden">
-                          <img 
-                            src={subArticle.image_url} 
-                            alt={subArticle.title} 
-                            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 grayscale-[20%]"
-                          />
-                        </div>
-                      )}
-                      <span className="text-red-800 font-bold text-[10px] sm:text-xs tracking-widest mb-2 uppercase">{subArticle.category}</span>
-                      <h3 className="text-xl sm:text-2xl font-bold font-serif leading-snug group-hover:text-red-800 transition-colors">
-                        {subArticle.title}
-                      </h3>
-                    </article>
-                  </Link>
-                ) : null
-              ))}
-            </div>
-          </div>
-
-          <div className="lg:col-span-4 flex flex-col">
-            <div className="px-2 sm:px-0">
-              {/* === View All 버튼이 추가된 부분 === */}
-              <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
-                <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
-                  EXECUTIVE BRIEFING
-                </h3>
-                <Link href="/news" className="text-[10px] sm:text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase">
-                  View All &rarr;
-                </Link>
-              </div>
-              
-              {briefingArticles.length > 0 ? (
-                <ul className="flex flex-col gap-4 sm:gap-6">
-                  {briefingArticles.map((article) => (
-                    <li key={article.id} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
-                      <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
-                      <Link href={`/article?id=${article.id}`}>
-                        <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
-                        <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
-                          {article.title}
-                        </p>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm font-serif italic text-gray-500">
-                  Awaiting breaking news updates. (새 기사를 작성하면 이곳에 표시됩니다)
-                </p>
-              )}
-            </div>
-          </div>
-
-        </div>
-      </main>
-
-      <footer className="bg-[#111] text-white py-12 sm:py-16 mt-12 sm:mt-16 border-t-[8px] sm:border-t-[12px] border-red-800">
-        <div className="max-w-7xl mx-auto px-4 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-8 sm:gap-6">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-serif font-black mb-2 uppercase tracking-tighter">CEO Daily Brief</h2>
-            <p className="text-gray-400 text-xs sm:text-sm font-serif italic">The Global Executive&apos;s Guide to South Korea.</p>
           </div>
         </div>
-      </footer>
+
+        {/* 본문 에디터 */}
+        <div className="border border-gray-300 rounded shadow-sm overflow-hidden">
+          {/* 에디터 탭 */}
+          <div className="bg-gray-50 flex items-center p-2 border-b border-gray-300 gap-2">
+            <button 
+              onClick={() => setEditorMode('visual')}
+              className={`px-4 py-2 text-sm font-bold rounded transition ${editorMode === 'visual' ? 'bg-black text-white' : 'bg-transparent text-gray-600 hover:bg-gray-200'}`}
+            >
+              일반 글쓰기
+            </button>
+            <button 
+              onClick={() => setEditorMode('html')}
+              className={`px-4 py-2 text-sm font-bold rounded transition ${editorMode === 'html' ? 'bg-black text-white' : 'bg-transparent text-gray-600 hover:bg-gray-200'}`}
+            >
+              HTML 에디터
+            </button>
+            <button 
+              onClick={() => setEditorMode('preview')}
+              className={`px-4 py-2 text-sm font-bold rounded transition ${editorMode === 'preview' ? 'bg-black text-white' : 'bg-transparent text-gray-600 hover:bg-gray-200'}`}
+            >
+              미리보기
+            </button>
+          </div>
+
+          {/* 툴바 (일반 글쓰기 모드에서만 표시) */}
+          {editorMode === 'visual' && (
+            <div className="bg-white border-b border-gray-200 p-2 flex gap-2 text-gray-700">
+              <button onClick={() => executeCommand('formatBlock', 'H1')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">H1</button>
+              <button onClick={() => executeCommand('formatBlock', 'H2')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">H2</button>
+              <button onClick={() => executeCommand('formatBlock', 'P')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">본문(P)</button>
+              <div className="w-px h-6 bg-gray-300 mx-1"></div>
+              <button onClick={() => executeCommand('bold')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">B</button>
+              <button onClick={() => executeCommand('italic')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 italic font-serif text-sm">I</button>
+              <button onClick={() => executeCommand('underline')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 underline text-sm">U</button>
+              <div className="w-px h-6 bg-gray-300 mx-1"></div>
+              <button onClick={() => executeCommand('justifyLeft')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">좌측 정렬</button>
+              <button onClick={() => executeCommand('justifyCenter')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">중앙 정렬</button>
+            </div>
+          )}
+          
+          {/* 입력 영역 */}
+          <div className="bg-white min-h-[500px]">
+            {editorMode === 'visual' && (
+              <div 
+                ref={editorRef}
+                contentEditable
+                onInput={handleVisualInput}
+                className="w-full min-h-[500px] p-6 font-serif text-gray-800 text-lg focus:outline-none prose max-w-none"
+                style={{ outline: 'none' }}
+              />
+            )}
+            
+            {editorMode === 'html' && (
+              <textarea 
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                className="w-full h-[500px] p-6 font-mono text-sm bg-gray-50 border-none focus:outline-none resize-y"
+                placeholder="<p>여기에 HTML 코드를 직접 입력하세요.</p>"
+              />
+            )}
+
+            {editorMode === 'preview' && (
+              <div 
+                className="prose max-w-none font-serif text-gray-800 p-6 min-h-[500px]"
+                dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400">내용이 없습니다.</p>' }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* 액션 버튼 */}
+        <div className="flex justify-end space-x-4 pt-6 border-t">
+          <button 
+            onClick={() => saveArticle(false)}
+            disabled={isLoading || isUploading}
+            className="px-6 py-3 bg-gray-200 text-gray-800 font-bold rounded hover:bg-gray-300 transition disabled:opacity-50"
+          >
+            임시 저장
+          </button>
+          <button 
+            onClick={() => saveArticle(true)}
+            disabled={isLoading || isUploading}
+            className="px-6 py-3 bg-black text-white font-bold rounded hover:bg-gray-800 transition disabled:opacity-50"
+          >
+            {isLoading ? '저장 중...' : '발행하기'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
