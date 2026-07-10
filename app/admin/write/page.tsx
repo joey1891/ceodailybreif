@@ -1,29 +1,13 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-// import { supabase } from '@/utils/supabase';
-// import { useRouter, useSearchParams } from 'next/navigation';
-// import Link from 'next/link';
+import { useEffect, useState, useRef, Suspense } from 'react';
+// 주석 처리되었던 진짜 라이브러리들을 다시 불러옵니다.
+import { supabase } from '@/utils/supabase';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
-const supabase: any = {
-  from: (table: string) => ({
-    select: (cols: string) => ({ eq: (col: string, val: string) => ({ single: async () => ({ data: null, error: null }) }) }),
-    insert: async (data: any) => ({ error: null }),
-    update: (data: any) => ({ eq: (col: string, val: string) => async () => ({ error: null }) })
-  }),
-  storage: {
-    from: (bucket: string) => ({
-      upload: async (path: string, file: File) => ({ error: null }),
-      getPublicUrl: (path: string) => ({ data: { publicUrl: 'https://via.placeholder.com/150' } })
-    })
-  }
-};
-
-const useRouter = () => ({ push: (path: string) => console.log('라우팅 이동: ', path) });
-const useSearchParams = () => ({ get: (key: string) => null });
-const Link = ({ href, children, className }: any) => <a href={href} className={className}>{children}</a>;
-
-export default function WriteArticlePage() {
+// 메인 폼 컴포넌트
+function WriteArticleForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const articleId = searchParams?.get('id');
@@ -36,14 +20,12 @@ export default function WriteArticlePage() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   
-  // 에디터 모드: 'visual' (일반 글쓰기), 'html' (HTML 직접 입력), 'preview' (미리보기)
   const [editorMode, setEditorMode] = useState<'visual' | 'html' | 'preview'>('visual');
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
 
-  // 수정 모드일 경우 기존 데이터 불러오기
   useEffect(() => {
     if (articleId) {
       fetchArticle(articleId);
@@ -62,17 +44,15 @@ export default function WriteArticlePage() {
       const fetchedContent = data.content || '';
       setContent(fetchedContent);
       setCategory(data.category || 'News');
-      setAuthor(data.author_name || 'Editor-in-Chief'); // DB 구조에 맞게 author_name 사용
-      setThumbnailUrl(data.image_url || ''); // DB 구조에 맞게 image_url 사용
+      setAuthor(data.author_name || 'Editor-in-Chief'); 
+      setThumbnailUrl(data.image_url || ''); 
       
-      // 시각적 에디터가 마운트되어 있다면 초기 콘텐츠 삽입
       if (editorRef.current && editorMode === 'visual') {
         editorRef.current.innerHTML = fetchedContent;
       }
     }
   };
 
-  // 탭 변경 시 시각적 에디터 내용 동기화
   useEffect(() => {
     if (editorMode === 'visual' && editorRef.current) {
       if (editorRef.current.innerHTML !== content) {
@@ -81,7 +61,6 @@ export default function WriteArticlePage() {
     }
   }, [editorMode, content]);
 
-  // 이미지 업로드 핸들러
   const handleImageUpload = async (file: File) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random()}.${fileExt}`;
@@ -112,7 +91,6 @@ export default function WriteArticlePage() {
     }
   };
 
-  // 에디터 서식 적용 명령어
   const executeCommand = (command: string, value: string = '') => {
     document.execCommand(command, false, value);
     if (editorRef.current) {
@@ -121,12 +99,10 @@ export default function WriteArticlePage() {
     }
   };
 
-  // 일반 에디터 입력 처리
   const handleVisualInput = (e: React.FormEvent<HTMLDivElement>) => {
     setContent(e.currentTarget.innerHTML);
   };
 
-  // 기사 저장
   const saveArticle = async (isPublished: boolean) => {
     if (!title) {
       alert('제목을 입력해주세요.');
@@ -136,7 +112,6 @@ export default function WriteArticlePage() {
     setIsLoading(true);
     let finalThumbnailUrl = thumbnailUrl;
 
-    // 새 파일이 선택되었다면 스토리지에 업로드
     if (thumbnailFile) {
       const uploadedUrl = await handleImageUpload(thumbnailFile);
       if (uploadedUrl) {
@@ -168,7 +143,7 @@ export default function WriteArticlePage() {
       alert('저장 중 오류가 발생했습니다: ' + result.error.message);
     } else {
       alert(isPublished ? '기사가 발행되었습니다!' : '임시 저장되었습니다.');
-      router.push('/admin');
+      router.push('/admin/articles'); // 수정: 저장 후 기사 관리 페이지로 이동
     }
   };
 
@@ -178,13 +153,12 @@ export default function WriteArticlePage() {
         <h1 className="text-3xl font-bold font-serif text-black">
           {articleId ? '기사 수정' : '새 기사 작성'}
         </h1>
-        <Link href="/admin" className="text-gray-500 hover:text-black transition">
+        <Link href="/admin/articles" className="text-gray-500 hover:text-black transition">
           목록으로 돌아가기
         </Link>
       </div>
 
       <div className="space-y-6">
-        {/* 기본 정보 */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">카테고리</label>
@@ -192,7 +166,7 @@ export default function WriteArticlePage() {
               type="text" 
               value={category} 
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black"
               placeholder="예: Op-Ed, News, Tech..."
             />
           </div>
@@ -202,25 +176,23 @@ export default function WriteArticlePage() {
               type="text" 
               value={author} 
               onChange={(e) => setAuthor(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black"
               placeholder="작성자 이름"
             />
           </div>
         </div>
 
-        {/* 제목 */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">제목</label>
           <input 
             type="text" 
             value={title} 
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded text-lg font-serif focus:outline-none focus:ring-2 focus:ring-black"
+            className="w-full p-3 border border-gray-300 rounded text-lg font-serif focus:outline-none focus:ring-2 focus:ring-black text-black"
             placeholder="기사 제목을 입력하세요"
           />
         </div>
 
-        {/* 썸네일 업로드 */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지</label>
           <div className="flex items-start space-x-6">
@@ -229,22 +201,19 @@ export default function WriteArticlePage() {
                 type="file" 
                 accept="image/*"
                 onChange={handleThumbnailChange}
-                className="w-full p-2 border border-gray-300 rounded focus:outline-none"
+                className="w-full p-2 border border-gray-300 rounded focus:outline-none text-black"
               />
               <p className="text-xs text-gray-500 mt-2">jpg, png, webp 형식의 이미지를 업로드해주세요.</p>
             </div>
             {thumbnailUrl && (
               <div className="w-48 h-32 relative border border-gray-200 rounded overflow-hidden shadow-sm">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={thumbnailUrl} alt="Thumbnail Preview" className="w-full h-full object-cover" />
               </div>
             )}
           </div>
         </div>
 
-        {/* 본문 에디터 */}
-        <div className="border border-gray-300 rounded shadow-sm overflow-hidden">
-          {/* 에디터 탭 */}
+        <div className="border border-gray-300 rounded shadow-sm overflow-hidden text-black">
           <div className="bg-gray-50 flex items-center p-2 border-b border-gray-300 gap-2">
             <button 
               onClick={() => setEditorMode('visual')}
@@ -266,7 +235,6 @@ export default function WriteArticlePage() {
             </button>
           </div>
 
-          {/* 툴바 (일반 글쓰기 모드에서만 표시) */}
           {editorMode === 'visual' && (
             <div className="bg-white border-b border-gray-200 p-2 flex gap-2 text-gray-700 flex-wrap">
               <button onClick={() => executeCommand('formatBlock', 'H1')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">H1</button>
@@ -282,7 +250,6 @@ export default function WriteArticlePage() {
             </div>
           )}
           
-          {/* 입력 영역 */}
           <div className="bg-white min-h-[500px]">
             {editorMode === 'visual' && (
               <div 
@@ -298,7 +265,7 @@ export default function WriteArticlePage() {
               <textarea 
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full h-[500px] p-6 font-mono text-sm bg-gray-50 border-none focus:outline-none resize-y"
+                className="w-full h-[500px] p-6 font-mono text-sm bg-gray-50 border-none focus:outline-none resize-y text-black"
                 placeholder="<p>여기에 HTML 코드를 직접 입력하세요.</p>"
               />
             )}
@@ -312,7 +279,6 @@ export default function WriteArticlePage() {
           </div>
         </div>
 
-        {/* 액션 버튼 */}
         <div className="flex justify-end space-x-4 pt-6 border-t">
           <button 
             onClick={() => saveArticle(false)}
@@ -331,5 +297,14 @@ export default function WriteArticlePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Next.js 빌드 오류 방지를 위해 Suspense로 감싸기
+export default function WriteArticlePage() {
+  return (
+    <Suspense fallback={<div className="text-center p-10 text-black">에디터 로딩 중...</div>}>
+      <WriteArticleForm />
+    </Suspense>
   );
 }
