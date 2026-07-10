@@ -119,4 +119,91 @@ export default function CEODailyBrief() {
                     className="text-base sm:text-lg text-gray-700 leading-relaxed md:w-11/12 font-serif line-clamp-3"
                     dangerouslySetInnerHTML={{ __html: headlines.MAIN_HERO.content }}
                   />
-                </
+                </article>
+              </Link>
+            ) : (
+              <div className="h-64 flex items-center justify-center bg-gray-50 border border-gray-200 text-gray-400 font-serif italic text-xl">
+                No Lead Story Published Yet.
+              </div>
+            )}
+
+            <hr className="border-gray-200" />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
+              {[headlines.SUB_1, headlines.SUB_2].map((subArticle, idx) => (
+                subArticle ? (
+                  <Link key={idx} href={`/article?id=${subArticle.id}`}>
+                    <article className="group cursor-pointer flex flex-col h-full">
+                      {subArticle.image_url && (
+                        <div className="w-full bg-gray-100 mb-3 sm:mb-4 overflow-hidden rounded">
+                          <img 
+                            src={subArticle.image_url} 
+                            alt={subArticle.title} 
+                            className="w-full h-auto group-hover:scale-[1.02] transition-transform duration-700 grayscale-[20%]"
+                          />
+                        </div>
+                      )}
+                      <span className="text-red-800 font-bold text-[10px] sm:text-xs tracking-widest mb-2 uppercase">{subArticle.category}</span>
+                      <h3 className="text-xl sm:text-2xl font-bold font-serif leading-snug group-hover:text-red-800 transition-colors">
+                        {subArticle.title}
+                      </h3>
+                    </article>
+                  </Link>
+                ) : null
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:col-span-4 flex flex-col">
+            <div className="px-2 sm:px-0">
+              <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
+                <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
+                  EXECUTIVE BRIEFING
+                </h3>
+                <Link href="/news" className="text-[10px] sm:text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase">
+                  View All &rarr;
+                </Link>
+              </div>
+              
+              {briefingArticles.length > 0 ? (
+                <ul className="flex flex-col gap-4 sm:gap-6">
+                  {briefingArticles.map((article) => (
+                    <li key={article.id} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
+                      <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
+                      <Link href={`/article?id=${article.id}`}>
+                        <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
+                        <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
+                          {article.title}
+                        </p>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm font-serif italic text-gray-500">
+                  Awaiting breaking news updates. (새 기사를 작성하면 이곳에 표시됩니다)
+                </p>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+      <footer className="bg-[#111] text-white py-12 sm:py-16 mt-12 sm:mt-16 border-t-[8px] sm:border-t-[12px] border-red-800">
+        <div className="max-w-7xl mx-auto px-4 text-center md:text-left flex flex-col md:flex-row justify-between items-center gap-8 sm:gap-6">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-serif font-black mb-2 uppercase tracking-tighter">CEO Daily Brief</h2>
+            <p className="text-gray-400 text-xs sm:text-sm font-serif italic">The Global Executive&apos;s Guide to South Korea.</p>
+          </div>
+          
+          <div>
+            <Link href="/admin" className="text-xs font-bold text-gray-500 hover:text-white uppercase tracking-widest transition-colors">
+              Admin Login
+            </Link>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
