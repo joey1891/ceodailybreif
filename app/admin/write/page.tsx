@@ -25,7 +25,7 @@ function WriteArticleForm() {
   const [isLoading, setIsLoading] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
-
+  const fileInputRef = useRef<HTMLInputElement>(null); // 파일 입력 초기화를 위한 참조
   useEffect(() => {
     if (articleId) {
       fetchArticle(articleId);
@@ -87,7 +87,14 @@ function WriteArticleForm() {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       setThumbnailFile(file);
-      setThumbnailUrl(URL.createObjectURL(file));
+      // setThumbnailUrl(URL.createObjectURL(file)); // URL 입력창과 분리하기 위해 제거
+    }
+  };
+
+  const clearThumbnailFile = () => {
+    setThumbnailFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -196,18 +203,56 @@ function WriteArticleForm() {
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지</label>
           <div className="flex items-start space-x-6">
-            <div className="flex-1">
-              <input 
-                type="file" 
-                accept="image/*"
-                onChange={handleThumbnailChange}
-                className="w-full p-2 border border-gray-300 rounded focus:outline-none text-black"
-              />
-              <p className="text-xs text-gray-500 mt-2">jpg, png, webp 형식의 이미지를 업로드해주세요.</p>
+            <div className="flex-1 space-y-4">
+              {/* 1. 파일 업로드 방식 */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">방법 1: 파일 직접 업로드</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleThumbnailChange}
+                    className="w-full p-2 border border-gray-300 rounded focus:outline-none text-black"
+                  />
+                  {thumbnailFile && (
+                    <button 
+                      type="button" 
+                      onClick={clearThumbnailFile} 
+                      className="px-3 py-2 bg-red-50 text-red-600 rounded text-sm font-bold shrink-0 border border-red-200 hover:bg-red-100"
+                    >
+                      취소
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">jpg, png, webp 형식의 이미지를 업로드해주세요.</p>
+              </div>
+
+              {/* 2. URL 입력 방식 */}
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">방법 2: 이미지 URL 입력 (파일 업로드 시 무시됨)</label>
+                <input 
+                  type="url" 
+                  value={thumbnailUrl}
+                  onChange={(e) => setThumbnailUrl(e.target.value)}
+                  placeholder="https://..."
+                  disabled={!!thumbnailFile}
+                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black disabled:bg-gray-100 disabled:text-gray-400"
+                />
+              </div>
             </div>
-            {thumbnailUrl && (
-              <div className="w-48 h-32 relative border border-gray-200 rounded overflow-hidden shadow-sm">
-                <img src={thumbnailUrl} alt="Thumbnail Preview" className="w-full h-full object-cover" />
+            
+            {/* 썸네일 미리보기 */}
+            {(thumbnailFile || thumbnailUrl) && (
+              <div className="w-48 h-32 relative border border-gray-200 rounded overflow-hidden shadow-sm shrink-0 bg-gray-50 flex items-center justify-center">
+                <img 
+                  src={thumbnailFile ? URL.createObjectURL(thumbnailFile) : thumbnailUrl} 
+                  alt="Thumbnail Preview" 
+                  className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Image';
+                  }}
+                />
               </div>
             )}
           </div>
