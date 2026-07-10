@@ -1,16 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+// import { supabase } from '@/utils/supabase';
+// import { useRouter, useSearchParams } from 'next/navigation';
+// import Link from 'next/link';
 
-// === [프리뷰 환경을 위한 임시 Mock 설정] ===
-// 현재 화면(Canvas)에서 UI를 확인하기 위해 추가된 임시 코드입니다.
-// ※ 실제 프로젝트에 적용하실 때는 아래 Mock 변수들을 지우고, 주석 처리된 원래 import 문을 사용해 주세요.
-/* import { supabase } from '@/utils/supabase';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-*/
-
-const supabase = {
+const supabase: any = {
   from: (table: string) => ({
     select: (cols: string) => ({ eq: (col: string, val: string) => ({ single: async () => ({ data: null, error: null }) }) }),
     insert: async (data: any) => ({ error: null }),
@@ -22,12 +17,11 @@ const supabase = {
       getPublicUrl: (path: string) => ({ data: { publicUrl: 'https://via.placeholder.com/150' } })
     })
   }
-} as any;
+};
 
 const useRouter = () => ({ push: (path: string) => console.log('라우팅 이동: ', path) });
 const useSearchParams = () => ({ get: (key: string) => null });
 const Link = ({ href, children, className }: any) => <a href={href} className={className}>{children}</a>;
-// ============================================
 
 export default function WriteArticlePage() {
   const router = useRouter();
@@ -142,6 +136,7 @@ export default function WriteArticlePage() {
     setIsLoading(true);
     let finalThumbnailUrl = thumbnailUrl;
 
+    // 새 파일이 선택되었다면 스토리지에 업로드
     if (thumbnailFile) {
       const uploadedUrl = await handleImageUpload(thumbnailFile);
       if (uploadedUrl) {
@@ -273,7 +268,7 @@ export default function WriteArticlePage() {
 
           {/* 툴바 (일반 글쓰기 모드에서만 표시) */}
           {editorMode === 'visual' && (
-            <div className="bg-white border-b border-gray-200 p-2 flex gap-2 text-gray-700">
+            <div className="bg-white border-b border-gray-200 p-2 flex gap-2 text-gray-700 flex-wrap">
               <button onClick={() => executeCommand('formatBlock', 'H1')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">H1</button>
               <button onClick={() => executeCommand('formatBlock', 'H2')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">H2</button>
               <button onClick={() => executeCommand('formatBlock', 'P')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">본문(P)</button>
