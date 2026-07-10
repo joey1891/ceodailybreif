@@ -14,7 +14,7 @@ function WriteArticleForm() {
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState('News');
+  const [category, setCategory] = useState('Politics & Policy'); // 기본값을 메인 카테고리와 일치시킴
   const [author, setAuthor] = useState('Editor-in-Chief');
   
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
@@ -43,7 +43,7 @@ function WriteArticleForm() {
       setTitle(data.title || '');
       const fetchedContent = data.content || '';
       setContent(fetchedContent);
-      setCategory(data.category || 'News');
+      setCategory(data.category || 'Politics & Policy'); // 가져온 데이터가 없을 때 기본값 변경
       setAuthor(data.author_name || 'Editor-in-Chief'); 
       setThumbnailUrl(data.image_url || ''); 
       
@@ -169,13 +169,18 @@ function WriteArticleForm() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">카테고리</label>
-            <input 
-              type="text" 
+            <select 
               value={category} 
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black"
-              placeholder="예: Op-Ed, News, Tech..."
-            />
+              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black bg-white"
+            >
+              <option value="Politics & Policy">Politics & Policy</option>
+              <option value="Economy & Markets">Economy & Markets</option>
+              <option value="Chaebol & Industry">Chaebol & Industry</option>
+              <option value="Tech & Innovation">Tech & Innovation</option>
+              <option value="K-Beauty">K-Beauty</option>
+              <option value="K-Culture & Society">K-Culture & Society</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">작성자 (Author)</label>
