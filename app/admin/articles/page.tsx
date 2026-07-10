@@ -1,82 +1,114 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 
-function ArticleContent() {
-  const searchParams = useSearchParams();
-  const articleId = searchParams.get('id');
-
-  const [article, setArticle] = useState<any>(null);
+export default function ManageArticlesPage() {
+  const [articles, setArticles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 기사 목록 불러오기
+  const fetchArticles = async () => {
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error) setArticles(data || []);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    if (articleId) {
-      const fetchArticle = async () => {
-        const { data } = await supabase.from('articles').select('*').eq('id', articleId).single();
-        if (data) setArticle(data);
-        setIsLoading(false);
-      };
-      fetchArticle();
+    fetchArticles();
+  }, []);
+
+  // 기사 삭제
+  const deleteArticle = async (id: string) => {
+    if (!window.confirm('정말 이 기사를 삭제하시겠습니까?')) return;
+    const { error } = await supabase.from('articles').delete().eq('id', id);
+    if (!error) {
+      alert('삭제되었습니다.');
+      fetchArticles();
     }
-  }, [articleId]);
+  };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading article...</div>;
-  if (!article) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-black"><h1 className="text-2xl mb-4">기사를 찾을 수 없습니다.</h1><Link href="/" className="text-blue-600 underline">홈으로 돌아가기</Link></div>;
+  // 기사 즉시 발행
+  const publishArticle = async (id: string) => {
+    if (!window.confirm('이 기사를 즉시 발행하시겠습니까?')) return;
+    const { error } = await supabase.from('articles').update({ is_published: true }).eq('id', id);
+    if (!error) {
+      alert('성공적으로 발행되었습니다!');
+      fetchArticles();
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white pb-20">
-      {/* 상단 미니 헤더 */}
-      <header className="border-b border-gray-200 py-4 px-6 mb-10 flex justify-between items-center">
-        <Link href="/" className="font-black font-serif text-xl tracking-tighter uppercase hover:text-red-800 transition-colors">
-          CEO Daily Brief
+    <div className="bg-white p-8 rounded-lg shadow border border-gray-200">
+      <div className="flex justify-between items-center mb-8 border-b pb-4">
+        <h1 className="text-3xl font-bold font-serif text-black">기사 관리</h1>
+        <Link href="/admin/write" className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 transition font-sans font-bold">
+          + 새 기사 작성
         </Link>
-        <Link href={`/news?category=${encodeURIComponent(article.category)}`} className="text-xs font-bold text-gray-500 uppercase tracking-widest hover:text-black">
-          {article.category}
-        </Link>
-      </header>
+      </div>
 
-      {/* 기사 본문 영역 */}
-      <article className="max-w-3xl mx-auto px-4">
-        {/* 타이틀 및 메타 정보 (명확한 좌측 정렬 강제) */}
-        <div className="text-left mb-10 w-full">
-          <span className="text-red-800 font-bold text-sm tracking-widest uppercase mb-4 block text-left">{article.category}</span>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black font-serif leading-[1.15] mb-6 break-words text-left">
-            {article.title}
-          </h1>
-          <div className="flex items-center justify-start gap-4 text-sm text-gray-500 font-serif italic border-y border-gray-200 py-3">
-            <span className="font-bold text-black font-sans uppercase not-italic">By {article.author_name}</span>
-            <span>|</span>
-            <span>Published: {new Date(article.created_at).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
-          </div>
+      {isLoading ? (
+        <div className="text-center py-10 text-gray-500">기사 목록을 불러오는 중입니다...</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[800px] text-black">
+            <thead>
+              <tr className="bg-gray-100 border-b border-gray-300">
+                <th className="p-4 font-bold text-gray-700">카테고리</th>
+                <th className="p-4 font-bold text-gray-700 w-1/2">제목</th>
+                <th className="p-4 font-bold text-gray-700 text-center">상태</th>
+                <th className="p-4 font-bold text-gray-700">저장 일시</th>
+                <th className="p-4 font-bold text-gray-700 text-center">관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              {articles.length === 0 ? (
+                <tr><td colSpan={5} className="p-8 text-center text-gray-500">작성된 기사가 없습니다.</td></tr>
+              ) : (
+                articles.map((article) => (
+                  <tr key={article.id} className="border-b border-gray-200 hover:bg-gray-50 transition">
+                    <td className="p-4 text-sm font-bold text-red-700">{article.category}</td>
+                    <td className="p-4 font-serif font-bold text-lg truncate max-w-[400px]">{article.title}</td>
+                    <td className="p-4 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${article.is_published ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {article.is_published ? '발행됨' : '임시저장'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-sm text-gray-600 font-sans tracking-tight">
+                      {/* 날짜와 시간 표시 */}
+                      {new Date(article.created_at).toLocaleString('ko-KR', {
+                        year: 'numeric', month: '2-digit', day: '2-digit', 
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <Link href={`/admin/write?id=${article.id}`} className="px-2 py-1 bg-gray-50 text-gray-700 border border-gray-300 rounded text-xs font-bold hover:bg-gray-200">
+                          수정
+                        </Link>
+                        {!article.is_published && (
+                          <button onClick={() => publishArticle(article.id)} className="px-2 py-1 bg-green-50 text-green-700 border border-green-300 rounded text-xs font-bold hover:bg-green-100">
+                            발행
+                          </button>
+                        )}
+                        <button onClick={() => deleteArticle(article.id)} className="px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-bold hover:bg-red-100">
+                          삭제
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-
-        {article.image_url && (
-          <div className="mb-12 w-full">
-            <img src={article.image_url} alt="Article main" className="w-full h-auto object-cover rounded-sm grayscale-[10%]" />
-          </div>
-        )}
-
-        {/* 
-          본문 콘텐츠 
-          에디터에서 작성된 글이 중앙 정렬을 강제로 유지하는 것을 막기 위해 
-          prose 클래스에 text-left를 명시적으로 추가했습니다.
-        */}
-        <div 
-          className="prose prose-lg max-w-none font-serif text-gray-800 text-left leading-loose prose-p:mb-6 prose-img:rounded-sm prose-a:text-red-700 hover:prose-a:text-red-900"
-          dangerouslySetInnerHTML={{ __html: article.content }}
-        />
-      </article>
+      )}
     </div>
-  );
-}
-
-export default function ArticleReadPage() {
-  return (
-    <Suspense fallback={<div className="text-center py-20 text-black">Loading...</div>}>
-      <ArticleContent />
-    </Suspense>
   );
 }
