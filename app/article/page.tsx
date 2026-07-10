@@ -40,12 +40,14 @@ function ArticleContent() {
 
       {/* 기사 본문 영역 */}
       <article className="max-w-3xl mx-auto px-4">
-        <div className="text-center mb-10">
+        {/* 기존 text-center를 text-left로 변경 */}
+        <div className="text-left mb-10">
           <span className="text-red-800 font-bold text-sm tracking-widest uppercase mb-4 block">{article.category}</span>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black font-serif leading-[1.15] mb-6 break-words">
             {article.title}
           </h1>
-          <div className="flex items-center justify-center gap-4 text-sm text-gray-500 font-serif italic border-y border-gray-200 py-3">
+          {/* 기존 justify-center를 justify-start로 변경 */}
+          <div className="flex items-center justify-start gap-4 text-sm text-gray-500 font-serif italic border-y border-gray-200 py-3">
             <span className="font-bold text-black font-sans uppercase not-italic">By {article.author_name}</span>
             <span>|</span>
             <span>Published: {new Date(article.created_at).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
