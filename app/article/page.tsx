@@ -2,72 +2,63 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 
-// ============================================================================
-// 🚨 [프리뷰 환경 전용 임시 코드] 🚨
-// 캔버스 환경에서는 Next.js 패키지와 로컬 파일을 찾을 수 없어 에러가 발생합니다.
-// 에러를 막고 "서로 다른 기사가 뜨는지" 테스트하기 위해 가짜 환경을 구축합니다.
-//
-// 💻 [실제 VS Code 적용 시] 아래 3줄의 주석을 해제하고, 그 아래의 Mock 선언부들을 지워주세요!
-// ============================================================================
-// import { useSearchParams } from 'next/navigation';
-// import Link from 'next/link';
-// import { supabase } from '@/utils/supabase';
+// --- 시작: 미리보기(Preview) 환경용 Mock 데이터 및 라이브러리 ---
+// 실제 VS Code 환경에서는 이 블록 전체를 삭제하시고, 
+// 그 아래에 있는 주석 처리된 '실제 import 문'들의 주석을 해제해 주세요.
 
-// 1. 프리뷰용 가짜 Link
 const Link = ({ href, children, className }: any) => (
-  <a href={href} className={className}>{children}</a>
+  <a href={href} className={className} onClick={(e) => {
+    // 미리보기 환경에서는 실제 페이지 이동 대신 경고창을 띄워 작동 여부를 확인합니다.
+    console.log(`Mock navigation to: ${href}`);
+  }}>{children}</a>
 );
 
-// 2. 프리뷰용 가짜 useSearchParams
 const useSearchParams = () => {
-  if (typeof window !== 'undefined') {
-    return new URLSearchParams(window.location.search);
-  }
-  return new URLSearchParams();
+  // 실제 URL 파라미터를 읽어올 수 없으므로, 테스트용 ID를 반환합니다.
+  // 이 가짜 ID 때문에 미리보기 창에서는 항상 같은 기사만 보이게 됩니다.
+  return { get: (key: string) => key === 'id' ? 'test-article-id' : null };
 };
 
-// 3. 프리뷰용 가짜 동적 DB (ID에 따라 다른 기사 반환)
-const MOCK_DB: Record<string, any> = {
-  'tech-1': {
-    id: 'tech-1',
-    title: 'South Korea Aims to Become Global Hub for AI Innovation by 2027',
-    content: '<p>Seoul has announced an ambitious multi-billion dollar investment plan aimed at securing a leading position in the global artificial intelligence sector. The initiative focuses on nurturing domestic talent, establishing large-scale data centers, and providing significant tax incentives for tech companies.</p><p>Industry experts predict this move will dramatically accelerate the growth of local startups.</p>',
-    category: 'Tech & Innovation',
-    author_name: 'Editor-in-Chief',
-    image_url: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=1000&auto=format&fit=crop',
-    created_at: new Date().toISOString()
-  },
-  'eco-1': {
-    id: 'eco-1',
-    title: 'Bank of Korea Holds Interest Rates Steady Amid Inflation Concerns',
-    content: '<p>The central bank decided to maintain its current stance, balancing growth risks against persistent inflation.</p><p>Financial markets reacted positively to the stabilization efforts.</p>',
-    category: 'Economy & Markets',
-    author_name: 'Financial Desk',
-    image_url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=1000&auto=format&fit=crop',
-    created_at: new Date().toISOString()
-  }
-};
-
-// 프리뷰용 가짜 Supabase 클라이언트
 const supabase = {
   from: (table: string) => ({
     select: (columns: string) => ({
       eq: (column: string, value: any) => ({
         single: async () => {
-          await new Promise(resolve => setTimeout(resolve, 500)); // 로딩 딜레이 시뮬레이션
-          // URL 파라미터로 넘어온 ID에 해당하는 기사가 있으면 주고, 없으면 tech-1을 기본으로 반환
-          const data = MOCK_DB[value] || MOCK_DB['tech-1'];
-          return { data, error: null };
+          await new Promise(resolve => setTimeout(resolve, 500));
+          // test-article-id에 해당하는 가짜 기사 데이터
+          if (value === 'test-article-id') {
+            return {
+              data: {
+                id: 'test-article-id',
+                title: 'Mock Article: Please Use Local Environment',
+                content: '<p>This is a mock article displayed because the preview environment cannot access your local Supabase database or Next.js router.</p><p><b>To see real data:</b> Copy this code to your local VS Code, delete the Mock section at the top, and uncomment the real import statements.</p>',
+                category: 'System Message',
+                author_name: 'Preview Server',
+                image_url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop',
+                created_at: new Date().toISOString()
+              },
+              error: null
+            };
+          }
+          return { data: null, error: { message: "Article not found" } };
         }
       })
     })
   })
 };
-// ============================================================================
-// [프리뷰 전용 코드 끝]
-// ============================================================================
+// --- 끝: 미리보기(Preview) 환경용 Mock 데이터 및 라이브러리 ---
 
-// 지원 언어 목록 (6개국어 번역 지원)
+
+// --- 시작: 실제 프로젝트(VS Code)용 import 문 ---
+// 로컬 환경에서 실행하실 때는 위쪽 Mock 블록을 지우고, 
+// 아래 세 줄의 주석(//)을 해제하여 진짜 라이브러리를 연결하세요!
+
+// import { useSearchParams } from 'next/navigation';
+// import Link from 'next/link';
+// import { supabase } from '@/utils/supabase';
+// --- 끝: 실제 프로젝트(VS Code)용 import 문 ---
+
+
 const LANGUAGES = [
   { code: 'en', name: '🇺🇸 English (Original)' },
   { code: 'ko', name: '🇰🇷 한국어' },
@@ -80,12 +71,11 @@ const LANGUAGES = [
 
 function ArticleContent() {
   const searchParams = useSearchParams() as any;
-  const articleId = searchParams.get('id');
+  const articleId = searchParams.get('id'); 
 
   const [article, setArticle] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 번역 상태 관리
   const [currentLang, setCurrentLang] = useState('en');
   const [displayTitle, setDisplayTitle] = useState('');
   const [displayContent, setDisplayContent] = useState('');
@@ -93,15 +83,17 @@ function ArticleContent() {
 
   useEffect(() => {
     const fetchArticle = async () => {
-      // url에 파라미터가 없으면 프리뷰 환경 상 강제로 'tech-1' 아이디 부여 (테스트용)
-      const targetId = articleId || 'tech-1'; 
+      if (!articleId) {
+        setIsLoading(false);
+        return;
+      }
       
       try {
         const { data, error } = await supabase
           .from('articles')
           .select('*')
-          .eq('id', targetId)
-          .single() as any;
+          .eq('id', articleId)
+          .single();
           
         if (error) throw error;
         
@@ -118,9 +110,8 @@ function ArticleContent() {
     };
 
     fetchArticle();
-  }, [articleId]);
+  }, [articleId]); 
 
-  // 구글 무료 번역 API (GTX) 실제 연동 로직
   const handleLanguageChange = async (langCode: string) => {
     setCurrentLang(langCode);
     
@@ -134,13 +125,11 @@ function ArticleContent() {
 
     setIsTranslating(true);
     try {
-      // 1) 제목 번역
       const titleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t&q=${encodeURIComponent(article.title)}`;
       const titleRes = await fetch(titleUrl);
       const titleData = await titleRes.json();
       const translatedTitle = titleData[0].map((item: any) => item[0]).join('');
 
-      // 2) 본문 번역
       const contentRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t`, {
         method: 'POST',
         headers: {
@@ -166,10 +155,6 @@ function ArticleContent() {
 
   const handleShare = async () => {
     let currentUrl = window.location.href;
-    
-    if (currentUrl.startsWith('blob:')) {
-      currentUrl = `https://ceodailybrief.com/article?id=${article?.id}`;
-    }
 
     const shareData = {
       title: displayTitle || article?.title,
@@ -193,7 +178,13 @@ function ArticleContent() {
   };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading...</div>;
-  if (!article) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-black"><h1 className="text-2xl mb-4">Article not found.</h1><Link href="/" className="text-blue-600 underline">Go Home</Link></div>;
+  
+  if (!article) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-black">
+      <h1 className="text-2xl mb-4 font-bold">기사를 찾을 수 없습니다.</h1>
+      <Link href="/" className="text-blue-600 underline font-bold">메인으로 돌아가기</Link>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans pb-20">
