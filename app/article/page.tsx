@@ -5,7 +5,7 @@ import { supabase } from '@/utils/supabase';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-// 지원 언어 목록
+// 지원 언어 목록 (영어가 원문, 6개국어 번역 지원)
 const LANGUAGES = [
   { code: 'en', name: '🇺🇸 English (Original)' },
   { code: 'ko', name: '🇰🇷 한국어' },
@@ -17,41 +17,27 @@ const LANGUAGES = [
 ];
 
 function ArticleContent() {
-  // Vercel 타입 에러 (Expected 0 arguments) 방지
   const searchParams = useSearchParams() as any;
   const articleId = searchParams?.get('id');
 
   const [article, setArticle] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 번역 상태 관리
   const [currentLang, setCurrentLang] = useState('en');
   const [displayTitle, setDisplayTitle] = useState('');
   const [displayContent, setDisplayContent] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // 1. 실제 Supabase 데이터 연동 (가짜 데이터 없음)
   useEffect(() => {
     if (articleId) {
       const fetchArticle = async () => {
-        try {
-          // Vercel 타입 에러 (unknown) 방지
-          const { data } = (await supabase
-            .from('articles')
-            .select('*')
-            .eq('id', articleId)
-            .single()) as any;
-
-          if (data) {
-            setArticle(data);
-            setDisplayTitle(data.title);
-            setDisplayContent(data.content);
-          }
-        } catch (error) {
-          console.error("Fetch Error:", error);
-        } finally {
-          setIsLoading(false);
+        const { data } = (await supabase.from('articles').select('*').eq('id', articleId).single()) as any;
+        if (data) {
+          setArticle(data);
+          setDisplayTitle(data.title);
+          setDisplayContent(data.content);
         }
+        setIsLoading(false);
       };
       fetchArticle();
     } else {
@@ -59,7 +45,6 @@ function ArticleContent() {
     }
   }, [articleId]);
 
-  // 2. 구글 무료 번역 API (GTX) 연동
   const handleLanguageChange = async (langCode: string) => {
     setCurrentLang(langCode);
     
@@ -73,27 +58,51 @@ function ArticleContent() {
 
     setIsTranslating(true);
     try {
-      // 제목 번역 (GET)
+      // 1) 제목 번역
       const titleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t&q=${encodeURIComponent(article.title)}`;
       const titleRes = await fetch(titleUrl);
       const titleData = await titleRes.json();
       const translatedTitle = titleData[0].map((item: any) => item[0]).join('');
 
-      // 본문 번역 (POST)
+      // 2) 본문 번역 (HTML 태그 및 CSS 번역 깨짐 방지 쉴드 알고리즘)
+      let textToTranslate = article.content;
+      
+      const blocks: string[] = [];
+      const tags: string[] = [];
+
+      // A. <style> 과 <script> 블록 통째로 숨기기 (CSS 번역 방지)
+      textToTranslate = textToTranslate.replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, (match: string) => {
+        blocks.push(match);
+        return ` ###${blocks.length - 1}### `;
+      });
+
+      // B. 나머지 모든 HTML 태그 숨기기 (<h1>, <img> 등)
+      textToTranslate = textToTranslate.replace(/<[^>]+>/g, (match: string) => {
+        tags.push(match);
+        return ` ___${tags.length - 1}___ `;
+      });
+
+      // C. 순수 텍스트만 구글로 전송
       const contentRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams({
-          q: article.content,
+          q: textToTranslate,
         }),
       });
       const contentData = await contentRes.json();
-      const translatedContent = contentData[0].map((item: any) => item[0]).join('');
+      let translatedText = contentData[0].map((item: any) => item[0]).join('');
+
+      // D. 번역이 끝난 후, 숨겨뒀던 HTML 태그와 CSS 코드를 원래 자리에 완벽하게 복구
+      let finalHtml = translatedText;
+      finalHtml = finalHtml.replace(/___\s*(\d+)\s*___/g, (match: string, p1: string) => tags[Number(p1)] || '');
+      finalHtml = finalHtml.replace(/###\s*(\d+)\s*###/g, (match: string, p1: string) => blocks[Number(p1)] || '');
 
       setDisplayTitle(translatedTitle);
-      setDisplayContent(translatedContent);
+      setDisplayContent(finalHtml);
+      
     } catch (error) {
       console.error("Translation Error:", error);
       alert('번역 서버와의 통신에 실패했습니다.');
@@ -102,12 +111,15 @@ function ArticleContent() {
     }
   };
 
-  // 3. 공유하기 기능 (Vercel window is not defined 에러 완벽 차단)
   const handleShare = async () => {
-    // SSR 빌드 시 window 객체 접근 원천 차단
+    // SSR 빌드 에러 방지 (window is not defined)
     if (typeof window === 'undefined') return;
 
-    const currentUrl = window.location.href;
+    let currentUrl = window.location.href;
+    if (currentUrl.startsWith('blob:')) {
+      currentUrl = `https://ceodailybrief.com/article?id=${article?.id}`;
+    }
+
     const shareData = {
       title: displayTitle || article?.title,
       url: currentUrl,
@@ -131,18 +143,18 @@ function ArticleContent() {
     }
   };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black text-xs font-bold uppercase tracking-widest">Loading Intelligence...</div>;
-  if (!article) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-black px-4"><h1 className="text-xl font-bold mb-4 font-serif">Briefing Not Found</h1><Link href="/" className="text-red-800 text-sm font-bold uppercase tracking-widest hover:underline">&larr; Return to HQ</Link></div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading article...</div>;
+  if (!article) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-black"><h1 className="text-2xl mb-4">기사를 찾을 수 없습니다.</h1><Link href="/" className="text-blue-600 underline">홈으로 돌아가기</Link></div>;
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white pb-20">
-      <header className="border-b border-gray-200 py-4 px-6 mb-10 flex justify-between items-center bg-white sticky top-0 z-50">
+      <header className="border-b border-gray-200 py-4 px-6 mb-10 flex justify-between items-center">
         <Link href="/" className="font-black font-serif text-xl tracking-tighter uppercase hover:text-red-800 transition-colors">
           CEO Daily Brief
         </Link>
-        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hidden sm:block">
+        <Link href={`/news?category=${encodeURIComponent(article.category)}`} className="text-xs font-bold text-gray-500 uppercase tracking-widest hover:text-black">
           {article.category}
-        </div>
+        </Link>
       </header>
 
       <article className="max-w-3xl mx-auto px-4" style={{ display: 'block', textAlign: 'left' }}>
@@ -174,49 +186,38 @@ function ArticleContent() {
           </div>
         </div>
 
-        {isTranslating && (
-          <div className="text-[10px] text-red-600 mb-6 font-bold uppercase tracking-widest animate-pulse text-center">
-            Translating for Global Compliance...
-          </div>
-        )}
+        {isTranslating && <div className="text-[10px] text-red-600 mb-4 font-bold uppercase tracking-widest animate-pulse text-center">Translating...</div>}
 
         <div style={{ textAlign: 'left', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} className="mb-10">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black font-serif leading-[1.15] mb-6 break-words tracking-tight text-gray-900" style={{ textAlign: 'left', width: '100%' }}>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black font-serif leading-[1.15] mb-6 break-words" style={{ textAlign: 'left', width: '100%' }}>
             {displayTitle}
           </h1>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 font-serif italic border-y border-gray-200 py-3 w-full" style={{ justifyContent: 'flex-start' }}>
-            <span className="font-bold text-black font-sans uppercase not-italic">By {article.author_name || "Editor-in-Chief"}</span>
-            <span className="hidden sm:inline text-gray-300">|</span>
-            <span>Published: {new Date(article.created_at).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric'})}</span>
+          <div className="flex items-center gap-4 text-sm text-gray-500 font-serif italic border-y border-gray-200 py-3 w-full" style={{ justifyContent: 'flex-start' }}>
+            <span className="font-bold text-black font-sans uppercase not-italic">By {article.author_name}</span>
+            <span>|</span>
+            <span>Published: {new Date(article.created_at).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
           </div>
         </div>
 
         {article.image_url && (
           <div className="mb-12 w-full">
-            <img src={article.image_url} alt="Briefing Visual" className="w-full h-auto object-cover rounded-sm grayscale-[10%] shadow-sm" />
+            <img src={article.image_url} alt="Article main" className="w-full h-auto object-cover rounded-sm grayscale-[10%]" />
           </div>
         )}
 
         <div 
-          className="prose prose-lg max-w-none font-serif text-gray-800 leading-[1.8] prose-p:mb-6 prose-headings:font-black prose-a:text-red-700 hover:prose-a:text-red-900 transition-colors"
+          className="prose prose-lg max-w-none font-serif text-gray-800 leading-loose prose-p:mb-6 prose-img:rounded-sm prose-a:text-red-700 hover:prose-a:text-red-900"
           style={{ textAlign: 'left' }}
           dangerouslySetInnerHTML={{ __html: displayContent }}
         />
-        
-        <div className="mt-20 pt-10 border-t border-gray-200 text-center">
-          <Link href="/" className="text-sm font-bold uppercase tracking-widest hover:text-red-800 transition-colors">
-            &larr; Back to Dashboard
-          </Link>
-        </div>
       </article>
     </div>
   );
 }
 
-// Next.js 빌드 에러 방지를 위해 Suspense 필수 적용
 export default function ArticleReadPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black text-xs font-bold uppercase tracking-widest">Loading...</div>}>
+    <Suspense fallback={<div className="text-center py-20 text-black">Loading...</div>}>
       <ArticleContent />
     </Suspense>
   );
