@@ -129,14 +129,9 @@ function ArticleContent() {
   
   if (isError || !article) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-black text-center p-4">
-      <h1 className="text-2xl mb-4 font-bold text-red-600">미리보기(Preview) 화면 안내</h1>
-      <p className="mb-4">현재 화면에서는 Vercel 배포용 모듈을 불러올 수 없어 내용이 표시되지 않습니다.</p>
-      <div className="bg-gray-100 p-4 rounded text-sm text-left max-w-lg mb-6 border border-gray-300">
-        <p className="font-bold mb-2 text-red-800">✅ Vercel 배포 성공을 위한 2가지 조치 사항</p>
-        <p className="mb-1">1. 코드 상단의 <code className="bg-gray-200 px-1 rounded">import</code> 3줄의 <b>주석(//)을 해제</b>하세요.</p>
-        <p>2. 중간에 있는 <b>Mock(가짜) 함수 영역을 모두 삭제</b>하세요.</p>
-      </div>
-      <Link href="/" className="text-blue-600 underline font-bold">메인으로 돌아가기 (로컬 테스트용)</Link>
+      <h1 className="text-2xl mb-4 font-bold text-red-600">Article Not Found</h1>
+      <p className="mb-4">The requested article could not be loaded.</p>
+      <Link href="/" className="text-blue-600 underline font-bold">Return to Homepage</Link>
     </div>
   );
 
