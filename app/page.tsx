@@ -59,6 +59,7 @@ export default function CEODailyBrief() {
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white">
+      {}
       <header className="max-w-7xl mx-auto px-4 pt-4 sm:pt-6 pb-2">
         <div className="flex flex-col sm:flex-row justify-between items-center text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-300 pb-2">
           <span>{currentDate}</span>
@@ -67,19 +68,20 @@ export default function CEODailyBrief() {
           </span>
         </div>
         
-        <div className="text-center py-4 sm:py-6 cursor-pointer">
+        <div className="text-center py-6 sm:py-8 cursor-pointer border-none">
           <Link href="/">
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black font-serif tracking-tighter uppercase leading-none break-words hover:text-gray-800 transition-colors" style={{ letterSpacing: '-0.05em' }}>
+            {/* 데스크탑에서 글씨 크기 1.5배 이상 확대 (md:text-[90px] lg:text-[110px]) */}
+            <h1 className="text-5xl sm:text-6xl md:text-[90px] lg:text-[110px] font-black font-serif tracking-tighter uppercase leading-none break-words hover:text-gray-800 transition-colors" style={{ letterSpacing: '-0.05em' }}>
               CEO Daily Brief
             </h1>
           </Link>
-          <p className="mt-2 sm:mt-3 text-xs sm:text-sm md:text-base font-serif italic text-gray-600 px-2">
+          <p className="mt-4 sm:mt-6 text-xs sm:text-sm md:text-lg font-serif italic text-gray-600 px-2">
             The Executive&apos;s Window into South Korea&apos;s Markets, Policy, and Industry Intelligence
           </p>
         </div>
 
-        {/* 모바일에서 카테고리 한 줄씩 나오도록 수정된 네비게이션 */}
-        <nav className="border-t-2 border-b border-black py-3 mt-4">
+        {/* 네비게이션: 모바일 세로 정렬 유지, PC 가로 정렬 */}
+        <nav className="border-y border-black py-3 mt-6">
           <ul className="flex flex-col sm:flex-row justify-start sm:justify-center items-start sm:items-center gap-3 sm:gap-6 md:gap-8 text-[11px] sm:text-sm md:text-[15px] font-bold tracking-widest uppercase px-2 sm:px-0">
             {categories.map(cat => (
               <li key={cat} className="w-full sm:w-auto text-left">
@@ -92,6 +94,7 @@ export default function CEODailyBrief() {
         </nav>
       </header>
 
+      {}
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 border-b border-gray-300 pb-8 sm:pb-12">
           
@@ -116,9 +119,9 @@ export default function CEODailyBrief() {
                   <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-black font-serif leading-[1.15] mb-3 sm:mb-5 group-hover:text-red-800 transition-colors break-words">
                     {headlines.MAIN_HERO.title}
                   </h2>
-                  {/* 글자 겹침 방지 및 3줄 제한 추가 */}
+                  {/* 글자 겹침 방지: 모든 자식 태그의 margin 제거 및 강제 inline 처리 */}
                   <div 
-                    className="text-sm sm:text-lg text-gray-700 leading-relaxed md:w-11/12 font-serif line-clamp-3 overflow-hidden break-words [&>p]:!mb-0 [&>div]:!mb-0"
+                    className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed md:w-11/12 font-serif line-clamp-3 overflow-hidden break-words [&_p]:!m-0 [&_p]:!inline [&_div]:!inline"
                     dangerouslySetInnerHTML={{ __html: headlines.MAIN_HERO.content }}
                   />
                 </article>
@@ -128,8 +131,6 @@ export default function CEODailyBrief() {
                 No Lead Story Published Yet.
               </div>
             )}
-
-            {/* 불필요한 가로줄(<hr>) 제거 */}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mt-2 sm:mt-0">
               {[headlines.SUB_1, headlines.SUB_2].map((subArticle, idx) => (
@@ -156,6 +157,7 @@ export default function CEODailyBrief() {
             </div>
           </div>
 
+          {}
           <div className="lg:col-span-4 flex flex-col">
             <div className="px-2 sm:px-0">
               <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
@@ -192,7 +194,7 @@ export default function CEODailyBrief() {
         </div>
       </main>
 
-      {/* 작고 세련된 미니멀 풋터로 변경 */}
+      {}
       <footer className="bg-gray-50 text-gray-400 py-6 sm:py-8 mt-8 sm:mt-12 border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
           <div>
