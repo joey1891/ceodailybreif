@@ -1,51 +1,71 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 
-// --- MOCK DEPENDENCIES FOR PREVIEW ENVIRONMENT ---
-// These mock the Next.js and Supabase functionalities to allow the UI to render in the sandbox.
+// ============================================================================
+// 🚨 [프리뷰 환경 전용 임시 코드] 🚨
+// 캔버스 환경에서는 Next.js 패키지와 로컬 파일을 찾을 수 없어 에러가 발생합니다.
+// 에러를 막고 "서로 다른 기사가 뜨는지" 테스트하기 위해 가짜 환경을 구축합니다.
+//
+// 💻 [실제 VS Code 적용 시] 아래 3줄의 주석을 해제하고, 그 아래의 Mock 선언부들을 지워주세요!
+// ============================================================================
+// import { useSearchParams } from 'next/navigation';
+// import Link from 'next/link';
+// import { supabase } from '@/utils/supabase';
 
-// Mock Next.js Link
+// 1. 프리뷰용 가짜 Link
 const Link = ({ href, children, className }: any) => (
-  <a href={href} className={className} onClick={(e) => e.preventDefault()}>{children}</a>
+  <a href={href} className={className}>{children}</a>
 );
 
-// Mock Next.js useSearchParams
+// 2. 프리뷰용 가짜 useSearchParams
 const useSearchParams = () => {
-  return {
-    get: (key: string) => {
-      if (key === 'id') return 'mock-article-id';
-      return null;
-    }
-  } as any;
+  if (typeof window !== 'undefined') {
+    return new URLSearchParams(window.location.search);
+  }
+  return new URLSearchParams();
 };
 
-// Mock Supabase Client
+// 3. 프리뷰용 가짜 동적 DB (ID에 따라 다른 기사 반환)
+const MOCK_DB: Record<string, any> = {
+  'tech-1': {
+    id: 'tech-1',
+    title: 'South Korea Aims to Become Global Hub for AI Innovation by 2027',
+    content: '<p>Seoul has announced an ambitious multi-billion dollar investment plan aimed at securing a leading position in the global artificial intelligence sector. The initiative focuses on nurturing domestic talent, establishing large-scale data centers, and providing significant tax incentives for tech companies.</p><p>Industry experts predict this move will dramatically accelerate the growth of local startups.</p>',
+    category: 'Tech & Innovation',
+    author_name: 'Editor-in-Chief',
+    image_url: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=1000&auto=format&fit=crop',
+    created_at: new Date().toISOString()
+  },
+  'eco-1': {
+    id: 'eco-1',
+    title: 'Bank of Korea Holds Interest Rates Steady Amid Inflation Concerns',
+    content: '<p>The central bank decided to maintain its current stance, balancing growth risks against persistent inflation.</p><p>Financial markets reacted positively to the stabilization efforts.</p>',
+    category: 'Economy & Markets',
+    author_name: 'Financial Desk',
+    image_url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=1000&auto=format&fit=crop',
+    created_at: new Date().toISOString()
+  }
+};
+
+// 프리뷰용 가짜 Supabase 클라이언트
 const supabase = {
   from: (table: string) => ({
     select: (columns: string) => ({
       eq: (column: string, value: any) => ({
         single: async () => {
-          // Simulate network delay
-          await new Promise(resolve => setTimeout(resolve, 500));
-          return {
-            data: {
-              id: 'mock-article-id',
-              title: 'South Korea Aims to Become Global Hub for AI Innovation by 2027',
-              content: '<p>Seoul has announced an ambitious multi-billion dollar investment plan aimed at securing a leading position in the global artificial intelligence sector. The initiative, spearheaded by the Ministry of Science and ICT, focuses on nurturing domestic talent, establishing large-scale data centers, and providing significant tax incentives for tech companies.</p><p>Industry experts predict this move will dramatically accelerate the growth of local startups and attract substantial foreign investment, potentially reshaping the tech landscape in East Asia.</p>',
-              category: 'Tech & Innovation',
-              author_name: 'Editor-in-Chief',
-              image_url: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=1000&auto=format&fit=crop',
-              created_at: new Date().toISOString(),
-              is_published: true
-            }
-          };
+          await new Promise(resolve => setTimeout(resolve, 500)); // 로딩 딜레이 시뮬레이션
+          // URL 파라미터로 넘어온 ID에 해당하는 기사가 있으면 주고, 없으면 tech-1을 기본으로 반환
+          const data = MOCK_DB[value] || MOCK_DB['tech-1'];
+          return { data, error: null };
         }
       })
     })
   })
 };
-// --- END MOCK DEPENDENCIES ---
+// ============================================================================
+// [프리뷰 전용 코드 끝]
+// ============================================================================
 
 // 지원 언어 목록 (6개국어 번역 지원)
 const LANGUAGES = [
@@ -59,7 +79,6 @@ const LANGUAGES = [
 ];
 
 function ArticleContent() {
-  // image_dd0f80.png 에러 해결: as any를 추가하여 .get('id') 인자값 에러를 강제 통과시킵니다.
   const searchParams = useSearchParams() as any;
   const articleId = searchParams.get('id');
 
@@ -73,19 +92,32 @@ function ArticleContent() {
   const [isTranslating, setIsTranslating] = useState(false);
 
   useEffect(() => {
-    if (articleId) {
-      const fetchArticle = async () => {
-        // image_dca682.png 에러 해결: as any를 추가하여 데이터 구조 타입 에러를 해결합니다.
-        const { data } = (await supabase.from('articles').select('*').eq('id', articleId).single()) as any;
+    const fetchArticle = async () => {
+      // url에 파라미터가 없으면 프리뷰 환경 상 강제로 'tech-1' 아이디 부여 (테스트용)
+      const targetId = articleId || 'tech-1'; 
+      
+      try {
+        const { data, error } = await supabase
+          .from('articles')
+          .select('*')
+          .eq('id', targetId)
+          .single() as any;
+          
+        if (error) throw error;
+        
         if (data) {
           setArticle(data);
           setDisplayTitle(data.title);
           setDisplayContent(data.content);
         }
+      } catch (error) {
+        console.error('Error fetching article:', error);
+      } finally {
         setIsLoading(false);
-      };
-      fetchArticle();
-    }
+      }
+    };
+
+    fetchArticle();
   }, [articleId]);
 
   // 구글 무료 번역 API (GTX) 실제 연동 로직
@@ -102,13 +134,13 @@ function ArticleContent() {
 
     setIsTranslating(true);
     try {
-      // 1) 제목 번역 (GET 방식)
+      // 1) 제목 번역
       const titleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t&q=${encodeURIComponent(article.title)}`;
       const titleRes = await fetch(titleUrl);
       const titleData = await titleRes.json();
       const translatedTitle = titleData[0].map((item: any) => item[0]).join('');
 
-      // 2) 본문 번역 (HTML 태그 포함 대응을 위한 POST 방식 시뮬레이션)
+      // 2) 본문 번역
       const contentRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t`, {
         method: 'POST',
         headers: {
@@ -132,11 +164,9 @@ function ArticleContent() {
     }
   };
 
-  // 공유하기 기능 (navigator.share 미지원 시 클립보드 복사)
   const handleShare = async () => {
     let currentUrl = window.location.href;
     
-    // 배포 환경이 아닌 특수 환경(blob) 대응
     if (currentUrl.startsWith('blob:')) {
       currentUrl = `https://ceodailybrief.com/article?id=${article?.id}`;
     }
