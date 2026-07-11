@@ -5,7 +5,7 @@ import { supabase } from '@/utils/supabase';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-// 지원 언어 목록 (영어가 원문, 6개국어 번역 지원)
+// 지원 언어 목록
 const LANGUAGES = [
   { code: 'en', name: '🇺🇸 English (Original)' },
   { code: 'ko', name: '🇰🇷 한국어' },
@@ -64,25 +64,29 @@ function ArticleContent() {
       const titleData = await titleRes.json();
       const translatedTitle = titleData[0].map((item: any) => item[0]).join('');
 
-      // 2) 본문 번역 (HTML 태그 및 CSS 번역 깨짐 방지 쉴드 알고리즘)
+      // 2) 본문 번역 (강화된 V2 HTML 쉴드 알고리즘)
       let textToTranslate = article.content;
       
       const blocks: string[] = [];
       const tags: string[] = [];
 
-      // A. <style> 과 <script> 블록 통째로 숨기기 (CSS 번역 방지)
+      // 구글 번역기가 절대 건드리지 못하는 특수 알파벳 마커 사용 (특수기호 완전 배제)
+      const BLK_MKR = "XZBLKZX";
+      const TAG_MKR = "XZTAGZX";
+
+      // A. <style> 과 <script> 통째로 숨기기
       textToTranslate = textToTranslate.replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, (match: string) => {
         blocks.push(match);
-        return ` ###${blocks.length - 1}### `;
+        return ` ${BLK_MKR}${blocks.length - 1}${BLK_MKR} `;
       });
 
-      // B. 나머지 모든 HTML 태그 숨기기 (<h1>, <img> 등)
+      // B. 나머지 모든 HTML 태그 숨기기
       textToTranslate = textToTranslate.replace(/<[^>]+>/g, (match: string) => {
         tags.push(match);
-        return ` ___${tags.length - 1}___ `;
+        return ` ${TAG_MKR}${tags.length - 1}${TAG_MKR} `;
       });
 
-      // C. 순수 텍스트만 구글로 전송
+      // C. 구글 번역 서버로 전송
       const contentRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t`, {
         method: 'POST',
         headers: {
@@ -95,10 +99,24 @@ function ArticleContent() {
       const contentData = await contentRes.json();
       let translatedText = contentData[0].map((item: any) => item[0]).join('');
 
-      // D. 번역이 끝난 후, 숨겨뒀던 HTML 태그와 CSS 코드를 원래 자리에 완벽하게 복구
+      // D. 전각 숫자(일본어, 중국어 등) 해독 및 HTML 복구
       let finalHtml = translatedText;
-      finalHtml = finalHtml.replace(/___\s*(\d+)\s*___/g, (match: string, p1: string) => tags[Number(p1)] || '');
-      finalHtml = finalHtml.replace(/###\s*(\d+)\s*###/g, (match: string, p1: string) => blocks[Number(p1)] || '');
+
+      // 일본어/중국어 번역기가 만든 전각 숫자(１, ２)를 일반 숫자(1, 2)로 고쳐주는 마법의 함수
+      const parseIndex = (str: string) => {
+        const normalized = str.replace(/[０-９]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+        return Number(normalized);
+      };
+
+      // 마커 사이에 있는 숫자(반각/전각 모두 포함)를 찾아내어 원래 HTML로 치환
+      const tagRegex = new RegExp(`${TAG_MKR}\\s*([\\d０-９]+)\\s*${TAG_MKR}`, 'gi');
+      const blockRegex = new RegExp(`${BLK_MKR}\\s*([\\d０-９]+)\\s*${BLK_MKR}`, 'gi');
+
+      finalHtml = finalHtml.replace(tagRegex, (match: string, p1: string) => tags[parseIndex(p1)] || '');
+      finalHtml = finalHtml.replace(blockRegex, (match: string, p1: string) => blocks[parseIndex(p1)] || '');
+
+      // 혹시라도 남아있는 잔여 마커 클리닝
+      finalHtml = finalHtml.replace(new RegExp(`${TAG_MKR}|${BLK_MKR}`, 'gi'), '');
 
       setDisplayTitle(translatedTitle);
       setDisplayContent(finalHtml);
@@ -112,7 +130,6 @@ function ArticleContent() {
   };
 
   const handleShare = async () => {
-    // SSR 빌드 에러 방지 (window is not defined)
     if (typeof window === 'undefined') return;
 
     let currentUrl = window.location.href;
