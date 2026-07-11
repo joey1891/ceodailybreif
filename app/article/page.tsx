@@ -1,63 +1,56 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 
-// --- 시작: 미리보기(Preview) 환경용 Mock 데이터 및 라이브러리 ---
-// 실제 VS Code 환경에서는 이 블록 전체를 삭제하시고, 
-// 그 아래에 있는 주석 처리된 '실제 import 문'들의 주석을 해제해 주세요.
+// --- MOCK DEPENDENCIES FOR PREVIEW ENVIRONMENT ---
+// These mock the Next.js and Supabase functionalities to allow the UI to render in the sandbox without breaking.
+// IMPORTANT: In your actual VS Code project, REPLACE this entire section with:
+// import { useSearchParams } from 'next/navigation';
+// import Link from 'next/link';
+// import { supabase } from '@/utils/supabase';
 
 const Link = ({ href, children, className }: any) => (
-  <a href={href} className={className} onClick={(e) => {
-    // 미리보기 환경에서는 실제 페이지 이동 대신 경고창을 띄워 작동 여부를 확인합니다.
-    console.log(`Mock navigation to: ${href}`);
-  }}>{children}</a>
+  <a href={href} className={className} onClick={(e) => e.preventDefault()}>{children}</a>
 );
 
+// We simulate a generic URL environment for the sandbox
 const useSearchParams = () => {
-  // 실제 URL 파라미터를 읽어올 수 없으므로, 테스트용 ID를 반환합니다.
-  // 이 가짜 ID 때문에 미리보기 창에서는 항상 같은 기사만 보이게 됩니다.
-  return { get: (key: string) => key === 'id' ? 'test-article-id' : null };
+  return {
+    get: (key: string) => {
+      // We'll return a mock ID just so the sandbox doesn't crash, 
+      // but remind the user this is only for the preview.
+      if (key === 'id') return 'preview-mock-id'; 
+      return null;
+    }
+  } as any;
 };
 
+// Mock Supabase to return a visible message about needing the real backend
 const supabase = {
   from: (table: string) => ({
     select: (columns: string) => ({
       eq: (column: string, value: any) => ({
         single: async () => {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          // test-article-id에 해당하는 가짜 기사 데이터
-          if (value === 'test-article-id') {
-            return {
-              data: {
-                id: 'test-article-id',
-                title: 'Mock Article: Please Use Local Environment',
-                content: '<p>This is a mock article displayed because the preview environment cannot access your local Supabase database or Next.js router.</p><p><b>To see real data:</b> Copy this code to your local VS Code, delete the Mock section at the top, and uncomment the real import statements.</p>',
-                category: 'System Message',
-                author_name: 'Preview Server',
-                image_url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1000&auto=format&fit=crop',
-                created_at: new Date().toISOString()
-              },
-              error: null
-            };
-          }
-          return { data: null, error: { message: "Article not found" } };
+          await new Promise(resolve => setTimeout(resolve, 300));
+          return {
+            data: {
+              id: 'preview-mock-id',
+              title: '[PREVIEW ONLY] Apply the Real Code to Your Local Environment',
+              content: '<p>You are seeing this mock data because the current preview environment cannot connect to your local Supabase database or use Next.js routing.</p><p><strong>To fix the issue where the main page does not link to the detail page:</strong></p><ol><li>Copy the code provided in the previous message.</li><li>Paste it into your <code>app/article/page.tsx</code> file in VS Code.</li><li>Ensure you have removed all <em>Mock Dependencies</em> and uncommented the real <code>import</code> statements for <code>next/navigation</code> and Supabase.</li></ol>',
+              category: 'System Notice',
+              author_name: 'System Admin',
+              image_url: null,
+              created_at: new Date().toISOString(),
+              is_published: true
+            },
+            error: null
+          };
         }
       })
     })
   })
 };
-// --- 끝: 미리보기(Preview) 환경용 Mock 데이터 및 라이브러리 ---
-
-
-// --- 시작: 실제 프로젝트(VS Code)용 import 문 ---
-// 로컬 환경에서 실행하실 때는 위쪽 Mock 블록을 지우고, 
-// 아래 세 줄의 주석(//)을 해제하여 진짜 라이브러리를 연결하세요!
-
-// import { useSearchParams } from 'next/navigation';
-// import Link from 'next/link';
-// import { supabase } from '@/utils/supabase';
-// --- 끝: 실제 프로젝트(VS Code)용 import 문 ---
-
+// --- END MOCK DEPENDENCIES ---
 
 const LANGUAGES = [
   { code: 'en', name: '🇺🇸 English (Original)' },
@@ -71,7 +64,7 @@ const LANGUAGES = [
 
 function ArticleContent() {
   const searchParams = useSearchParams() as any;
-  const articleId = searchParams.get('id'); 
+  const articleId = searchParams.get('id');
 
   const [article, setArticle] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,11 +82,11 @@ function ArticleContent() {
       }
       
       try {
-        const { data, error } = await supabase
+        const { data, error } = (await supabase
           .from('articles')
           .select('*')
           .eq('id', articleId)
-          .single();
+          .single()) as any;
           
         if (error) throw error;
         
@@ -110,7 +103,7 @@ function ArticleContent() {
     };
 
     fetchArticle();
-  }, [articleId]); 
+  }, [articleId]);
 
   const handleLanguageChange = async (langCode: string) => {
     setCurrentLang(langCode);
@@ -177,7 +170,7 @@ function ArticleContent() {
     }
   };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black font-bold">Loading...</div>;
   
   if (!article) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-black">
@@ -255,7 +248,7 @@ function ArticleContent() {
 
 export default function ArticleReadPage() {
   return (
-    <Suspense fallback={<div className="text-center py-20 text-black">Loading...</div>}>
+    <Suspense fallback={<div className="text-center py-20 text-black font-bold">Loading...</div>}>
       <ArticleContent />
     </Suspense>
   );
