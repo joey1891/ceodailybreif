@@ -1,52 +1,41 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+// Next.js 및 Supabase 등 외부 모듈 에러를 피하기 위해 가상 환경용 임시 import 설정
+// 실제 코드에서는 원래 경로를 사용해야 합니다.
+// import { supabase } from '@/utils/supabase';
+// import Link from 'next/link';
+// import { useSearchParams } from 'next/navigation';
 
-// --- MOCK SUPABASE ---
-// 미리보기 환경을 위해 Supabase DB 호출을 가짜(Mock) 데이터로 대체합니다.
-// 실제 Vercel 환경에서는 이 부분을 제거하고 기존 import를 사용하셔야 합니다.
-const MOCK_ARTICLE = {
-  id: 'mock-123',
-  category: 'Politics & Policy',
-  title: 'Global Summit Concludes with New Climate Accords',
-  author_name: 'Editor-in-Chief',
-  created_at: new Date().toISOString(),
-  image_url: 'https://images.unsplash.com/photo-1541872579768-f215fc4b0a41?auto=format&fit=crop&w=800&q=80',
-  content: '<p>The international summit has wrapped up today...</p><p>Leaders have agreed on significant measures to combat climate change, pledging to reduce carbon emissions by 40% over the next decade.</p>'
-};
-
+// 가상 환경용 대체 컴포넌트 및 모듈 (미리보기 화면용)
+const Link = ({ href, children, className }: any) => <a href={href} className={className}>{children}</a>;
+const useSearchParams = () => ({ get: () => 'test-id' });
 const supabase = {
   from: () => ({
     select: () => ({
       eq: () => ({
-        single: async () => {
-          return new Promise((resolve) => {
-            setTimeout(() => resolve({ data: MOCK_ARTICLE }), 500);
-          });
-        }
+        single: () => Promise.resolve({
+          data: {
+            id: 'test-id',
+            title: 'Samsung Unveils Next-Gen AI Chips for Data Centers',
+            content: '<p>Samsung Electronics today announced its latest generation of AI-optimized semiconductors...</p><p>This marks a significant milestone in the competitive landscape of AI hardware.</p>',
+            category: 'Tech & Innovation',
+            author_name: 'Editor-in-Chief',
+            image_url: 'https://via.placeholder.com/800x400.png?text=Article+Image',
+            created_at: new Date().toISOString()
+          }
+        })
       })
     })
   })
 };
-// ----------------------
 
-// --- MOCK NEXT.JS ROUTER & LINK ---
-// 미리보기 환경을 위해 Next.js의 Link와 useSearchParams를 가짜(Mock)로 대체합니다.
-const Link = ({ href, children, className }: any) => (
-  <a href={href} className={className} onClick={(e) => e.preventDefault()}>{children}</a>
-);
-
-const useSearchParams = () => ({
-  get: (key: string) => (key === 'id' ? 'mock-123' : null),
-});
-// ----------------------
-
-// 지원 언어 목록 (영어가 원문)
+// 지원 언어 목록
 const LANGUAGES = [
   { code: 'en', name: '🇺🇸 English (Original)' },
   { code: 'ko', name: '🇰🇷 한국어' },
   { code: 'ja', name: '🇯🇵 日本語' },
-  { code: 'zh-CN', name: '🇨🇳 中文' }, // 구글 번역 API 중국어 코드 수정 (zh -> zh-CN)
+  { code: 'zh-CN', name: '🇨🇳 中文' }, // 구글 번역 API 중국어 코드 (zh-CN)
   { code: 'ru', name: '🇷🇺 Русский' },
   { code: 'mn', name: '🇲🇳 Монгол' },
   { code: 'vi', name: '🇻🇳 Tiếng Việt' }
@@ -59,7 +48,6 @@ function ArticleContent() {
   const [article, setArticle] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 번역 렌더링용 상태 관리
   const [currentLang, setCurrentLang] = useState('en');
   const [displayTitle, setDisplayTitle] = useState('');
   const [displayContent, setDisplayContent] = useState('');
@@ -68,7 +56,8 @@ function ArticleContent() {
   useEffect(() => {
     if (articleId) {
       const fetchArticle = async () => {
-        const { data } = await supabase.from('articles').select('*').eq('id', articleId).single();
+        // 원래 코드: const { data } = (await supabase.from('articles').select('*').eq('id', articleId).single()) as any;
+        const { data } = (await supabase.from('articles').select('*').eq('id', articleId).single()) as any;
         if (data) {
           setArticle(data);
           setDisplayTitle(data.title);
@@ -80,17 +69,15 @@ function ArticleContent() {
     }
   }, [articleId]);
 
-  // 구글 무료 번역 API (GTX) 실제 연동 로직
   const handleLanguageChange = async (langCode: string) => {
     setCurrentLang(langCode);
     
-    // 원문(영어) 선택 시 즉시 복구
     if (langCode === 'en' && article) {
       setDisplayTitle(article.title);
       setDisplayContent(article.content);
       return;
     }
-
+    
     if (!article) return;
 
     setIsTranslating(true);
@@ -102,7 +89,6 @@ function ArticleContent() {
       const translatedTitle = titleData[0].map((item: any) => item[0]).join('');
 
       // 2) 긴 본문 번역 (HTML 태그 포함, POST 방식으로 우회)
-      // 본문이 길 경우 GET URL 길이 제한에 걸릴 수 있으므로 POST 방식 사용
       const contentRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t`, {
         method: 'POST',
         headers: {
@@ -115,25 +101,23 @@ function ArticleContent() {
       const contentData = await contentRes.json();
       const translatedContent = contentData[0].map((item: any) => item[0]).join('');
 
-      // 불필요한 문구 없이 화면 즉시 업데이트
+      // 불필요한 안내 문구 없이 즉시 업데이트
       setDisplayTitle(translatedTitle);
       setDisplayContent(translatedContent);
       
     } catch (error) {
       console.error("Translation Error:", error);
-      alert('번역 서버와의 통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      alert('번역 서버 통신 중 오류가 발생했습니다.');
     } finally {
       setIsTranslating(false);
     }
   };
 
-  // 공유하기 기능
   const handleShare = async () => {
     let currentUrl = window.location.href;
     
-    // 미리보기 환경(blob URL 등)에서 Share API가 Invalid URL 에러를 내는 것을 방지
     if (currentUrl.startsWith('blob:')) {
-      currentUrl = `https://ceodailybrief.com/article?id=${article?.id || '123'}`;
+      currentUrl = `https://ceodailybrief.com/article?id=${article?.id}`;
     }
 
     const shareData = {
@@ -145,11 +129,9 @@ function ArticleContent() {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
-        throw new Error('Web Share API not supported');
+        throw new Error('Not supported');
       }
     } catch (err) {
-      console.error('Share failed or cancelled:', err);
-      // 공유 기능이 실패하거나 지원하지 않는 경우 클립보드 복사로 자동 대체
       try {
         await navigator.clipboard.writeText(currentUrl);
         alert('기사 링크가 클립보드에 복사되었습니다.');
@@ -174,13 +156,10 @@ function ArticleContent() {
       </header>
 
       <article className="max-w-3xl mx-auto px-4" style={{ display: 'block', textAlign: 'left' }}>
-        
-        {/* 툴바: 언어 선택 및 공유 */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-b border-gray-100 pb-4">
           <span className="text-red-800 font-bold text-sm tracking-widest uppercase">
             {article.category}
           </span>
-          
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <select 
               value={currentLang}
@@ -192,12 +171,10 @@ function ArticleContent() {
                 <option key={lang.code} value={lang.code}>{lang.name}</option>
               ))}
             </select>
-            
             <button 
               onClick={handleShare}
               className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-1.5 px-4 rounded-md transition-colors flex items-center gap-1"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
               Share
             </button>
           </div>
@@ -205,7 +182,6 @@ function ArticleContent() {
 
         {isTranslating && <div className="text-[10px] text-red-600 mb-4 font-bold uppercase tracking-widest animate-pulse text-center">Translating...</div>}
 
-        {/* 타이틀 및 메타 정보 */}
         <div style={{ textAlign: 'left', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} className="mb-10">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black font-serif leading-[1.15] mb-6 break-words" style={{ textAlign: 'left', width: '100%' }}>
             {displayTitle}
@@ -223,7 +199,6 @@ function ArticleContent() {
           </div>
         )}
 
-        {/* 본문 */}
         <div 
           className="prose prose-lg max-w-none font-serif text-gray-800 leading-loose prose-p:mb-6 prose-img:rounded-sm prose-a:text-red-700 hover:prose-a:text-red-900"
           style={{ textAlign: 'left' }}
