@@ -1,16 +1,52 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
-import { supabase } from '@/utils/supabase';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import React, { useEffect, useState, Suspense } from 'react';
 
-// 지원할 언어 목록 설정 (영어를 기본 원문으로 변경 및 요청하신 6개국어 추가)
+// --- MOCK SUPABASE ---
+// 미리보기 환경을 위해 Supabase DB 호출을 가짜(Mock) 데이터로 대체합니다.
+// 실제 Vercel 환경에서는 이 부분을 제거하고 기존 import를 사용하셔야 합니다.
+const MOCK_ARTICLE = {
+  id: 'mock-123',
+  category: 'Politics & Policy',
+  title: 'Global Summit Concludes with New Climate Accords',
+  author_name: 'Editor-in-Chief',
+  created_at: new Date().toISOString(),
+  image_url: 'https://images.unsplash.com/photo-1541872579768-f215fc4b0a41?auto=format&fit=crop&w=800&q=80',
+  content: '<p>The international summit has wrapped up today...</p><p>Leaders have agreed on significant measures to combat climate change, pledging to reduce carbon emissions by 40% over the next decade.</p>'
+};
+
+const supabase = {
+  from: () => ({
+    select: () => ({
+      eq: () => ({
+        single: async () => {
+          return new Promise((resolve) => {
+            setTimeout(() => resolve({ data: MOCK_ARTICLE }), 500);
+          });
+        }
+      })
+    })
+  })
+};
+// ----------------------
+
+// --- MOCK NEXT.JS ROUTER & LINK ---
+// 미리보기 환경을 위해 Next.js의 Link와 useSearchParams를 가짜(Mock)로 대체합니다.
+const Link = ({ href, children, className }: any) => (
+  <a href={href} className={className} onClick={(e) => e.preventDefault()}>{children}</a>
+);
+
+const useSearchParams = () => ({
+  get: (key: string) => (key === 'id' ? 'mock-123' : null),
+});
+// ----------------------
+
+// 지원 언어 목록 (영어가 원문)
 const LANGUAGES = [
   { code: 'en', name: '🇺🇸 English (Original)' },
   { code: 'ko', name: '🇰🇷 한국어' },
   { code: 'ja', name: '🇯🇵 日本語' },
-  { code: 'zh', name: '🇨🇳 中文' },
+  { code: 'zh-CN', name: '🇨🇳 中文' }, // 구글 번역 API 중국어 코드 수정 (zh -> zh-CN)
   { code: 'ru', name: '🇷🇺 Русский' },
   { code: 'mn', name: '🇲🇳 Монгол' },
   { code: 'vi', name: '🇻🇳 Tiếng Việt' }
@@ -23,7 +59,7 @@ function ArticleContent() {
   const [article, setArticle] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 번역 관련 상태(State) - 영어를 기본값으로 설정
+  // 번역 렌더링용 상태 관리
   const [currentLang, setCurrentLang] = useState('en');
   const [displayTitle, setDisplayTitle] = useState('');
   const [displayContent, setDisplayContent] = useState('');
@@ -35,7 +71,6 @@ function ArticleContent() {
         const { data } = await supabase.from('articles').select('*').eq('id', articleId).single();
         if (data) {
           setArticle(data);
-          // 처음 불러올 때 원본(영어) 텍스트 세팅
           setDisplayTitle(data.title);
           setDisplayContent(data.content);
         }
@@ -45,54 +80,81 @@ function ArticleContent() {
     }
   }, [articleId]);
 
-  // 언어 변경 핸들러
+  // 구글 무료 번역 API (GTX) 실제 연동 로직
   const handleLanguageChange = async (langCode: string) => {
     setCurrentLang(langCode);
     
-    // 영어(Original)를 선택하면 원래 데이터로 복원
-    if (langCode === 'en') {
+    // 원문(영어) 선택 시 즉시 복구
+    if (langCode === 'en' && article) {
       setDisplayTitle(article.title);
       setDisplayContent(article.content);
       return;
     }
 
-    // 다른 언어를 선택했을 때 (번역 로직)
+    if (!article) return;
+
     setIsTranslating(true);
     try {
-      // TODO: 실제 서비스 시 여기에 DeepL 또는 Google Translate API 호출 코드 작성
-      alert(`선택하신 언어(${langCode})로 번역하기 위해서는 번역 API 연동이 필요합니다.\n현재는 테스트를 위해 원본 텍스트가 임시로 유지됩니다.`);
+      // 1) 제목 번역 (GET 방식)
+      const titleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t&q=${encodeURIComponent(article.title)}`;
+      const titleRes = await fetch(titleUrl);
+      const titleData = await titleRes.json();
+      const translatedTitle = titleData[0].map((item: any) => item[0]).join('');
+
+      // 2) 긴 본문 번역 (HTML 태그 포함, POST 방식으로 우회)
+      // 본문이 길 경우 GET URL 길이 제한에 걸릴 수 있으므로 POST 방식 사용
+      const contentRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          q: article.content,
+        }),
+      });
+      const contentData = await contentRes.json();
+      const translatedContent = contentData[0].map((item: any) => item[0]).join('');
+
+      // 불필요한 문구 없이 화면 즉시 업데이트
+      setDisplayTitle(translatedTitle);
+      setDisplayContent(translatedContent);
       
-      setDisplayTitle(`[${langCode} 번역본] ${article.title}`);
-      setDisplayContent(`<p className="p-4 bg-gray-100 text-sm border-l-4 border-red-800 mb-6 font-sans"><em>이 부분에 <b>${langCode}</b> 언어로 번역된 내용이 노출됩니다. (API 연동 필요)</em></p> ${article.content}`);
     } catch (error) {
-      console.error("번역 중 오류 발생:", error);
+      console.error("Translation Error:", error);
+      alert('번역 서버와의 통신에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setIsTranslating(false);
     }
   };
 
-  // 공유하기 핸들러
+  // 공유하기 기능
   const handleShare = async () => {
+    let currentUrl = window.location.href;
+    
+    // 미리보기 환경(blob URL 등)에서 Share API가 Invalid URL 에러를 내는 것을 방지
+    if (currentUrl.startsWith('blob:')) {
+      currentUrl = `https://ceodailybrief.com/article?id=${article?.id || '123'}`;
+    }
+
     const shareData = {
       title: displayTitle || article?.title,
-      text: 'CEO Daily Brief에서 이 기사를 확인해보세요.',
-      url: window.location.href,
+      url: currentUrl,
     };
 
-    // 모바일 기기 등 Web Share API를 지원하는 브라우저인 경우
-    if (navigator.share) {
-      try {
+    try {
+      if (navigator.share) {
         await navigator.share(shareData);
-      } catch (err) {
-        console.error('공유하기 취소 또는 에러:', err);
+      } else {
+        throw new Error('Web Share API not supported');
       }
-    } else {
-      // Web Share API를 지원하지 않는 PC 브라우저 등의 경우 (클립보드 복사로 대체)
+    } catch (err) {
+      console.error('Share failed or cancelled:', err);
+      // 공유 기능이 실패하거나 지원하지 않는 경우 클립보드 복사로 자동 대체
       try {
-        await navigator.clipboard.writeText(window.location.href);
-        alert('기사 링크가 클립보드에 복사되었습니다. 원하는 곳에 붙여넣기(Ctrl+V) 하세요.');
-      } catch (err) {
-        alert('링크 복사에 실패했습니다. URL 창의 주소를 직접 복사해주세요.');
+        await navigator.clipboard.writeText(currentUrl);
+        alert('기사 링크가 클립보드에 복사되었습니다.');
+      } catch (clipboardErr) {
+        alert('링크 복사에 실패했습니다.');
       }
     }
   };
@@ -102,7 +164,6 @@ function ArticleContent() {
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white pb-20">
-      {/* 상단 미니 헤더 */}
       <header className="border-b border-gray-200 py-4 px-6 mb-10 flex justify-between items-center">
         <Link href="/" className="font-black font-serif text-xl tracking-tighter uppercase hover:text-red-800 transition-colors">
           CEO Daily Brief
@@ -112,50 +173,37 @@ function ArticleContent() {
         </Link>
       </header>
 
-      {/* 기사 본문 영역 */}
       <article className="max-w-3xl mx-auto px-4" style={{ display: 'block', textAlign: 'left' }}>
         
-        {/* 카테고리 및 다국어 번역 / 공유 툴바 */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        {/* 툴바: 언어 선택 및 공유 */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-b border-gray-100 pb-4">
           <span className="text-red-800 font-bold text-sm tracking-widest uppercase">
             {article.category}
           </span>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            {/* 번역 드롭다운 */}
-            <div className="flex items-center gap-2 flex-1 sm:flex-none">
-              <span className="text-xs text-gray-500 font-bold hidden sm:inline">Lang:</span>
-              <select 
-                value={currentLang}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                disabled={isTranslating}
-                className="bg-white border border-gray-300 text-xs font-bold py-1.5 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-black cursor-pointer disabled:opacity-50 flex-1"
-              >
-                {LANGUAGES.map(lang => (
-                  <option key={lang.code} value={lang.code}>{lang.name}</option>
-                ))}
-              </select>
-            </div>
+            <select 
+              value={currentLang}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              disabled={isTranslating}
+              className="bg-white border border-gray-300 text-xs font-bold py-1.5 px-3 rounded-md focus:outline-none focus:ring-1 focus:ring-black cursor-pointer disabled:opacity-50"
+            >
+              {LANGUAGES.map(lang => (
+                <option key={lang.code} value={lang.code}>{lang.name}</option>
+              ))}
+            </select>
             
-            {/* 공유하기 버튼 */}
             <button 
               onClick={handleShare}
-              className="bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 text-xs font-bold py-1.5 px-4 rounded-md transition-colors flex items-center gap-1 shrink-0"
-              title="이 기사 공유하기"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-1.5 px-4 rounded-md transition-colors flex items-center gap-1"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="18" cy="5" r="3"></circle>
-                <circle cx="6" cy="12" r="3"></circle>
-                <circle cx="18" cy="19" r="3"></circle>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
               Share
             </button>
           </div>
         </div>
 
-        {isTranslating && <div className="text-xs text-red-600 animate-pulse mb-4 font-bold">Translating article... Please wait.</div>}
+        {isTranslating && <div className="text-[10px] text-red-600 mb-4 font-bold uppercase tracking-widest animate-pulse text-center">Translating...</div>}
 
         {/* 타이틀 및 메타 정보 */}
         <div style={{ textAlign: 'left', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} className="mb-10">
@@ -175,7 +223,7 @@ function ArticleContent() {
           </div>
         )}
 
-        {/* 본문 콘텐츠 */}
+        {/* 본문 */}
         <div 
           className="prose prose-lg max-w-none font-serif text-gray-800 leading-loose prose-p:mb-6 prose-img:rounded-sm prose-a:text-red-700 hover:prose-a:text-red-900"
           style={{ textAlign: 'left' }}
