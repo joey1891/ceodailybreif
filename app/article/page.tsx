@@ -1,10 +1,14 @@
 import { Metadata } from 'next';
 import { supabase } from '@/utils/supabase';
-import ArticleClient from './ArticleClient'; // 분리해둔 기존 파일을 불러옵니다.
+import ArticleClient from './ArticleClient';
 
-// 썸네일(OG 태그)을 동적으로 생성하는 서버 컴포넌트 전용 코드
+// 🚨 핵심 해결책: Next.js가 페이지를 멈춰두지 못하게 강제로 매번 동적(Dynamic)으로 렌더링하도록 명령합니다.
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata({ searchParams }: any): Promise<Metadata> {
-  const articleId = searchParams?.id;
+  // Next.js 최신 버전을 대비하여 파라미터를 비동기(await)로 안전하게 풀어줍니다.
+  const resolvedParams = await searchParams;
+  const articleId = resolvedParams?.id;
 
   if (!articleId) {
     return { title: 'CEO Daily Brief' };
@@ -29,9 +33,12 @@ export async function generateMetadata({ searchParams }: any): Promise<Metadata>
       images: [
         {
           url: article.image_url || '/main-thumbnail.jpg', // 기사 이미지가 없으면 기본 로고 사용
+          width: 1200,
+          height: 630,
         },
       ],
       type: 'article',
+      url: `https://www.ceodailybrief.com/article?id=${articleId}`,
     },
   };
 }
