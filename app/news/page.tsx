@@ -50,7 +50,7 @@ function NewsListContent() {
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans">
       <header className="max-w-5xl mx-auto px-4 py-8 border-b-2 border-black text-center">
         <Link href="/" className="text-gray-500 text-sm hover:text-black font-bold uppercase tracking-widest mb-4 inline-block">
-          &larr; Back to Home
+          Back to Home
         </Link>
         <h1 className="text-4xl md:text-5xl font-black font-serif uppercase tracking-tighter">
           {searchQuery 
