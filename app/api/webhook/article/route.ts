@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       const { data, error: resendError } = await resend.emails.send({
         // 참고: Resend 무료 계정은 도메인 인증 전까지 'onboarding@resend.dev'만 발신자로 쓸 수 있습니다.
         from: 'CEO Daily Brief <onboarding@resend.dev>', 
-        to: 'update@ceodailybrief.com', // 대표 수신자 (본인 이메일 등)
+        to: 'wjshin2450@gmail.com', // 대표 수신자 (본인 이메일 등)
         bcc: subscriberEmails, // 구독자들의 이메일이 서로 안 보이도록 숨은참조(bcc) 사용
         subject: `[CEO Daily Brief] 새 기사가 발행되었습니다: ${article.title}`,
         html: `
