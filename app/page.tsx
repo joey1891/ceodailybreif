@@ -78,7 +78,7 @@ export default function CEODailyBrief() {
   <p className="mt-4 sm:mt-6 text-xs sm:text-sm md:text-lg font-serif italic text-gray-600 px-2">
     The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence
   </p>
-</div>>
+</div>
 
         {/* 네비게이션: 모바일 세로 정렬 유지, PC 가로 정렬 */}
         <nav className="py-3 mt-6">
