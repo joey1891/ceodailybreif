@@ -119,10 +119,11 @@ export default function CEODailyBrief() {
                   <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-black font-serif leading-[1.15] mb-3 sm:mb-5 group-hover:text-red-800 transition-colors break-words">
                     {headlines.MAIN_HERO.title}
                   </h2>
-                  {/* 글자 겹침 방지: 모든 자식 태그의 margin 제거 및 강제 inline 처리 */}
-                  <div 
-                    className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed md:w-11/12 font-serif line-clamp-3 overflow-hidden break-words [&_p]:!m-0 [&_p]:!inline [&_div]:!inline"
-                    dangerouslySetInnerHTML={{ __html: headlines.MAIN_HERO.content }}
+                 {/* 글자 겹침 방지: 모든 자식 태그의 margin 제거 및 강제 inline 처리 */}
+<div 
+  className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed md:w-11/12 font-serif line-clamp-3 overflow-hidden break-words [&_p]:!m-0 [&_p]:!inline [&_div]:!inline"
+  dangerouslySetInnerHTML={{ __html: headlines.MAIN_HERO.content }}
+/>
                   />
                 </article>
               </Link>
