@@ -7,7 +7,8 @@ import { useSearchParams } from 'next/navigation';
 
 function NewsListContent() {
   const searchParams = useSearchParams();
-  const categoryFilter = searchParams.get('category'); // URL에서 카테고리 읽기
+  const categoryFilter = searchParams.get('category'); // URL에서 카테고리 읽기[cite: 3]
+  const searchQuery = searchParams.get('search'); // URL에서 검색어 읽기 추가
 
   const [articles, setArticles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -15,22 +16,35 @@ function NewsListContent() {
   useEffect(() => {
     const fetchArticles = async () => {
       setIsLoading(true);
-      let query = supabase.from('articles').select('*').eq('is_published', true).order('created_at', { ascending: false });
       
-      // 카테고리가 있으면 필터링
-      if (categoryFilter) {
-        query = query.eq('category', categoryFilter);
-      }
+      if (searchQuery) {
+        // 검색어가 있을 때: 이전에 DB에 생성한 search_articles 함수(RPC) 호출
+        const { data, error } = await supabase
+          .rpc('search_articles', { search_term: searchQuery });
+          
+        if (!error && data) {
+          setArticles(data);
+        }
+      } else {
+        // 검색어가 없을 때: 기존의 전체 목록 또는 카테고리 필터링 로직 실행[cite: 3]
+        let query = supabase.from('articles').select('*').eq('is_published', true).order('created_at', { ascending: false });
+        
+        // 카테고리가 있으면 필터링[cite: 3]
+        if (categoryFilter) {
+          query = query.eq('category', categoryFilter);
+        }
 
-      const { data, error } = await query;
-      if (!error && data) {
-        setArticles(data);
+        const { data, error } = await query;
+        if (!error && data) {
+          setArticles(data);
+        }
       }
+      
       setIsLoading(false);
     };
 
     fetchArticles();
-  }, [categoryFilter]);
+  }, [categoryFilter, searchQuery]); // 의존성 배열에 searchQuery 추가
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans">
@@ -39,15 +53,27 @@ function NewsListContent() {
           &larr; Back to Home
         </Link>
         <h1 className="text-4xl md:text-5xl font-black font-serif uppercase tracking-tighter">
-          {categoryFilter ? categoryFilter : 'All News Archive'}
+          {searchQuery 
+            ? `Search Results for "${searchQuery}"` 
+            : categoryFilter 
+              ? categoryFilter 
+              : 'All News Archive'}
         </h1>
+        {/* 검색 결과 건수 표시 */}
+        {searchQuery && !isLoading && (
+          <p className="mt-4 text-gray-500 font-bold">Total {articles.length} articles found</p>
+        )}
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-10">
         {isLoading ? (
           <div className="text-center py-20 text-gray-500">Loading articles...</div>
         ) : articles.length === 0 ? (
-          <div className="text-center py-20 text-gray-500 font-serif italic text-xl">해당 카테고리에 등록된 기사가 없습니다.</div>
+          <div className="text-center py-20 text-gray-500 font-serif italic text-xl">
+            {searchQuery 
+              ? `"${searchQuery}"에 대한 검색 결과가 없습니다.` 
+              : '해당 조건에 등록된 기사가 없습니다.'}
+          </div>
         ) : (
           <div className="flex flex-col gap-10">
             {articles.map((article) => (
