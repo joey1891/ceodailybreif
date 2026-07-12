@@ -52,7 +52,7 @@ export default function CEODailyBrief() {
 
   const categories = [
     "Politics & Policy", "Economy & Markets", "Chaebol & Industry", 
-    "Tech & Innovation", "K-Beauty", "K-Culture & Society"
+    "Tech & Innovation", "K-Culture & Society", "K-Beauty"
   ];
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading CEO Daily Brief...</div>;
