@@ -68,17 +68,17 @@ export default function CEODailyBrief() {
           </span>
         </div>
         
-        <div className="text-center py-6 sm:py-8 cursor-pointer border-none">
-          <Link href="/">
-            {/* 데스크탑에서 글씨 크기 1.5배 이상 확대 (md:text-[90px] lg:text-[110px]) */}
-            <h1 className="text-5xl sm:text-6xl md:text-[90px] lg:text-[110px] font-black font-serif tracking-tighter uppercase leading-none break-words hover:text-gray-800 transition-colors" style={{ letterSpacing: '-0.05em' }}>
-              CEO Daily Brief
-            </h1>
-          </Link>
-          <p className="mt-4 sm:mt-6 text-xs sm:text-sm md:text-lg font-serif italic text-gray-600 px-2">
-            The Executive&apos;s Window into South Korea&apos;s Markets, Policy, and Industry Intelligence
-          </p>
-        </div>
+       <div className="text-center py-6 sm:py-8 cursor-pointer border-none">
+  <Link href="/">
+    {/* 글씨 크기를 세련된 수준으로 축소 (md:text-6xl lg:text-7xl) */}
+    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black font-serif tracking-tighter uppercase leading-none break-words hover:text-gray-800 transition-colors" style={{ letterSpacing: '-0.05em' }}>
+      CEO Daily Brief
+    </h1>
+  </Link>
+  <p className="mt-4 sm:mt-6 text-xs sm:text-sm md:text-lg font-serif italic text-gray-600 px-2">
+    The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence
+  </p>
+</div>>
 
         {/* 네비게이션: 모바일 세로 정렬 유지, PC 가로 정렬 */}
         <nav className="py-3 mt-6">
