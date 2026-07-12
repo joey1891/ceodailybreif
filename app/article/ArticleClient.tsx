@@ -232,7 +232,8 @@ function ArticleContent() {
   );
 }
 
-export default function ArticleReadPage() {
+// 이 부분만 ArticleClient로 이름을 맞췄습니다.
+export default function ArticleClient() {
   return (
     <Suspense fallback={<div className="text-center py-20 text-black">Loading...</div>}>
       <ArticleContent />
