@@ -13,48 +13,70 @@ function WriteArticleForm() {
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState('Politics & Policy'); // 기본값을 메인 카테고리와 일치시킴[cite: 1]
-  const [author, setAuthor] = useState('Editor-in-Chief'); //[cite: 1]
+  const [category, setCategory] = useState('Politics & Policy'); 
+  const [author, setAuthor] = useState('Editor-in-Chief'); 
   
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null); //[cite: 1]
-  const [thumbnailUrl, setThumbnailUrl] = useState(''); //[cite: 1]
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null); 
+  const [thumbnailUrl, setThumbnailUrl] = useState(''); 
+  
+  // DB에서 불러온 카테고리 목록을 저장할 상태 추가
+  const [dbCategories, setDbCategories] = useState<{id: number, name: string}[]>([]);
   
   // 해시태그 상태 관리
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState('');
 
-  const [editorMode, setEditorMode] = useState<'visual' | 'html' | 'preview'>('visual'); //[cite: 1]
-  const [isUploading, setIsUploading] = useState(false); //[cite: 1]
-  const [isLoading, setIsLoading] = useState(false); //[cite: 1]
+  const [editorMode, setEditorMode] = useState<'visual' | 'html' | 'preview'>('visual'); 
+  const [isUploading, setIsUploading] = useState(false); 
+  const [isLoading, setIsLoading] = useState(false); 
 
-  const editorRef = useRef<HTMLDivElement>(null); //[cite: 1]
-  const fileInputRef = useRef<HTMLInputElement>(null); // 파일 입력 초기화를 위한 참조[cite: 1]
-  const contentImageInputRef = useRef<HTMLInputElement>(null); // 본문 이미지 업로드를 위한 참조
+  const editorRef = useRef<HTMLDivElement>(null); 
+  const fileInputRef = useRef<HTMLInputElement>(null); 
+  const contentImageInputRef = useRef<HTMLInputElement>(null); 
+
+  // 카테고리 목록을 DB에서 불러오는 useEffect 추가
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('sort_order', { ascending: true });
+        
+      if (data && !error) {
+        setDbCategories(data);
+        // 새 기사 작성 시(수정이 아닐 때) DB의 첫 번째 카테고리를 기본값으로 설정
+        if (!articleId && data.length > 0) {
+          setCategory(data[0].name);
+        }
+      }
+    };
+    fetchCategories();
+  }, [articleId]);
 
   useEffect(() => {
     if (articleId) {
-      fetchArticle(articleId); //[cite: 1]
+      fetchArticle(articleId); 
     }
-  }, [articleId]); //[cite: 1]
+  }, [articleId]); 
 
   const fetchArticle = async (id: string) => {
     const { data, error } = await supabase
       .from('articles')
       .select('*')
       .eq('id', id)
-      .single(); //[cite: 1]
+      .single(); 
 
     if (data && !error) {
-      setTitle(data.title || ''); //[cite: 1]
-      const fetchedContent = data.content || ''; //[cite: 1]
-      setContent(fetchedContent); //[cite: 1]
-      setCategory(data.category || 'Politics & Policy'); //[cite: 1]
-      setAuthor(data.author_name || 'Editor-in-Chief'); //[cite: 1]
-      setThumbnailUrl(data.image_url || ''); //[cite: 1]
-      setHashtags(data.hashtags || []); // 해시태그 데이터 불러오기
+      setTitle(data.title || ''); 
+      const fetchedContent = data.content || ''; 
+      setContent(fetchedContent); 
+      setCategory(data.category || 'Politics & Policy'); 
+      setAuthor(data.author_name || 'Editor-in-Chief'); 
+      setThumbnailUrl(data.image_url || ''); 
+      setHashtags(data.hashtags || []); 
       
       if (editorRef.current && editorMode === 'visual') {
-        editorRef.current.innerHTML = fetchedContent; //[cite: 1]
+        editorRef.current.innerHTML = fetchedContent; 
       }
     }
   };
@@ -62,73 +84,67 @@ function WriteArticleForm() {
   useEffect(() => {
     if (editorMode === 'visual' && editorRef.current) {
       if (editorRef.current.innerHTML !== content) {
-        editorRef.current.innerHTML = content; //[cite: 1]
+        editorRef.current.innerHTML = content; 
       }
     }
-  }, [editorMode, content]); //[cite: 1]
+  }, [editorMode, content]); 
 
   const handleImageUpload = async (file: File) => {
-    const fileExt = file.name.split('.').pop(); //[cite: 1]
-    const fileName = `${Math.random()}.${fileExt}`; //[cite: 1]
-    const filePath = `article_content/${fileName}`; // 폴더명을 내용용으로 약간 분리
+    const fileExt = file.name.split('.').pop(); 
+    const fileName = `${Math.random()}.${fileExt}`; 
+    const filePath = `article_content/${fileName}`; 
 
-    setIsUploading(true); //[cite: 1]
+    setIsUploading(true); 
 
     const { error: uploadError } = await supabase.storage
       .from('article_images')
-      .upload(filePath, file); //[cite: 1]
+      .upload(filePath, file); 
 
     if (uploadError) {
-      alert('이미지 업로드에 실패했습니다: ' + uploadError.message); //[cite: 1]
-      setIsUploading(false); //[cite: 1]
+      alert('이미지 업로드에 실패했습니다: ' + uploadError.message); 
+      setIsUploading(false); 
       return null;
     }
 
-    const { data } = supabase.storage.from('article_images').getPublicUrl(filePath); //[cite: 1]
-    setIsUploading(false); //[cite: 1]
-    return data.publicUrl; //[cite: 1]
+    const { data } = supabase.storage.from('article_images').getPublicUrl(filePath); 
+    setIsUploading(false); 
+    return data.publicUrl; 
   };
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0]; //[cite: 1]
-      setThumbnailFile(file); //[cite: 1]
+      const file = e.target.files[0]; 
+      setThumbnailFile(file); 
     }
-  }; //[cite: 1]
+  }; 
 
   const clearThumbnailFile = () => {
-    setThumbnailFile(null); //[cite: 1]
+    setThumbnailFile(null); 
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''; //[cite: 1]
+      fileInputRef.current.value = ''; 
     }
-  }; //[cite: 1]
+  }; 
 
   const executeCommand = (command: string, value: string = '') => {
-    document.execCommand(command, false, value); //[cite: 1]
+    document.execCommand(command, false, value); 
     if (editorRef.current) {
-      editorRef.current.focus(); //[cite: 1]
-      setContent(editorRef.current.innerHTML); //[cite: 1]
+      editorRef.current.focus(); 
+      setContent(editorRef.current.innerHTML); 
     }
-  }; //[cite: 1]
+  }; 
 
-  // --- 추가된 에디터 기능 ---
-
-  // 1. 본문 이미지 업로드 및 삽입
   const handleContentImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       const imageUrl = await handleImageUpload(file);
       if (imageUrl) {
-        // 이미지가 너무 크게 들어가는 것을 방지하기 위해 HTML로 삽입
         const imgHtml = `<br><img src="${imageUrl}" alt="article image" style="max-width: 100%; height: auto;" /><br>`;
         executeCommand('insertHTML', imgHtml);
       }
-      // input 초기화
       if (contentImageInputRef.current) contentImageInputRef.current.value = '';
     }
   };
 
-  // 2. 유튜브 영상 삽입
   const insertYouTubeVideo = () => {
     const url = prompt('유튜브 동영상 링크를 입력하세요:');
     if (url) {
@@ -145,7 +161,6 @@ function WriteArticleForm() {
     }
   };
 
-  // 3. 해시태그 추가/삭제 핸들러
   const handleAddHashtag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
@@ -162,51 +177,51 @@ function WriteArticleForm() {
   };
 
   const handleVisualInput = (e: React.FormEvent<HTMLDivElement>) => {
-    setContent(e.currentTarget.innerHTML); //[cite: 1]
+    setContent(e.currentTarget.innerHTML); 
   };
 
   const saveArticle = async (isPublished: boolean) => {
     if (!title) {
-      alert('제목을 입력해주세요.'); //[cite: 1]
+      alert('제목을 입력해주세요.'); 
       return;
     }
 
-    setIsLoading(true); //[cite: 1]
-    let finalThumbnailUrl = thumbnailUrl; //[cite: 1]
+    setIsLoading(true); 
+    let finalThumbnailUrl = thumbnailUrl; 
 
     if (thumbnailFile) {
-      const uploadedUrl = await handleImageUpload(thumbnailFile); //[cite: 1]
+      const uploadedUrl = await handleImageUpload(thumbnailFile); 
       if (uploadedUrl) {
-        finalThumbnailUrl = uploadedUrl; //[cite: 1]
+        finalThumbnailUrl = uploadedUrl; 
       }
     }
 
     const articleData = {
-      title, //[cite: 1]
-      content, //[cite: 1]
-      category, //[cite: 1]
-      author_name: author, //[cite: 1]
-      image_url: finalThumbnailUrl, //[cite: 1]
-      is_published: isPublished, //[cite: 1]
-      hashtags: hashtags, // 해시태그 추가
-      updated_at: new Date().toISOString(), //[cite: 1]
+      title, 
+      content, 
+      category, 
+      author_name: author, 
+      image_url: finalThumbnailUrl, 
+      is_published: isPublished, 
+      hashtags: hashtags, 
+      updated_at: new Date().toISOString(), 
     };
 
     let result;
 
     if (articleId) {
-      result = await supabase.from('articles').update(articleData).eq('id', articleId); //[cite: 1]
+      result = await supabase.from('articles').update(articleData).eq('id', articleId); 
     } else {
-      result = await supabase.from('articles').insert([articleData]); //[cite: 1]
+      result = await supabase.from('articles').insert([articleData]); 
     }
 
-    setIsLoading(false); //[cite: 1]
+    setIsLoading(false); 
 
     if (result.error) {
-      alert('저장 중 오류가 발생했습니다: ' + result.error.message); //[cite: 1]
+      alert('저장 중 오류가 발생했습니다: ' + result.error.message); 
     } else {
-      alert(isPublished ? '기사가 발행되었습니다!' : '임시 저장되었습니다.'); //[cite: 1]
-      router.push('/admin/articles'); // 수정: 저장 후 기사 관리 페이지로 이동[cite: 1]
+      alert(isPublished ? '기사가 발행되었습니다!' : '임시 저장되었습니다.'); 
+      router.push('/admin/articles'); 
     }
   };
 
@@ -222,7 +237,6 @@ function WriteArticleForm() {
       </div>
 
       <div className="space-y-6">
-        {/* 카테고리 & 작성자 (기존과 동일) */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">카테고리</label>
@@ -231,12 +245,16 @@ function WriteArticleForm() {
               onChange={(e) => setCategory(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black bg-white"
             >
-              <option value="Politics & Policy">Politics & Policy</option>
-              <option value="Economy & Markets">Economy & Markets</option>
-              <option value="Chaebol & Industry">Chaebol & Industry</option>
-              <option value="Tech & Innovation">Tech & Innovation</option>
-              <option value="K-Beauty">K-Beauty</option>
-              <option value="K-Culture & Society">K-Culture & Society</option>
+              {/* 수정됨: DB에서 불러온 카테고리로 옵션 생성 */}
+              {dbCategories.length > 0 ? (
+                dbCategories.map((cat) => (
+                  <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </option>
+                ))
+              ) : (
+                <option value="Politics & Policy">Politics & Policy</option>
+              )}
             </select>
           </div>
           <div>
@@ -251,7 +269,6 @@ function WriteArticleForm() {
           </div>
         </div>
 
-        {/* 제목 */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">제목</label>
           <input 
@@ -263,7 +280,6 @@ function WriteArticleForm() {
           />
         </div>
 
-        {/* 해시태그 UI 추가 */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">해시태그</label>
           <div className="flex flex-wrap gap-2 mb-2">
@@ -286,7 +302,6 @@ function WriteArticleForm() {
           />
         </div>
 
-        {/* 썸네일 입력 (기존과 동일) */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지</label>
           <div className="flex items-start space-x-6">
@@ -341,7 +356,6 @@ function WriteArticleForm() {
           </div>
         </div>
 
-        {/* 에디터 영역 */}
         <div className="border border-gray-300 rounded shadow-sm overflow-hidden text-black">
           <div className="bg-gray-50 flex items-center p-2 border-b border-gray-300 gap-2">
             <button 
@@ -379,10 +393,8 @@ function WriteArticleForm() {
               <button onClick={() => executeCommand('justifyLeft')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">좌측 정렬</button>
               <button onClick={() => executeCommand('justifyCenter')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">중앙 정렬</button>
               
-              {/* 추가된 툴바 기능: 이미지 및 유튜브 삽입 */}
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
               
-              {/* 숨겨진 이미지 업로드 인풋 */}
               <input 
                 type="file" 
                 accept="image/*" 
@@ -463,5 +475,5 @@ export default function WriteArticlePage() {
     <Suspense fallback={<div className="text-center p-10 text-black">에디터 로딩 중...</div>}>
       <WriteArticleForm />
     </Suspense>
-  ); //[cite: 1]
+  ); 
 }
