@@ -169,7 +169,8 @@ export default function CEODailyBrief() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 border-b border-gray-300 pb-8 sm:pb-12">
+        {/* 수정됨: 기사 리스트 하단의 가로선(border-b) 제거 */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 pb-8 sm:pb-12">
           
           <div className="lg:col-span-8 flex flex-col gap-8 sm:gap-10">
             {headlines.MAIN_HERO ? (
@@ -257,7 +258,7 @@ export default function CEODailyBrief() {
                 </p>
               )}
 
-              {/* 베스트 기사 (MOST VIEWED) 영역 추가 */}
+              {/* 베스트 기사 (MOST VIEWED) 영역 */}
               <div className="mt-12 flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                 <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
                   MOST VIEWED
@@ -292,7 +293,8 @@ export default function CEODailyBrief() {
         </div>
       </main>
 
-      <footer className="bg-gray-50 text-gray-400 py-10 border-t border-gray-200">
+      {/* 수정됨: 푸터 상단의 가로선(border-t) 제거 */}
+      <footer className="bg-gray-50 text-gray-400 py-10">
         <div className="max-w-7xl mx-auto px-4 flex flex-col lg:flex-row justify-between items-start gap-8">
           
           <div className="w-full lg:w-1/3">
