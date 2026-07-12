@@ -61,12 +61,17 @@ export default function CEODailyBrief() {
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white">
       {}
       <header className="max-w-7xl mx-auto px-4 pt-4 sm:pt-6 pb-2">
-        <div className="flex flex-col sm:flex-row justify-between items-center text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 pb-2">
-          <span>{currentDate}</span>
-          <span className="flex space-x-4">
-            <Link href="/news" className="hover:text-black transition-colors">All News</Link>
-          </span>
-        </div>
+       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 pb-2">
+  			<span>{currentDate}</span>
+  			<span className="flex">
+    			<Link 
+      			href="/news" 
+      			className="bg-blue-950 text-white px-4 py-2 rounded-md shadow-sm hover:bg-blue-800 transition-colors"
+    				>
+      		All News
+    		</Link>
+  			</span>
+				</div>
         
        <div className="text-center py-6 sm:py-8 cursor-pointer border-none">
   <Link href="/">
