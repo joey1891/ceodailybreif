@@ -195,15 +195,17 @@ export default function CEODailyBrief() {
       </main>
 
       {}
-      <footer className="bg-gray-50 text-gray-400 py-6 sm:py-8 mt-8 sm:mt-12 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
+     <footer className="bg-gray-50 text-gray-400 py-6 sm:py-8 mt-8 sm:mt-12 border-t border-gray-200">
+        {/* 모바일에서는 위아래로(flex-col), PC에서는 양옆으로(sm:flex-row) 배치. 겹치지 않게 gap-4 추가 */}
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
           <div>
             <h2 className="text-sm sm:text-base font-serif font-black text-gray-800 uppercase tracking-tighter">CEO Daily Brief</h2>
-            <p className="text-[10px] sm:text-xs font-serif italic mt-0.5">The Global Executive&apos;s Guide to South Korea.</p>
+            <p className="text-[10px] sm:text-xs font-serif italic mt-0.5">The Global Executive's Guide to South Korea.</p>
           </div>
           
-          <div>
-            <Link href="/admin" className="text-[10px] font-bold text-gray-400 hover:text-gray-800 uppercase tracking-widest transition-colors">
+          {/* shrink-0으로 공간 찌그러짐 방지 */}
+          <div className="shrink-0 mt-2 sm:mt-0">
+            <Link href="/admin" className="inline-block bg-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-300 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors whitespace-nowrap">
               Admin Login
             </Link>
           </div>
