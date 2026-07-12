@@ -51,16 +51,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             type="password" 
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
-            placeholder="비밀번호를 입력하세요" 
+            placeholder="Enter password" 
             className="w-full border-b-2 border-gray-300 p-3 mb-8 text-center text-xl font-bold focus:outline-none focus:border-red-800 text-black transition-colors"
             autoFocus
           />
           <button type="submit" className="w-full bg-black text-white font-bold py-3 rounded hover:bg-red-800 transition-colors uppercase tracking-widest text-sm">
-            로그인
+            Login
           </button>
           
           <div className="mt-6 text-sm">
-            <Link href="/" className="text-gray-400 hover:text-black">← 메인 홈으로 돌아가기</Link>
+            <Link href="/" className="text-gray-400 hover:text-black">Return to Main</Link>
           </div>
         </form>
       </div>
