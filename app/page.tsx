@@ -61,7 +61,7 @@ export default function CEODailyBrief() {
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white">
       {}
       <header className="max-w-7xl mx-auto px-4 pt-4 sm:pt-6 pb-2">
-        <div className="flex flex-col sm:flex-row justify-between items-center text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 border-b border-gray-300 pb-2">
+        <div className="flex flex-col sm:flex-row justify-between items-center text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 pb-2">
           <span>{currentDate}</span>
           <span className="flex space-x-4">
             <Link href="/news" className="hover:text-black transition-colors">All News</Link>
@@ -81,7 +81,7 @@ export default function CEODailyBrief() {
         </div>
 
         {/* 네비게이션: 모바일 세로 정렬 유지, PC 가로 정렬 */}
-        <nav className="border-y border-black py-3 mt-6">
+        <nav className="py-3 mt-6">
           <ul className="flex flex-col sm:flex-row justify-start sm:justify-center items-start sm:items-center gap-3 sm:gap-6 md:gap-8 text-[11px] sm:text-sm md:text-[15px] font-bold tracking-widest uppercase px-2 sm:px-0">
             {categories.map(cat => (
               <li key={cat} className="w-full sm:w-auto text-left">
