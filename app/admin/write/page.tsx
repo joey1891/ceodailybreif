@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-// 주석 처리되었던 진짜 라이브러리들을 다시 불러옵니다.
 import { supabase } from '@/utils/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -14,41 +13,48 @@ function WriteArticleForm() {
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState('Politics & Policy'); // 기본값을 메인 카테고리와 일치시킴
-  const [author, setAuthor] = useState('Editor-in-Chief');
+  const [category, setCategory] = useState('Politics & Policy'); // 기본값을 메인 카테고리와 일치시킴[cite: 1]
+  const [author, setAuthor] = useState('Editor-in-Chief'); //[cite: 1]
   
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null); //[cite: 1]
+  const [thumbnailUrl, setThumbnailUrl] = useState(''); //[cite: 1]
   
-  const [editorMode, setEditorMode] = useState<'visual' | 'html' | 'preview'>('visual');
-  const [isUploading, setIsUploading] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  // 해시태그 상태 관리
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [hashtagInput, setHashtagInput] = useState('');
 
-  const editorRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null); // 파일 입력 초기화를 위한 참조
+  const [editorMode, setEditorMode] = useState<'visual' | 'html' | 'preview'>('visual'); //[cite: 1]
+  const [isUploading, setIsUploading] = useState(false); //[cite: 1]
+  const [isLoading, setIsLoading] = useState(false); //[cite: 1]
+
+  const editorRef = useRef<HTMLDivElement>(null); //[cite: 1]
+  const fileInputRef = useRef<HTMLInputElement>(null); // 파일 입력 초기화를 위한 참조[cite: 1]
+  const contentImageInputRef = useRef<HTMLInputElement>(null); // 본문 이미지 업로드를 위한 참조
+
   useEffect(() => {
     if (articleId) {
-      fetchArticle(articleId);
+      fetchArticle(articleId); //[cite: 1]
     }
-  }, [articleId]);
+  }, [articleId]); //[cite: 1]
 
   const fetchArticle = async (id: string) => {
     const { data, error } = await supabase
       .from('articles')
       .select('*')
       .eq('id', id)
-      .single();
+      .single(); //[cite: 1]
 
     if (data && !error) {
-      setTitle(data.title || '');
-      const fetchedContent = data.content || '';
-      setContent(fetchedContent);
-      setCategory(data.category || 'Politics & Policy'); // 가져온 데이터가 없을 때 기본값 변경
-      setAuthor(data.author_name || 'Editor-in-Chief'); 
-      setThumbnailUrl(data.image_url || ''); 
+      setTitle(data.title || ''); //[cite: 1]
+      const fetchedContent = data.content || ''; //[cite: 1]
+      setContent(fetchedContent); //[cite: 1]
+      setCategory(data.category || 'Politics & Policy'); //[cite: 1]
+      setAuthor(data.author_name || 'Editor-in-Chief'); //[cite: 1]
+      setThumbnailUrl(data.image_url || ''); //[cite: 1]
+      setHashtags(data.hashtags || []); // 해시태그 데이터 불러오기
       
       if (editorRef.current && editorMode === 'visual') {
-        editorRef.current.innerHTML = fetchedContent;
+        editorRef.current.innerHTML = fetchedContent; //[cite: 1]
       }
     }
   };
@@ -56,101 +62,151 @@ function WriteArticleForm() {
   useEffect(() => {
     if (editorMode === 'visual' && editorRef.current) {
       if (editorRef.current.innerHTML !== content) {
-        editorRef.current.innerHTML = content;
+        editorRef.current.innerHTML = content; //[cite: 1]
       }
     }
-  }, [editorMode, content]);
+  }, [editorMode, content]); //[cite: 1]
 
   const handleImageUpload = async (file: File) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `thumbnails/${fileName}`;
+    const fileExt = file.name.split('.').pop(); //[cite: 1]
+    const fileName = `${Math.random()}.${fileExt}`; //[cite: 1]
+    const filePath = `article_content/${fileName}`; // 폴더명을 내용용으로 약간 분리
 
-    setIsUploading(true);
+    setIsUploading(true); //[cite: 1]
 
     const { error: uploadError } = await supabase.storage
       .from('article_images')
-      .upload(filePath, file);
+      .upload(filePath, file); //[cite: 1]
 
     if (uploadError) {
-      alert('이미지 업로드에 실패했습니다: ' + uploadError.message);
-      setIsUploading(false);
+      alert('이미지 업로드에 실패했습니다: ' + uploadError.message); //[cite: 1]
+      setIsUploading(false); //[cite: 1]
       return null;
     }
 
-    const { data } = supabase.storage.from('article_images').getPublicUrl(filePath);
-    setIsUploading(false);
-    return data.publicUrl;
+    const { data } = supabase.storage.from('article_images').getPublicUrl(filePath); //[cite: 1]
+    setIsUploading(false); //[cite: 1]
+    return data.publicUrl; //[cite: 1]
   };
 
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setThumbnailFile(file);
-      // setThumbnailUrl(URL.createObjectURL(file)); // URL 입력창과 분리하기 위해 제거
+      const file = e.target.files[0]; //[cite: 1]
+      setThumbnailFile(file); //[cite: 1]
     }
-  };
+  }; //[cite: 1]
 
   const clearThumbnailFile = () => {
-    setThumbnailFile(null);
+    setThumbnailFile(null); //[cite: 1]
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = ''; //[cite: 1]
+    }
+  }; //[cite: 1]
+
+  const executeCommand = (command: string, value: string = '') => {
+    document.execCommand(command, false, value); //[cite: 1]
+    if (editorRef.current) {
+      editorRef.current.focus(); //[cite: 1]
+      setContent(editorRef.current.innerHTML); //[cite: 1]
+    }
+  }; //[cite: 1]
+
+  // --- 추가된 에디터 기능 ---
+
+  // 1. 본문 이미지 업로드 및 삽입
+  const handleContentImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const imageUrl = await handleImageUpload(file);
+      if (imageUrl) {
+        // 이미지가 너무 크게 들어가는 것을 방지하기 위해 HTML로 삽입
+        const imgHtml = `<br><img src="${imageUrl}" alt="article image" style="max-width: 100%; height: auto;" /><br>`;
+        executeCommand('insertHTML', imgHtml);
+      }
+      // input 초기화
+      if (contentImageInputRef.current) contentImageInputRef.current.value = '';
     }
   };
 
-  const executeCommand = (command: string, value: string = '') => {
-    document.execCommand(command, false, value);
-    if (editorRef.current) {
-      editorRef.current.focus();
-      setContent(editorRef.current.innerHTML);
+  // 2. 유튜브 영상 삽입
+  const insertYouTubeVideo = () => {
+    const url = prompt('유튜브 동영상 링크를 입력하세요:');
+    if (url) {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = url.match(regExp);
+      
+      if (match && match[2].length === 11) {
+        const videoId = match[2];
+        const iframeHtml = `<br><div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div><br>`;
+        executeCommand('insertHTML', iframeHtml);
+      } else {
+        alert('유효한 유튜브 링크가 아닙니다.');
+      }
     }
+  };
+
+  // 3. 해시태그 추가/삭제 핸들러
+  const handleAddHashtag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const newTag = hashtagInput.trim().replace(/^#/, '');
+      if (newTag && !hashtags.includes(newTag)) {
+        setHashtags([...hashtags, newTag]);
+      }
+      setHashtagInput('');
+    }
+  };
+
+  const removeHashtag = (tagToRemove: string) => {
+    setHashtags(hashtags.filter(tag => tag !== tagToRemove));
   };
 
   const handleVisualInput = (e: React.FormEvent<HTMLDivElement>) => {
-    setContent(e.currentTarget.innerHTML);
+    setContent(e.currentTarget.innerHTML); //[cite: 1]
   };
 
   const saveArticle = async (isPublished: boolean) => {
     if (!title) {
-      alert('제목을 입력해주세요.');
+      alert('제목을 입력해주세요.'); //[cite: 1]
       return;
     }
 
-    setIsLoading(true);
-    let finalThumbnailUrl = thumbnailUrl;
+    setIsLoading(true); //[cite: 1]
+    let finalThumbnailUrl = thumbnailUrl; //[cite: 1]
 
     if (thumbnailFile) {
-      const uploadedUrl = await handleImageUpload(thumbnailFile);
+      const uploadedUrl = await handleImageUpload(thumbnailFile); //[cite: 1]
       if (uploadedUrl) {
-        finalThumbnailUrl = uploadedUrl;
+        finalThumbnailUrl = uploadedUrl; //[cite: 1]
       }
     }
 
     const articleData = {
-      title,
-      content,
-      category,
-      author_name: author,
-      image_url: finalThumbnailUrl,
-      is_published: isPublished,
-      updated_at: new Date().toISOString(),
+      title, //[cite: 1]
+      content, //[cite: 1]
+      category, //[cite: 1]
+      author_name: author, //[cite: 1]
+      image_url: finalThumbnailUrl, //[cite: 1]
+      is_published: isPublished, //[cite: 1]
+      hashtags: hashtags, // 해시태그 추가
+      updated_at: new Date().toISOString(), //[cite: 1]
     };
 
     let result;
 
     if (articleId) {
-      result = await supabase.from('articles').update(articleData).eq('id', articleId);
+      result = await supabase.from('articles').update(articleData).eq('id', articleId); //[cite: 1]
     } else {
-      result = await supabase.from('articles').insert([articleData]);
+      result = await supabase.from('articles').insert([articleData]); //[cite: 1]
     }
 
-    setIsLoading(false);
+    setIsLoading(false); //[cite: 1]
 
     if (result.error) {
-      alert('저장 중 오류가 발생했습니다: ' + result.error.message);
+      alert('저장 중 오류가 발생했습니다: ' + result.error.message); //[cite: 1]
     } else {
-      alert(isPublished ? '기사가 발행되었습니다!' : '임시 저장되었습니다.');
-      router.push('/admin/articles'); // 수정: 저장 후 기사 관리 페이지로 이동
+      alert(isPublished ? '기사가 발행되었습니다!' : '임시 저장되었습니다.'); //[cite: 1]
+      router.push('/admin/articles'); // 수정: 저장 후 기사 관리 페이지로 이동[cite: 1]
     }
   };
 
@@ -166,6 +222,7 @@ function WriteArticleForm() {
       </div>
 
       <div className="space-y-6">
+        {/* 카테고리 & 작성자 (기존과 동일) */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">카테고리</label>
@@ -194,6 +251,7 @@ function WriteArticleForm() {
           </div>
         </div>
 
+        {/* 제목 */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-1">제목</label>
           <input 
@@ -205,11 +263,34 @@ function WriteArticleForm() {
           />
         </div>
 
+        {/* 해시태그 UI 추가 */}
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-1">해시태그</label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {hashtags.map((tag, index) => (
+              <span key={index} className="px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full flex items-center gap-1 font-medium">
+                #{tag}
+                <button onClick={() => removeHashtag(tag)} className="text-gray-500 hover:text-red-500 font-bold ml-1">
+                  &times;
+                </button>
+              </span>
+            ))}
+          </div>
+          <input 
+            type="text" 
+            value={hashtagInput}
+            onChange={(e) => setHashtagInput(e.target.value)}
+            onKeyDown={handleAddHashtag}
+            className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black text-sm"
+            placeholder="해시태그 입력 후 Enter (예: KBeauty, Tech)"
+          />
+        </div>
+
+        {/* 썸네일 입력 (기존과 동일) */}
         <div>
           <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지</label>
           <div className="flex items-start space-x-6">
             <div className="flex-1 space-y-4">
-              {/* 1. 파일 업로드 방식 */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">방법 1: 파일 직접 업로드</label>
                 <div className="flex items-center gap-2">
@@ -232,8 +313,6 @@ function WriteArticleForm() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">jpg, png, webp 형식의 이미지를 업로드해주세요.</p>
               </div>
-
-              {/* 2. URL 입력 방식 */}
               <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1">방법 2: 이미지 URL 입력 (파일 업로드 시 무시됨)</label>
                 <input 
@@ -247,7 +326,6 @@ function WriteArticleForm() {
               </div>
             </div>
             
-            {/* 썸네일 미리보기 */}
             {(thumbnailFile || thumbnailUrl) && (
               <div className="w-48 h-32 relative border border-gray-200 rounded overflow-hidden shadow-sm shrink-0 bg-gray-50 flex items-center justify-center">
                 <img 
@@ -263,6 +341,7 @@ function WriteArticleForm() {
           </div>
         </div>
 
+        {/* 에디터 영역 */}
         <div className="border border-gray-300 rounded shadow-sm overflow-hidden text-black">
           <div className="bg-gray-50 flex items-center p-2 border-b border-gray-300 gap-2">
             <button 
@@ -286,17 +365,45 @@ function WriteArticleForm() {
           </div>
 
           {editorMode === 'visual' && (
-            <div className="bg-white border-b border-gray-200 p-2 flex gap-2 text-gray-700 flex-wrap">
+            <div className="bg-white border-b border-gray-200 p-2 flex gap-2 text-gray-700 flex-wrap items-center">
               <button onClick={() => executeCommand('formatBlock', 'H1')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">H1</button>
               <button onClick={() => executeCommand('formatBlock', 'H2')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">H2</button>
               <button onClick={() => executeCommand('formatBlock', 'P')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">본문(P)</button>
+              
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
               <button onClick={() => executeCommand('bold')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">B</button>
               <button onClick={() => executeCommand('italic')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 italic font-serif text-sm">I</button>
               <button onClick={() => executeCommand('underline')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 underline text-sm">U</button>
+              
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
               <button onClick={() => executeCommand('justifyLeft')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">좌측 정렬</button>
               <button onClick={() => executeCommand('justifyCenter')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">중앙 정렬</button>
+              
+              {/* 추가된 툴바 기능: 이미지 및 유튜브 삽입 */}
+              <div className="w-px h-6 bg-gray-300 mx-1"></div>
+              
+              {/* 숨겨진 이미지 업로드 인풋 */}
+              <input 
+                type="file" 
+                accept="image/*" 
+                ref={contentImageInputRef} 
+                onChange={handleContentImageUpload} 
+                className="hidden" 
+              />
+              <button 
+                onClick={() => contentImageInputRef.current?.click()} 
+                className="px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 font-bold text-sm flex items-center gap-1"
+                disabled={isUploading}
+              >
+                {isUploading ? '업로드중...' : '📷 이미지 넣기'}
+              </button>
+              
+              <button 
+                onClick={insertYouTubeVideo} 
+                className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 font-bold text-sm flex items-center gap-1"
+              >
+                🎥 유튜브 링크
+              </button>
             </div>
           )}
           
@@ -356,5 +463,5 @@ export default function WriteArticlePage() {
     <Suspense fallback={<div className="text-center p-10 text-black">에디터 로딩 중...</div>}>
       <WriteArticleForm />
     </Suspense>
-  );
+  ); //[cite: 1]
 }
