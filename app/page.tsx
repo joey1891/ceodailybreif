@@ -9,6 +9,8 @@ export default function CEODailyBrief() {
   const router = useRouter();
   const [headlines, setHeadlines] = useState<any>({ MAIN_HERO: null, SUB_1: null, SUB_2: null });
   const [briefingArticles, setBriefingArticles] = useState<any[]>([]);
+  // 베스트 기사 상태 관리 추가
+  const [bestArticles, setBestArticles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // 검색어 상태 관리
@@ -29,11 +31,21 @@ export default function CEODailyBrief() {
   useEffect(() => {
     const fetchNews = async () => {
       const { data: headlineMap } = await supabase.from('headlines').select('*');
+      
+      // 최신 기사 가져오기
       const { data: articles } = await supabase
         .from('articles')
         .select('*')
         .eq('is_published', true)
         .order('created_at', { ascending: false });
+
+      // 조회수(view_count) 기준 상위 5개 베스트 기사 가져오기
+      const { data: topArticles } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('is_published', true)
+        .order('view_count', { ascending: false }) // DB에 view_count 컬럼이 있어야 합니다
+        .limit(5);
 
       if (articles && headlineMap) {
         const newHeadlines = { MAIN_HERO: null, SUB_1: null, SUB_2: null };
@@ -51,6 +63,11 @@ export default function CEODailyBrief() {
         const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id)).slice(0, 7);
         setBriefingArticles(remainingArticles);
       }
+
+      if (topArticles) {
+        setBestArticles(topArticles);
+      }
+
       setIsLoading(false);
     };
 
@@ -76,13 +93,11 @@ export default function CEODailyBrief() {
     if (!email) return;
 
     try {
-      // Supabase의 subscribers 테이블에 이메일 데이터 삽입
       const { error } = await supabase
         .from('subscribers')
         .insert([{ email: email }]);
 
       if (error) {
-        // 에러 코드 23505는 PostgreSQL에서 UNIQUE 제약 조건 위반(중복)을 의미합니다.
         if (error.code === '23505') { 
           alert('이미 구독 중인 이메일입니다.');
         } else {
@@ -91,7 +106,7 @@ export default function CEODailyBrief() {
         }
       } else {
         alert(`${email} 구독이 완료되었습니다!`);
-        setEmail(''); // 입력창 초기화
+        setEmail('');
       }
     } catch (err) {
       console.error('Unexpected error:', err);
@@ -107,7 +122,6 @@ export default function CEODailyBrief() {
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 pb-2">
           <span>{currentDate}</span>
           
-          {/* 검색창 및 All News 버튼 영역 */}
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
             <form onSubmit={handleSearch} className="flex w-full sm:w-auto">
               <input 
@@ -213,6 +227,7 @@ export default function CEODailyBrief() {
 
           <div className="lg:col-span-4 flex flex-col">
             <div className="px-2 sm:px-0">
+              {/* 최근 기사 (EXECUTIVE BRIEFING) 영역 */}
               <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                 <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
                   EXECUTIVE BRIEFING
@@ -241,13 +256,42 @@ export default function CEODailyBrief() {
                   Awaiting breaking news updates. (새 기사를 작성하면 이곳에 표시됩니다)
                 </p>
               )}
+
+              {/* 베스트 기사 (MOST VIEWED) 영역 추가 */}
+              <div className="mt-12 flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
+                <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
+                  MOST VIEWED
+                </h3>
+              </div>
+              
+              {bestArticles.length > 0 ? (
+                <ul className="flex flex-col gap-4 sm:gap-6">
+                  {bestArticles.map((article, index) => (
+                    <li key={article.id} className="relative pl-7 sm:pl-8 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
+                      {/* 조회수 대신 1~5 숫자 랭킹 아이콘 표시 */}
+                      <span className="absolute left-0 top-0 text-red-800 font-black text-xl italic font-serif">
+                        {index + 1}
+                      </span>
+                      <Link href={`/article?id=${article.id}`}>
+                        <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
+                        <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
+                          {article.title}
+                        </p>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm font-serif italic text-gray-500">
+                  No popular articles yet.
+                </p>
+              )}
             </div>
           </div>
 
         </div>
       </main>
 
-      {/* 푸터 영역에 뉴스레터 구독 UI 적용됨 */}
       <footer className="bg-gray-50 text-gray-400 py-10 border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 flex flex-col lg:flex-row justify-between items-start gap-8">
           
