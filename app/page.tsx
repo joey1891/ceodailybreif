@@ -35,7 +35,6 @@ export default function CEODailyBrief() {
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
-      // 수정됨: MOST VIEWED 상위 3개만 가져오기
       const { data: topArticles } = await supabase
         .from('articles')
         .select('*')
@@ -56,7 +55,6 @@ export default function CEODailyBrief() {
         });
         setHeadlines(newHeadlines);
 
-        // 수정됨: EXECUTIVE BRIEFING 5개만 남기기
         const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id)).slice(0, 5);
         setBriefingArticles(remainingArticles);
       }
@@ -73,7 +71,7 @@ export default function CEODailyBrief() {
 
   const categories = [
     "Politics & Policy", "Economy & Markets", "Chaebol & Industry", 
-    "Tech & Innovation", "K-Culture & Society", "K-Beauty"
+    "Tech & Innovation", "K-Culture & Society", "K-Beauty Trends"
   ];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -220,64 +218,73 @@ export default function CEODailyBrief() {
             </div>
           </div>
 
-          <div className="lg:col-span-4 flex flex-col">
-            <div className="px-2 sm:px-0">
-              <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
-                <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
-                  EXECUTIVE BRIEFING
-                </h3>
-                <Link href="/news" className="text-[10px] sm:text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase">
-                  View All &rarr;
-                </Link>
-              </div>
+          {/* 수정됨: 우측 컬럼을 flex-col h-full로 설정하여 공간을 꽉 채우게 함 */}
+          <div className="lg:col-span-4 flex flex-col h-full">
+            <div className="px-2 sm:px-0 flex flex-col h-full">
               
-              {briefingArticles.length > 0 ? (
-                <ul className="flex flex-col gap-4 sm:gap-6">
-                  {briefingArticles.map((article) => (
-                    <li key={article.id} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
-                      <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
-                      <Link href={`/article?id=${article.id}`}>
-                        <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
-                        <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
-                          {article.title}
-                        </p>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm font-serif italic text-gray-500">
-                  Awaiting breaking news updates.
-                </p>
-              )}
+              {/* 상단: EXECUTIVE BRIEFING 영역 (flex-1을 주어 남는 공간을 밀어냄) */}
+              <div className="flex-1">
+                <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
+                  <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
+                    EXECUTIVE BRIEFING
+                  </h3>
+                  <Link href="/news" className="text-[10px] sm:text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase">
+                    View All &rarr;
+                  </Link>
+                </div>
+                
+                {briefingArticles.length > 0 ? (
+                  <ul className="flex flex-col gap-4 sm:gap-6">
+                    {briefingArticles.map((article) => (
+                      <li key={article.id} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
+                        <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
+                        <Link href={`/article?id=${article.id}`}>
+                          <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
+                          <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
+                            {article.title}
+                          </p>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm font-serif italic text-gray-500">
+                    Awaiting breaking news updates.
+                  </p>
+                )}
+              </div>
 
-              <div className="mt-12 flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
-                <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
-                  MOST VIEWED
-                </h3>
+              {/* 하단: 베스트 기사 (MOST VIEWED) 영역 (mt-auto를 주어 항상 맨 아래에 붙게 함) */}
+              <div className="mt-12 lg:mt-auto pt-4">
+                <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
+                  <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
+                    MOST VIEWED
+                  </h3>
+                </div>
+                
+                {bestArticles.length > 0 ? (
+                  <ul className="flex flex-col gap-4 sm:gap-6">
+                    {bestArticles.map((article, index) => (
+                      <li key={article.id} className="relative pl-7 sm:pl-8 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
+                        <span className="absolute left-0 top-0 text-red-800 font-black text-xl italic font-serif">
+                          {index + 1}
+                        </span>
+                        <Link href={`/article?id=${article.id}`}>
+                          <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
+                          <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
+                            {article.title}
+                          </p>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm font-serif italic text-gray-500">
+                    No popular articles yet.
+                  </p>
+                )}
               </div>
               
-              {bestArticles.length > 0 ? (
-                <ul className="flex flex-col gap-4 sm:gap-6">
-                  {bestArticles.map((article, index) => (
-                    <li key={article.id} className="relative pl-7 sm:pl-8 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
-                      <span className="absolute left-0 top-0 text-red-800 font-black text-xl italic font-serif">
-                        {index + 1}
-                      </span>
-                      <Link href={`/article?id=${article.id}`}>
-                        <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
-                        <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
-                          {article.title}
-                        </p>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm font-serif italic text-gray-500">
-                  No popular articles yet.
-                </p>
-              )}
             </div>
           </div>
 
