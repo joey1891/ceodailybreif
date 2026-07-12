@@ -9,13 +9,10 @@ export default function CEODailyBrief() {
   const router = useRouter();
   const [headlines, setHeadlines] = useState<any>({ MAIN_HERO: null, SUB_1: null, SUB_2: null });
   const [briefingArticles, setBriefingArticles] = useState<any[]>([]);
-  // 베스트 기사 상태 관리 추가
   const [bestArticles, setBestArticles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // 검색어 상태 관리
   const [searchQuery, setSearchQuery] = useState('');
-  // 이메일 구독 상태 관리
   const [email, setEmail] = useState('');
 
   const currentDate = new Date().toLocaleDateString('en-US', {
@@ -32,20 +29,19 @@ export default function CEODailyBrief() {
     const fetchNews = async () => {
       const { data: headlineMap } = await supabase.from('headlines').select('*');
       
-      // 최신 기사 가져오기
       const { data: articles } = await supabase
         .from('articles')
         .select('*')
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
-      // 조회수(view_count) 기준 상위 5개 베스트 기사 가져오기
+      // 수정됨: MOST VIEWED 상위 3개만 가져오기
       const { data: topArticles } = await supabase
         .from('articles')
         .select('*')
         .eq('is_published', true)
-        .order('view_count', { ascending: false }) // DB에 view_count 컬럼이 있어야 합니다
-        .limit(5);
+        .order('view_count', { ascending: false }) 
+        .limit(3);
 
       if (articles && headlineMap) {
         const newHeadlines = { MAIN_HERO: null, SUB_1: null, SUB_2: null };
@@ -60,7 +56,8 @@ export default function CEODailyBrief() {
         });
         setHeadlines(newHeadlines);
 
-        const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id)).slice(0, 7);
+        // 수정됨: EXECUTIVE BRIEFING 5개만 남기기
+        const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id)).slice(0, 5);
         setBriefingArticles(remainingArticles);
       }
 
@@ -79,7 +76,6 @@ export default function CEODailyBrief() {
     "Tech & Innovation", "K-Culture & Society", "K-Beauty"
   ];
 
-  // 검색 기능 실행 함수
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -87,7 +83,6 @@ export default function CEODailyBrief() {
     }
   };
 
-  // DB 연동 이메일 구독 실행 함수
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
@@ -169,7 +164,6 @@ export default function CEODailyBrief() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
-        {/* 수정됨: 기사 리스트 하단의 가로선(border-b) 제거 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 pb-8 sm:pb-12">
           
           <div className="lg:col-span-8 flex flex-col gap-8 sm:gap-10">
@@ -228,7 +222,6 @@ export default function CEODailyBrief() {
 
           <div className="lg:col-span-4 flex flex-col">
             <div className="px-2 sm:px-0">
-              {/* 최근 기사 (EXECUTIVE BRIEFING) 영역 */}
               <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                 <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
                   EXECUTIVE BRIEFING
@@ -254,11 +247,10 @@ export default function CEODailyBrief() {
                 </ul>
               ) : (
                 <p className="text-sm font-serif italic text-gray-500">
-                  Awaiting breaking news updates. (새 기사를 작성하면 이곳에 표시됩니다)
+                  Awaiting breaking news updates.
                 </p>
               )}
 
-              {/* 베스트 기사 (MOST VIEWED) 영역 */}
               <div className="mt-12 flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                 <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
                   MOST VIEWED
@@ -269,7 +261,6 @@ export default function CEODailyBrief() {
                 <ul className="flex flex-col gap-4 sm:gap-6">
                   {bestArticles.map((article, index) => (
                     <li key={article.id} className="relative pl-7 sm:pl-8 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
-                      {/* 조회수 대신 1~5 숫자 랭킹 아이콘 표시 */}
                       <span className="absolute left-0 top-0 text-red-800 font-black text-xl italic font-serif">
                         {index + 1}
                       </span>
@@ -293,7 +284,6 @@ export default function CEODailyBrief() {
         </div>
       </main>
 
-      {/* 수정됨: 푸터 상단의 가로선(border-t) 제거 */}
       <footer className="bg-gray-50 text-gray-400 py-10">
         <div className="max-w-7xl mx-auto px-4 flex flex-col lg:flex-row justify-between items-start gap-8">
           
