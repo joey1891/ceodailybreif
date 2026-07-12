@@ -81,7 +81,7 @@ export default function CEODailyBrief() {
 </div>
 
         {/* 네비게이션: 모바일 세로 정렬 유지, PC 가로 정렬 */}
-        <nav className="py-3 mt-6">
+        <nav className="border-b border-black py-3 mt-6">
           <ul className="flex flex-col sm:flex-row justify-start sm:justify-center items-start sm:items-center gap-3 sm:gap-6 md:gap-8 text-[11px] sm:text-sm md:text-[15px] font-bold tracking-widest uppercase px-2 sm:px-0">
             {categories.map(cat => (
               <li key={cat} className="w-full sm:w-auto text-left">
