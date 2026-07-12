@@ -10,8 +10,11 @@ export default function CEODailyBrief() {
   const [headlines, setHeadlines] = useState<any>({ MAIN_HERO: null, SUB_1: null, SUB_2: null });
   const [briefingArticles, setBriefingArticles] = useState<any[]>([]);
   const [bestArticles, setBestArticles] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   
+  // DB에서 불러온 카테고리 목록을 저장할 상태 추가
+  const [dbCategories, setDbCategories] = useState<{id: number, name: string}[]>([]);
+  
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [email, setEmail] = useState('');
 
@@ -27,20 +30,22 @@ export default function CEODailyBrief() {
 
   useEffect(() => {
     const fetchNews = async () => {
-      const { data: headlineMap } = await supabase.from('headlines').select('*');
-      
-      const { data: articles } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false });
+      // 헤드라인, 기사, 베스트 기사, 카테고리 데이터를 한 번에 병렬로 불러오기
+      const [
+        { data: headlineMap },
+        { data: articles },
+        { data: topArticles },
+        { data: categoryData }
+      ] = await Promise.all([
+        supabase.from('headlines').select('*'),
+        supabase.from('articles').select('*').eq('is_published', true).order('created_at', { ascending: false }),
+        supabase.from('articles').select('*').eq('is_published', true).order('view_count', { ascending: false }).limit(3),
+        supabase.from('categories').select('*').order('sort_order', { ascending: true }) // 카테고리 불러오기 추가
+      ]);
 
-      const { data: topArticles } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('is_published', true)
-        .order('view_count', { ascending: false }) 
-        .limit(3);
+      if (categoryData) {
+        setDbCategories(categoryData);
+      }
 
       if (articles && headlineMap) {
         const newHeadlines = { MAIN_HERO: null, SUB_1: null, SUB_2: null };
@@ -68,11 +73,6 @@ export default function CEODailyBrief() {
 
     fetchNews();
   }, []);
-
-  const categories = [
-    "Politics & Policy", "Economy & Markets", "Chaebol & Industry", 
-    "Tech & Innovation", "K-Culture & Society", "K-Beauty Trends"
-  ];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,10 +150,11 @@ export default function CEODailyBrief() {
 
         <nav className="border-y border-gray-300 py-3 mt-6">
           <ul className="flex flex-col sm:flex-row justify-start sm:justify-center items-start sm:items-center gap-3 sm:gap-6 md:gap-8 text-[11px] sm:text-sm md:text-[15px] font-bold tracking-widest uppercase px-2 sm:px-0">
-            {categories.map(cat => (
-              <li key={cat} className="w-full sm:w-auto text-left">
-                <Link href={`/news?category=${encodeURIComponent(cat)}`} className="hover:text-red-800 cursor-pointer transition-colors block w-full">
-                  {cat}
+            {/* 수정됨: DB에서 불러온 카테고리 목록으로 네비게이션 생성 */}
+            {dbCategories.map(cat => (
+              <li key={cat.id} className="w-full sm:w-auto text-left">
+                <Link href={`/news?category=${encodeURIComponent(cat.name)}`} className="hover:text-red-800 cursor-pointer transition-colors block w-full">
+                  {cat.name}
                 </Link>
               </li>
             ))}
@@ -218,11 +219,9 @@ export default function CEODailyBrief() {
             </div>
           </div>
 
-          {/* 수정됨: 우측 컬럼을 flex-col h-full로 설정하여 공간을 꽉 채우게 함 */}
           <div className="lg:col-span-4 flex flex-col h-full">
             <div className="px-2 sm:px-0 flex flex-col h-full">
               
-              {/* 상단: EXECUTIVE BRIEFING 영역 (flex-1을 주어 남는 공간을 밀어냄) */}
               <div className="flex-1">
                 <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                   <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
@@ -254,7 +253,6 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              {/* 하단: 베스트 기사 (MOST VIEWED) 영역 (mt-auto를 주어 항상 맨 아래에 붙게 함) */}
               <div className="mt-12 lg:mt-auto pt-4">
                 <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                   <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
