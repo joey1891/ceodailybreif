@@ -18,7 +18,6 @@ const LANGUAGES = [
 function ArticleContent() {
   const searchParams = useSearchParams() as any;
   const articleId = searchParams?.get('id');
-  // 💡 URL에서 직접 언어 파라미터(lang)를 읽어옵니다. 없으면 기본값 'en' 적용
   const initialLang = searchParams?.get('lang') || 'en'; 
 
   const [article, setArticle] = useState<any>(null);
@@ -48,11 +47,9 @@ function ArticleContent() {
     return { text: articleData[fieldName] || '', hasExactLang: false };
   };
 
-  // 💡 언어 적용 및 번역 통합 헬퍼 함수
   const applyLanguage = async (articleData: any, langCode: string) => {
     setCurrentLang(langCode);
     
-    // 언어를 바꿀 때마다 주소창 URL을 새로고침 없이 조용히 변경합니다 (공유 시 꼬리표 유지)
     if (typeof window !== 'undefined') {
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.set('lang', langCode);
@@ -84,17 +81,15 @@ function ArticleContent() {
         const blocks: string[] = [];
         const tags: string[] = [];
 
-        const BLK_MKR = "XZBLKZX";
-        const TAG_MKR = "XZTAGZX";
-
+        // 💡 핵심 수정: 구글 번역기가 스펠링 수정을 시도하지 못하도록 언더바(_) 기반의 특수 마커로 교체
         textToTranslate = textToTranslate.replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, (match: string) => {
           blocks.push(match);
-          return ` ${BLK_MKR}${blocks.length - 1}${BLK_MKR} `;
+          return ` __B${blocks.length - 1}__ `;
         });
 
         textToTranslate = textToTranslate.replace(/<[^>]+>/g, (match: string) => {
           tags.push(match);
-          return ` ${TAG_MKR}${tags.length - 1}${TAG_MKR} `;
+          return ` __T${tags.length - 1}__ `;
         });
 
         const contentRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t`, {
@@ -114,12 +109,12 @@ function ArticleContent() {
           return Number(normalized);
         };
 
-        const tagRegex = new RegExp(`${TAG_MKR}\\s*([\\d０-９]+)\\s*${TAG_MKR}`, 'gi');
-        const blockRegex = new RegExp(`${BLK_MKR}\\s*([\\d０-９]+)\\s*${BLK_MKR}`, 'gi');
-
-        finalHtml = translatedText.replace(tagRegex, (match: string, p1: string) => tags[parseIndex(p1)] || '');
-        finalHtml = finalHtml.replace(blockRegex, (match: string, p1: string) => blocks[parseIndex(p1)] || '');
-        finalHtml = finalHtml.replace(new RegExp(`${TAG_MKR}|${BLK_MKR}`, 'gi'), '');
+        // 💡 핵심 수정: 번역기가 __ T 0 __ 처럼 공백을 제멋대로 집어넣어도 완벽하게 HTML을 찾아 복구하는 정규식 적용
+        finalHtml = translatedText.replace(/__\s*T\s*([\d０-９]+)\s*__/gi, (match: string, p1: string) => tags[parseIndex(p1)] || '');
+        finalHtml = finalHtml.replace(/__\s*B\s*([\d０-９]+)\s*__/gi, (match: string, p1: string) => blocks[parseIndex(p1)] || '');
+        
+        // 혹시라도 복구되지 못한 찌꺼기 마커 클리닝
+        finalHtml = finalHtml.replace(/__\s*[TB]\s*[\d０-９]+\s*__/gi, '');
       }
 
       setDisplayTitle(translatedTitle);
@@ -139,7 +134,6 @@ function ArticleContent() {
         const { data } = (await supabase.from('articles').select('*').eq('id', articleId).single()) as any;
         if (data) {
           setArticle(data);
-          // 💡 최초 접속 시에도 URL에 있는 언어 파라미터(initialLang)를 기준으로 처리합니다.
           applyLanguage(data, initialLang);
         }
         setIsLoading(false);
@@ -158,7 +152,6 @@ function ArticleContent() {
   const handleShare = async () => {
     if (typeof window === 'undefined') return;
 
-    // 💡 공유되는 URL에 명시적으로 선택한 언어 꼬리표(?id=...&lang=ko)를 부착합니다.
     const shareUrl = `https://ceodailybrief.com/article?id=${article?.id}&lang=${currentLang}`;
 
     const shareData = {
