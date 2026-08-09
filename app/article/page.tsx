@@ -7,14 +7,17 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ searchParams }: any): Promise<Metadata> {
   const resolvedParams = await searchParams;
   const articleId = resolvedParams?.id;
+  // 💡 URL에서 공유된 언어 파라미터를 읽어옵니다.
+  const targetLang = resolvedParams?.lang || 'en'; 
 
   if (!articleId) {
     return { title: 'CEO Daily Brief' };
   }
 
+  // 💡 메타데이터 생성 시번역본(translations)도 함께 가져옵니다.
   const { data: article } = await supabase
     .from('articles')
-    .select('title, image_url')
+    .select('title, image_url, translations')
     .eq('id', articleId)
     .single();
 
@@ -22,10 +25,16 @@ export async function generateMetadata({ searchParams }: any): Promise<Metadata>
     return { title: 'CEO Daily Brief' };
   }
 
-  // 💡 메타데이터용 타이틀 텍스트 추출
-  const displayTitle = typeof article.title === 'object' 
-    ? (article.title.en || article.title.ko || 'CEO Daily Brief') 
-    : article.title;
+  // 💡 SNS 미리보기 썸네일용 기사 제목 추출 (해당 언어 우선)
+  let displayTitle = article.title;
+  
+  if (targetLang !== 'en' && article.translations && article.translations[targetLang] && article.translations[targetLang].title) {
+    // 공유된 언어로 직접 작성된 제목이 있으면 사용
+    displayTitle = article.translations[targetLang].title;
+  } else if (typeof article.title === 'object') {
+    // 옛날 데이터(객체) 처리 호환성 유지
+    displayTitle = article.title.en || article.title.ko || 'CEO Daily Brief';
+  }
 
   return {
     title: `${displayTitle} | CEO Daily Brief`,
@@ -40,7 +49,7 @@ export async function generateMetadata({ searchParams }: any): Promise<Metadata>
         },
       ],
       type: 'article',
-      url: `https://www.ceodailybrief.com/article?id=${articleId}`,
+      url: `https://www.ceodailybrief.com/article?id=${articleId}&lang=${targetLang}`,
     },
   };
 }
