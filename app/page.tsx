@@ -7,7 +7,18 @@ import { useRouter } from 'next/navigation';
 
 export default function CEODailyBrief() {
   const router = useRouter();
-  const [headlines, setHeadlines] = useState<any>({ MAIN_HERO: null, SUB_1: null, SUB_2: null });
+  
+  // 💡 수정됨: 서브 기사를 6개까지 담을 수 있도록 상태 확장
+  const [headlines, setHeadlines] = useState<any>({ 
+    MAIN_HERO: null, 
+    SUB_1: null, 
+    SUB_2: null, 
+    SUB_3: null, 
+    SUB_4: null, 
+    SUB_5: null, 
+    SUB_6: null 
+  });
+  
   const [briefingArticles, setBriefingArticles] = useState<any[]>([]);
   const [bestArticles, setBestArticles] = useState<any[]>([]);
   
@@ -27,10 +38,9 @@ export default function CEODailyBrief() {
     }).toUpperCase();
   };
 
-  // 💡 다국어 객체에서 영어(기본) 텍스트를 추출하는 안전한 헬퍼 함수
   const getDisplayText = (field: any) => {
     if (!field) return '';
-    if (typeof field === 'string') return field; // 예전 텍스트 데이터 호환
+    if (typeof field === 'string') return field; 
     return field.en || field.ko || Object.values(field)[0] || '';
   };
 
@@ -53,13 +63,22 @@ export default function CEODailyBrief() {
       }
 
       if (articles && headlineMap) {
-        const newHeadlines = { MAIN_HERO: null, SUB_1: null, SUB_2: null };
+        // 💡 수정됨: 새로운 헤드라인 맵핑 객체 확장
+        const newHeadlines: any = { 
+          MAIN_HERO: null, 
+          SUB_1: null, 
+          SUB_2: null, 
+          SUB_3: null, 
+          SUB_4: null, 
+          SUB_5: null, 
+          SUB_6: null 
+        };
         const usedArticleIds = new Set();
         
         headlineMap.forEach(h => {
           const matchedArticle = articles.find(a => a.id === h.article_id);
           if (matchedArticle) {
-            newHeadlines[h.position as keyof typeof newHeadlines] = matchedArticle;
+            newHeadlines[h.position] = matchedArticle;
             usedArticleIds.add(matchedArticle.id);
           }
         });
@@ -117,7 +136,6 @@ export default function CEODailyBrief() {
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white">
       <header className="max-w-7xl mx-auto px-4 pt-4 sm:pt-6 pb-2">
-        {/* ... (기존 헤더 UI 유지) ... */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 pb-2">
           <span>{currentDate}</span>
           
@@ -188,7 +206,6 @@ export default function CEODailyBrief() {
                     <span className="text-gray-400 text-xs hidden sm:inline">|</span>
                     <span className="text-gray-500 font-bold text-[10px] sm:text-xs uppercase">{formatTime(headlines.MAIN_HERO.created_at)}</span>
                   </div>
-                  {/* 💡 타이틀 객체 처리 */}
                   <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-black font-serif leading-[1.15] mb-3 sm:mb-5 group-hover:text-red-800 transition-colors break-words">
                     {getDisplayText(headlines.MAIN_HERO.title)}
                   </h2>          
@@ -200,8 +217,16 @@ export default function CEODailyBrief() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mt-2 sm:mt-0">
-              {[headlines.SUB_1, headlines.SUB_2].map((subArticle, idx) => (
+            {/* 💡 수정됨: 서브 기사 6개를 3열(md:grid-cols-3)로 배치 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mt-2 sm:mt-0">
+              {[
+                headlines.SUB_1, 
+                headlines.SUB_2, 
+                headlines.SUB_3, 
+                headlines.SUB_4, 
+                headlines.SUB_5, 
+                headlines.SUB_6
+              ].map((subArticle, idx) => (
                 subArticle ? (
                   <Link key={idx} href={`/article?id=${subArticle.id}`}>
                     <article className="group cursor-pointer flex flex-col h-full">
@@ -215,8 +240,7 @@ export default function CEODailyBrief() {
                         </div>
                       )}
                       <span className="text-red-800 font-bold text-[10px] sm:text-xs tracking-widest mb-2 uppercase">{subArticle.category}</span>
-                      {/* 💡 타이틀 객체 처리 */}
-                      <h3 className="text-xl sm:text-2xl font-bold font-serif leading-snug group-hover:text-red-800 transition-colors">
+                      <h3 className="text-xl sm:text-lg font-bold font-serif leading-snug group-hover:text-red-800 transition-colors">
                         {getDisplayText(subArticle.title)}
                       </h3>
                     </article>
@@ -246,7 +270,6 @@ export default function CEODailyBrief() {
                         <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
                         <Link href={`/article?id=${article.id}`}>
                           <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
-                          {/* 💡 타이틀 객체 처리 */}
                           <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
                             {getDisplayText(article.title)}
                           </p>
@@ -277,7 +300,6 @@ export default function CEODailyBrief() {
                         </span>
                         <Link href={`/article?id=${article.id}`}>
                           <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
-                          {/* 💡 타이틀 객체 처리 */}
                           <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
                             {getDisplayText(article.title)}
                           </p>
