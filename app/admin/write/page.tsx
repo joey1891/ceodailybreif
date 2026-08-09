@@ -133,25 +133,18 @@ function WriteArticleForm() {
     }
   }, [thumbnailFile]);
 
-  // 💡 툴바 복원: 이미지(그림 아이콘), 유튜브 비디오(캠코더 아이콘), 글자색 등 풀버전 장착
+  // 💡 툴바 완벽 복원 (이미지, 유튜브 동영상, 글자색, 배경색, 정렬 등 풀옵션)
   const modules = useMemo(() => ({
     toolbar: [
-      [{ 'header': [1, 2, 3, false] }],
+      [{ 'header': [1, 2, 3, 4, false] }],
       ['bold', 'italic', 'underline', 'strike', 'blockquote'],
       [{ 'color': [] }, { 'background': [] }],
       [{ 'align': [] }],
       [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      ['link', 'image', 'video'], 
+      ['link', 'image', 'video'], // image=사진첨부, video=유튜브링크
       ['clean']
     ],
   }), []);
-
-  // 💡 HTML 양식 보호 로직: 일반 글쓰기 탭이 활성화되어 있을 때만 에디터 내용을 상태에 덮어씁니다.
-  const handleQuillChange = (val: string) => {
-    if (editorMode === 'general') {
-      setContent(prev => ({ ...prev, [currentLang]: val }));
-    }
-  };
 
   const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -386,19 +379,26 @@ function WriteArticleForm() {
               </div>
               
               <div className="bg-white min-h-[400px]">
-                {/* 💡 에디터 분리 로직: 일반 글쓰기 에디터 */}
-                <div style={{ display: editorMode === 'general' ? 'block' : 'none' }}>
-                  <ReactQuill 
-                    key={`quill-${currentLang}`} // 데이터 증발 차단용 핵심 Key
-                    theme="snow" 
-                    value={content[currentLang] || ''} 
-                    onChange={handleQuillChange} 
-                    className="h-96" 
-                    modules={modules} 
-                  />
-                </div>
                 
-                {/* 💡 에디터 분리 로직: HTML 에디터 (데이터 손실 방지) */}
+                {/* 💡 핵심 로직: 언어별로 독립된 일반 글쓰기 에디터를 렌더링하여 데이터 증발 및 HTML 덮어쓰기 원천 차단 */}
+                {LANGUAGES.map(lang => (
+                  <div key={`editor-${lang.code}`} style={{ display: editorMode === 'general' && currentLang === lang.code ? 'block' : 'none' }}>
+                    <ReactQuill 
+                      theme="snow" 
+                      defaultValue={content[lang.code] || ''} 
+                      onChange={(val: string, delta: any, source: string) => {
+                        // 사용자가 직접 타이핑할 때만 저장됨. HTML을 읽고 제멋대로 지우는 현상 차단.
+                        if (source === 'user') {
+                          setContent(prev => ({ ...prev, [lang.code]: val }));
+                        }
+                      }} 
+                      className="h-96" 
+                      modules={modules} 
+                    />
+                  </div>
+                ))}
+                
+                {/* HTML 에디터는 있는 그대로의 원본 상태를 완벽하게 보여줌 */}
                 <div style={{ display: editorMode === 'html' ? 'block' : 'none' }}>
                   <textarea 
                     value={content[currentLang] || ''}
@@ -408,12 +408,12 @@ function WriteArticleForm() {
                   />
                 </div>
 
-                {editorMode === 'preview' && (
+                <div style={{ display: editorMode === 'preview' ? 'block' : 'none' }}>
                   <div 
                     className="w-full h-96 p-4 overflow-y-auto prose max-w-none"
                     dangerouslySetInnerHTML={{ __html: content[currentLang] || '<p className="text-gray-400">미리볼 내용이 없습니다.</p>' }}
                   />
-                )}
+                </div>
               </div>
             </div>
 
