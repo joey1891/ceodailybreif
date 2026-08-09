@@ -27,19 +27,27 @@ function ArticleContent() {
   const [displayContent, setDisplayContent] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // 💡 다국어 객체 파싱 및 상태 판별 헬퍼 (핵심 로직)
-  const getAvailableText = (field: any, targetLang: string) => {
-    if (!field) return { text: '', hasExactLang: false };
-    if (typeof field === 'string') return { text: field, hasExactLang: targetLang === 'en' };
-    
-    // 1순위: DB에 해당 언어가 직접 입력되어 있으면 바로 리턴
-    if (field[targetLang] && field[targetLang].trim() !== '') {
-      return { text: field[targetLang], hasExactLang: true };
+  // 💡 핵심 수정: 새로운 DB 구조(translations 컬럼)에서 데이터를 정확히 찾아오는 헬퍼 함수
+  const getAvailableText = (articleData: any, fieldName: 'title' | 'content', targetLang: string) => {
+    if (!articleData) return { text: '', hasExactLang: false };
+
+    // 1순위: 영어를 선택한 경우 메인 컬럼(title, content)의 원본을 즉시 반환
+    if (targetLang === 'en') {
+      return { text: articleData[fieldName] || '', hasExactLang: true };
     }
-    
-    // 2순위: 미입력된 언어면 영어(en)를 원문으로 가져와 번역 대상으로 지정
-    const fallbackText = field['en'] || field['ko'] || Object.values(field)[0] || '';
-    return { text: fallbackText, hasExactLang: false };
+
+    // 2순위: translations 컬럼에 해당 언어로 직접 작성한 데이터가 존재하는지 확인
+    if (
+      articleData.translations &&
+      articleData.translations[targetLang] &&
+      articleData.translations[targetLang][fieldName] &&
+      articleData.translations[targetLang][fieldName].trim() !== ''
+    ) {
+      return { text: articleData.translations[targetLang][fieldName], hasExactLang: true };
+    }
+
+    // 3순위: 직접 작성한 데이터가 없으면, 영어 메인 컬럼을 반환하고 번역기(hasExactLang: false)를 태움
+    return { text: articleData[fieldName] || '', hasExactLang: false };
   };
 
   useEffect(() => {
@@ -49,9 +57,9 @@ function ArticleContent() {
         if (data) {
           setArticle(data);
           
-          // 첫 로딩 시에는 무조건 'en(영어)' 기준으로 세팅
-          const titleInfo = getAvailableText(data.title, 'en');
-          const contentInfo = getAvailableText(data.content, 'en');
+          // 첫 로딩 시에는 영어(en) 기준으로 세팅
+          const titleInfo = getAvailableText(data, 'title', 'en');
+          const contentInfo = getAvailableText(data, 'content', 'en');
           
           setDisplayTitle(titleInfo.text);
           setDisplayContent(contentInfo.text);
@@ -68,10 +76,11 @@ function ArticleContent() {
     setCurrentLang(langCode);
     if (!article) return;
 
-    const titleInfo = getAvailableText(article.title, langCode);
-    const contentInfo = getAvailableText(article.content, langCode);
+    // 변경된 언어에 맞춰 직접 작성된 데이터가 있는지 확인
+    const titleInfo = getAvailableText(article, 'title', langCode);
+    const contentInfo = getAvailableText(article, 'content', langCode);
 
-    // DB에 해당 언어가 이미 입력되어 있거나 원래 언어와 같으면 구글 번역기를 태우지 않음!
+    // DB에 해당 언어가 이미 입력되어 있으면 구글 번역기를 건너뛰고 즉시 출력!
     if (titleInfo.hasExactLang && contentInfo.hasExactLang) {
       setDisplayTitle(titleInfo.text);
       setDisplayContent(contentInfo.text);
@@ -80,7 +89,7 @@ function ArticleContent() {
 
     setIsTranslating(true);
     try {
-      // 1) 제목 번역 (DB에 해당 언어가 없어서 원문을 가져왔을 때만)
+      // 1) 제목 번역 (직접 작성한 데이터가 없을 때만 실행)
       let translatedTitle = titleInfo.text;
       if (!titleInfo.hasExactLang && titleInfo.text) {
         const titleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t&q=${encodeURIComponent(titleInfo.text)}`;
@@ -89,7 +98,7 @@ function ArticleContent() {
         translatedTitle = titleData[0].map((item: any) => item[0]).join('');
       }
 
-      // 2) 본문 번역 (DB에 해당 언어가 없어서 원문을 가져왔을 때만)
+      // 2) 본문 번역 (직접 작성한 데이터가 없을 때만 실행)
       let finalHtml = contentInfo.text;
       if (!contentInfo.hasExactLang && contentInfo.text) {
         let textToTranslate = contentInfo.text;
