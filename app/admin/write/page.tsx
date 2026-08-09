@@ -1,479 +1,217 @@
 'use client';
 
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { supabase } from '@/utils/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import 'react-quill-new/dist/quill.snow.css';
 
-// 메인 폼 컴포넌트
+const ReactQuill = dynamic(
+  async () => {
+    const { default: RQ } = await import('react-quill-new');
+    // eslint-disable-next-line react/display-name
+    return ({ forwardedRef, ...props }: any) => <RQ ref={forwardedRef} {...props} />;
+  },
+  { ssr: false, loading: () => <div className="h-96 flex items-center justify-center bg-gray-50 text-black">에디터 로딩중...</div> }
+);
+
+// 지원할 다국어 목록
+const LANGUAGES = [
+  { code: 'ko', label: '한국어' },
+  { code: 'en', label: 'English (영어)' },
+  { code: 'zh', label: '中文 (중국어)' },
+  { code: 'ja', label: '日本語 (일본어)' },
+  { code: 'vi', label: 'Tiếng Việt (베트남어)' },
+  { code: 'ru', label: 'Русский (러시아어)' },
+] as const;
+
+type LangCode = typeof LANGUAGES[number]['code'];
+type MultiLangState = Record<LangCode, string>;
+
+const initialTextState: MultiLangState = { ko: '', en: '', zh: '', ja: '', vi: '', ru: '' };
+
 function WriteArticleForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const articleId = searchParams?.get('id');
+  const editId = searchParams.get('id');
 
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState('Politics & Policy'); 
-  const [author, setAuthor] = useState('Editor-in-Chief'); 
+  // 현재 선택된 언어 탭 상태
+  const [currentLang, setCurrentLang] = useState<LangCode>('ko');
+
+  // 다국어 상태 관리 (객체 형태)
+  const [title, setTitle] = useState<MultiLangState>(initialTextState);
+  const [content, setContent] = useState<MultiLangState>(initialTextState);
   
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null); 
-  const [thumbnailUrl, setThumbnailUrl] = useState(''); 
-  
-  // DB에서 불러온 카테고리 목록을 저장할 상태 추가
-  const [dbCategories, setDbCategories] = useState<{id: number, name: string}[]>([]);
-  
-  // 해시태그 상태 관리
-  const [hashtags, setHashtags] = useState<string[]>([]);
-  const [hashtagInput, setHashtagInput] = useState('');
+  const [category, setCategory] = useState('Politics & Policy');
+  const [imageUrl, setImageUrl] = useState('');
+  const [authorName, setAuthorName] = useState('편집국');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!editId);
 
-  const [editorMode, setEditorMode] = useState<'visual' | 'html' | 'preview'>('visual'); 
-  const [isUploading, setIsUploading] = useState(false); 
-  const [isLoading, setIsLoading] = useState(false); 
-
-  const editorRef = useRef<HTMLDivElement>(null); 
-  const fileInputRef = useRef<HTMLInputElement>(null); 
-  const contentImageInputRef = useRef<HTMLInputElement>(null); 
-
-  // 카테고리 목록을 DB에서 불러오는 useEffect 추가
   useEffect(() => {
-    const fetchCategories = async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('sort_order', { ascending: true });
-        
-      if (data && !error) {
-        setDbCategories(data);
-        // 새 기사 작성 시(수정이 아닐 때) DB의 첫 번째 카테고리를 기본값으로 설정
-        if (!articleId && data.length > 0) {
-          setCategory(data[0].name);
+    if (editId) {
+      const fetchArticle = async () => {
+        const { data, error } = await supabase.from('articles').select('*').eq('id', editId).single();
+        if (data) {
+          // 기존 데이터가 문자열일 경우(마이그레이션 전) 한국어에 할당, 객체일 경우 전체 덮어쓰기
+          setTitle(typeof data.title === 'string' ? { ...initialTextState, ko: data.title } : { ...initialTextState, ...(data.title || {}) });
+          setContent(typeof data.content === 'string' ? { ...initialTextState, ko: data.content } : { ...initialTextState, ...(data.content || {}) });
+          setCategory(data.category);
+          setImageUrl(data.image_url || '');
+          setAuthorName(data.author_name);
         }
-      }
-    };
-    fetchCategories();
-  }, [articleId]);
-
-  useEffect(() => {
-    if (articleId) {
-      fetchArticle(articleId); 
+        setIsLoading(false);
+      };
+      fetchArticle();
     }
-  }, [articleId]); 
+  }, [editId]);
 
-  const fetchArticle = async (id: string) => {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('*')
-      .eq('id', id)
-      .single(); 
+  const modules = useMemo(() => ({
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      ['link', 'image', 'video'],
+      ['clean']
+    ],
+  }), []);
 
-    if (data && !error) {
-      setTitle(data.title || ''); 
-      const fetchedContent = data.content || ''; 
-      setContent(fetchedContent); 
-      setCategory(data.category || 'Politics & Policy'); 
-      setAuthor(data.author_name || 'Editor-in-Chief'); 
-      setThumbnailUrl(data.image_url || ''); 
-      setHashtags(data.hashtags || []); 
-      
-      if (editorRef.current && editorMode === 'visual') {
-        editorRef.current.innerHTML = fetchedContent; 
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (editorMode === 'visual' && editorRef.current) {
-      if (editorRef.current.innerHTML !== content) {
-        editorRef.current.innerHTML = content; 
-      }
-    }
-  }, [editorMode, content]); 
-
-  const handleImageUpload = async (file: File) => {
-    const fileExt = file.name.split('.').pop(); 
-    const fileName = `${Math.random()}.${fileExt}`; 
-    const filePath = `article_content/${fileName}`; 
-
-    setIsUploading(true); 
-
-    const { error: uploadError } = await supabase.storage
-      .from('article_images')
-      .upload(filePath, file); 
-
-    if (uploadError) {
-      alert('이미지 업로드에 실패했습니다: ' + uploadError.message); 
-      setIsUploading(false); 
-      return null;
-    }
-
-    const { data } = supabase.storage.from('article_images').getPublicUrl(filePath); 
-    setIsUploading(false); 
-    return data.publicUrl; 
-  };
-
-  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0]; 
-      setThumbnailFile(file); 
-    }
-  }; 
-
-  const clearThumbnailFile = () => {
-    setThumbnailFile(null); 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''; 
-    }
-  }; 
-
-  const executeCommand = (command: string, value: string = '') => {
-    document.execCommand(command, false, value); 
-    if (editorRef.current) {
-      editorRef.current.focus(); 
-      setContent(editorRef.current.innerHTML); 
-    }
-  }; 
-
-  const handleContentImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      const imageUrl = await handleImageUpload(file);
-      if (imageUrl) {
-        const imgHtml = `<br><img src="${imageUrl}" alt="article image" style="max-width: 100%; height: auto;" /><br>`;
-        executeCommand('insertHTML', imgHtml);
-      }
-      if (contentImageInputRef.current) contentImageInputRef.current.value = '';
-    }
-  };
-
-  const insertYouTubeVideo = () => {
-    const url = prompt('유튜브 동영상 링크를 입력하세요:');
-    if (url) {
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      const match = url.match(regExp);
-      
-      if (match && match[2].length === 11) {
-        const videoId = match[2];
-        const iframeHtml = `<br><div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%;"><iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div><br>`;
-        executeCommand('insertHTML', iframeHtml);
-      } else {
-        alert('유효한 유튜브 링크가 아닙니다.');
-      }
-    }
-  };
-
-  const handleAddHashtag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      const newTag = hashtagInput.trim().replace(/^#/, '');
-      if (newTag && !hashtags.includes(newTag)) {
-        setHashtags([...hashtags, newTag]);
-      }
-      setHashtagInput('');
-    }
-  };
-
-  const removeHashtag = (tagToRemove: string) => {
-    setHashtags(hashtags.filter(tag => tag !== tagToRemove));
-  };
-
-  const handleVisualInput = (e: React.FormEvent<HTMLDivElement>) => {
-    setContent(e.currentTarget.innerHTML); 
-  };
-
-  const saveArticle = async (isPublished: boolean) => {
-    if (!title) {
-      alert('제목을 입력해주세요.'); 
-      return;
-    }
-
-    setIsLoading(true); 
-    let finalThumbnailUrl = thumbnailUrl; 
-
-    if (thumbnailFile) {
-      const uploadedUrl = await handleImageUpload(thumbnailFile); 
-      if (uploadedUrl) {
-        finalThumbnailUrl = uploadedUrl; 
-      }
-    }
+  const handleSubmit = async (e: React.FormEvent, isPublished: boolean) => {
+    e.preventDefault();
+    setIsSubmitting(true);
 
     const articleData = {
-      title, 
-      content, 
+      title, // 이제 객체가 저장됨 { ko: "...", en: "..." }
+      content, // 이제 객체가 저장됨 { ko: "...", en: "..." }
       category, 
-      author_name: author, 
-      image_url: finalThumbnailUrl, 
-      is_published: isPublished, 
-      hashtags: hashtags, 
-      updated_at: new Date().toISOString(), 
+      image_url: imageUrl, 
+      author_name: authorName, 
+      is_published: isPublished,
+      updated_at: new Date().toISOString()
     };
 
-    let result;
-
-    if (articleId) {
-      result = await supabase.from('articles').update(articleData).eq('id', articleId); 
+    let error;
+    if (editId) {
+      const { error: updateError } = await supabase.from('articles').update(articleData).eq('id', editId);
+      error = updateError;
     } else {
-      result = await supabase.from('articles').insert([articleData]); 
+      const { error: insertError } = await supabase.from('articles').insert([articleData]);
+      error = insertError;
     }
 
-    setIsLoading(false); 
+    setIsSubmitting(false);
 
-    if (result.error) {
-      alert('저장 중 오류가 발생했습니다: ' + result.error.message); 
+    if (error) {
+      alert('저장 중 오류가 발생했습니다: ' + error.message);
     } else {
-      alert(isPublished ? '기사가 발행되었습니다!' : '임시 저장되었습니다.'); 
-      router.push('/admin/articles'); 
+      alert(editId ? '수정되었습니다.' : (isPublished ? '기사가 발행되었습니다.' : '임시저장 되었습니다.'));
+      router.push('/admin/articles');
     }
   };
 
-  return (
-    <div className="max-w-5xl mx-auto bg-white p-8 rounded-lg shadow border border-gray-200">
-      <div className="flex justify-between items-center mb-6 border-b pb-4">
-        <h1 className="text-3xl font-bold font-serif text-black">
-          {articleId ? '기사 수정' : '새 기사 작성'}
-        </h1>
-        <Link href="/admin/articles" className="text-gray-500 hover:text-black transition">
-          목록으로 돌아가기
-        </Link>
-      </div>
+  if (isLoading) return <div className="text-center py-20 font-bold text-black">데이터 로딩중...</div>;
 
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
+  return (
+    <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow border border-gray-200">
+      <h1 className="text-3xl font-bold mb-8 font-serif border-b pb-4 text-black">
+        {editId ? '📝 기사 수정하기' : '새 기사 작성'}
+      </h1>
+      
+      <form className="space-y-6 text-black">
+        <div className="grid grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">카테고리</label>
-            <select 
-              value={category} 
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black bg-white"
-            >
-              {/* 수정됨: DB에서 불러온 카테고리로 옵션 생성 */}
-              {dbCategories.length > 0 ? (
-                dbCategories.map((cat) => (
-                  <option key={cat.id} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))
-              ) : (
-                <option value="Politics & Policy">Politics & Policy</option>
-              )}
+            <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border border-gray-300 rounded p-2 focus:ring-black focus:border-black font-sans">
+              <option value="Politics & Policy">정치 & 정책 (Politics & Policy)</option>
+              <option value="Economy & Markets">경제 & 시장 (Economy & Markets)</option>
+              <option value="Chaebol & Industry">재벌 & 산업 (Chaebol & Industry)</option>
+              <option value="Tech & Innovation">기술 & 혁신 (Tech & Innovation)</option>
+              <option value="K-Beauty">K-뷰티 (K-Beauty)</option>
+              <option value="K-Culture & Society">K-컬쳐 & 사회 (K-Culture & Society)</option>
+              <option value="Editorial">사설 (Editorial)</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">작성자 (Author)</label>
-            <input 
-              type="text" 
-              value={author} 
-              onChange={(e) => setAuthor(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black"
-              placeholder="작성자 이름"
+            <label className="block text-sm font-bold text-gray-700 mb-2">작성자 / 기자 이름</label>
+            <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="예: 편집국" className="w-full border border-gray-300 rounded p-2 focus:ring-black focus:border-black font-sans" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">메인 이미지 URL (썸네일)</label>
+          <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 focus:ring-black focus:border-black font-sans" />
+        </div>
+
+        {/* === 언어 선택 탭 UI === */}
+        <div className="mt-8 border-b border-gray-200">
+          <nav className="-mb-px flex space-x-4 overflow-x-auto" aria-label="Tabs">
+            {LANGUAGES.map((lang) => (
+              <button
+                key={lang.code}
+                type="button"
+                onClick={() => setCurrentLang(lang.code)}
+                className={`
+                  whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors
+                  ${currentLang === lang.code 
+                    ? 'border-black text-black font-bold' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }
+                `}
+              >
+                {lang.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* 언어별 제목 입력 */}
+        <div className="bg-gray-50 p-4 rounded-md border border-gray-100">
+          <label className="block text-sm font-bold text-gray-700 mb-2">
+            기사 제목 <span className="text-blue-600">[{LANGUAGES.find(l => l.code === currentLang)?.label}]</span>
+          </label>
+          <input 
+            type="text" 
+            value={title[currentLang]} 
+            onChange={(e) => setTitle({ ...title, [currentLang]: e.target.value })} 
+            placeholder={`${LANGUAGES.find(l => l.code === currentLang)?.label} 제목을 입력하세요`} 
+            className="w-full border border-gray-300 rounded p-3 text-lg font-bold font-serif focus:ring-black focus:border-black bg-white" 
+            required={currentLang === 'ko'} // 한국어는 필수
+          />
+        </div>
+
+        {/* 언어별 본문 입력 */}
+        <div className="mb-12 bg-gray-50 p-4 rounded-md border border-gray-100">
+          <label className="block text-sm font-bold text-gray-700 mb-2">
+            본문 내용 <span className="text-blue-600">[{LANGUAGES.find(l => l.code === currentLang)?.label}]</span>
+          </label>
+          <div className="bg-white">
+            <ReactQuill 
+              theme="snow" 
+              value={content[currentLang]} 
+              onChange={(val) => setContent({ ...content, [currentLang]: val })} 
+              className="h-96 mb-12 font-sans" 
+              modules={modules} 
             />
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">제목</label>
-          <input 
-            type="text" 
-            value={title} 
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded text-lg font-serif focus:outline-none focus:ring-2 focus:ring-black text-black"
-            placeholder="기사 제목을 입력하세요"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">해시태그</label>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {hashtags.map((tag, index) => (
-              <span key={index} className="px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full flex items-center gap-1 font-medium">
-                #{tag}
-                <button onClick={() => removeHashtag(tag)} className="text-gray-500 hover:text-red-500 font-bold ml-1">
-                  &times;
-                </button>
-              </span>
-            ))}
-          </div>
-          <input 
-            type="text" 
-            value={hashtagInput}
-            onChange={(e) => setHashtagInput(e.target.value)}
-            onKeyDown={handleAddHashtag}
-            className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black text-sm"
-            placeholder="해시태그 입력 후 Enter (예: KBeauty, Tech)"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지</label>
-          <div className="flex items-start space-x-6">
-            <div className="flex-1 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">방법 1: 파일 직접 업로드</label>
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    ref={fileInputRef}
-                    onChange={handleThumbnailChange}
-                    className="w-full p-2 border border-gray-300 rounded focus:outline-none text-black"
-                  />
-                  {thumbnailFile && (
-                    <button 
-                      type="button" 
-                      onClick={clearThumbnailFile} 
-                      className="px-3 py-2 bg-red-50 text-red-600 rounded text-sm font-bold shrink-0 border border-red-200 hover:bg-red-100"
-                    >
-                      취소
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">jpg, png, webp 형식의 이미지를 업로드해주세요.</p>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">방법 2: 이미지 URL 입력 (파일 업로드 시 무시됨)</label>
-                <input 
-                  type="url" 
-                  value={thumbnailUrl}
-                  onChange={(e) => setThumbnailUrl(e.target.value)}
-                  placeholder="https://..."
-                  disabled={!!thumbnailFile}
-                  className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black text-black disabled:bg-gray-100 disabled:text-gray-400"
-                />
-              </div>
-            </div>
-            
-            {(thumbnailFile || thumbnailUrl) && (
-              <div className="w-48 h-32 relative border border-gray-200 rounded overflow-hidden shadow-sm shrink-0 bg-gray-50 flex items-center justify-center">
-                <img 
-                  src={thumbnailFile ? URL.createObjectURL(thumbnailFile) : thumbnailUrl} 
-                  alt="Thumbnail Preview" 
-                  className="w-full h-full object-cover" 
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150?text=No+Image';
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="border border-gray-300 rounded shadow-sm overflow-hidden text-black">
-          <div className="bg-gray-50 flex items-center p-2 border-b border-gray-300 gap-2">
-            <button 
-              onClick={() => setEditorMode('visual')}
-              className={`px-4 py-2 text-sm font-bold rounded transition ${editorMode === 'visual' ? 'bg-black text-white' : 'bg-transparent text-gray-600 hover:bg-gray-200'}`}
-            >
-              일반 글쓰기
-            </button>
-            <button 
-              onClick={() => setEditorMode('html')}
-              className={`px-4 py-2 text-sm font-bold rounded transition ${editorMode === 'html' ? 'bg-black text-white' : 'bg-transparent text-gray-600 hover:bg-gray-200'}`}
-            >
-              HTML 에디터
-            </button>
-            <button 
-              onClick={() => setEditorMode('preview')}
-              className={`px-4 py-2 text-sm font-bold rounded transition ${editorMode === 'preview' ? 'bg-black text-white' : 'bg-transparent text-gray-600 hover:bg-gray-200'}`}
-            >
-              미리보기
-            </button>
-          </div>
-
-          {editorMode === 'visual' && (
-            <div className="bg-white border-b border-gray-200 p-2 flex gap-2 text-gray-700 flex-wrap items-center">
-              <button onClick={() => executeCommand('formatBlock', 'H1')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">H1</button>
-              <button onClick={() => executeCommand('formatBlock', 'H2')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">H2</button>
-              <button onClick={() => executeCommand('formatBlock', 'P')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">본문(P)</button>
-              
-              <div className="w-px h-6 bg-gray-300 mx-1"></div>
-              <button onClick={() => executeCommand('bold')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 font-bold text-sm">B</button>
-              <button onClick={() => executeCommand('italic')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 italic font-serif text-sm">I</button>
-              <button onClick={() => executeCommand('underline')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 underline text-sm">U</button>
-              
-              <div className="w-px h-6 bg-gray-300 mx-1"></div>
-              <button onClick={() => executeCommand('justifyLeft')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">좌측 정렬</button>
-              <button onClick={() => executeCommand('justifyCenter')} className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 text-sm">중앙 정렬</button>
-              
-              <div className="w-px h-6 bg-gray-300 mx-1"></div>
-              
-              <input 
-                type="file" 
-                accept="image/*" 
-                ref={contentImageInputRef} 
-                onChange={handleContentImageUpload} 
-                className="hidden" 
-              />
-              <button 
-                onClick={() => contentImageInputRef.current?.click()} 
-                className="px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 font-bold text-sm flex items-center gap-1"
-                disabled={isUploading}
-              >
-                {isUploading ? '업로드중...' : '📷 이미지 넣기'}
-              </button>
-              
-              <button 
-                onClick={insertYouTubeVideo} 
-                className="px-3 py-1 bg-red-50 text-red-600 border border-red-200 rounded hover:bg-red-100 font-bold text-sm flex items-center gap-1"
-              >
-                🎥 유튜브 링크
-              </button>
-            </div>
-          )}
-          
-          <div className="bg-white min-h-[500px]">
-            {editorMode === 'visual' && (
-              <div 
-                ref={editorRef}
-                contentEditable
-                onInput={handleVisualInput}
-                className="w-full min-h-[500px] p-6 font-serif text-gray-800 text-lg focus:outline-none prose max-w-none"
-                style={{ outline: 'none' }}
-              />
-            )}
-            
-            {editorMode === 'html' && (
-              <textarea 
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full h-[500px] p-6 font-mono text-sm bg-gray-50 border-none focus:outline-none resize-y text-black"
-                placeholder="<p>여기에 HTML 코드를 직접 입력하세요.</p>"
-              />
-            )}
-
-            {editorMode === 'preview' && (
-              <div 
-                className="prose max-w-none font-serif text-gray-800 p-6 min-h-[500px]"
-                dangerouslySetInnerHTML={{ __html: content || '<p class="text-gray-400">내용이 없습니다.</p>' }}
-              />
-            )}
-          </div>
-        </div>
-
-        <div className="flex justify-end space-x-4 pt-6 border-t">
-          <button 
-            onClick={() => saveArticle(false)}
-            disabled={isLoading || isUploading}
-            className="px-6 py-3 bg-gray-200 text-gray-800 font-bold rounded hover:bg-gray-300 transition disabled:opacity-50"
-          >
+        <div className="flex gap-4 pt-4 border-t">
+          <button type="button" onClick={(e) => handleSubmit(e, false)} disabled={isSubmitting} className="px-6 py-3 bg-gray-200 text-gray-800 font-bold rounded hover:bg-gray-300 transition">
             임시 저장
           </button>
-          <button 
-            onClick={() => saveArticle(true)}
-            disabled={isLoading || isUploading}
-            className="px-6 py-3 bg-black text-white font-bold rounded hover:bg-gray-800 transition disabled:opacity-50"
-          >
-            {isLoading ? '저장 중...' : '발행하기'}
+          <button type="button" onClick={(e) => handleSubmit(e, true)} disabled={isSubmitting} className="px-6 py-3 bg-black text-white font-bold rounded hover:bg-gray-800 transition">
+            {editId ? '수정/발행' : '기사 발행'}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
 
-// Next.js 빌드 오류 방지를 위해 Suspense로 감싸기
 export default function WriteArticlePage() {
   return (
-    <Suspense fallback={<div className="text-center p-10 text-black">에디터 로딩 중...</div>}>
+    <Suspense fallback={<div className="text-center p-10 text-black">로딩 중...</div>}>
       <WriteArticleForm />
     </Suspense>
-  ); 
+  );
 }
