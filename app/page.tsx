@@ -53,7 +53,8 @@ export default function CEODailyBrief() {
       ] = await Promise.all([
         supabase.from('headlines').select('*'),
         supabase.from('articles').select('*').eq('is_published', true).order('created_at', { ascending: false }),
-        supabase.from('articles').select('*').eq('is_published', true).order('view_count', { ascending: false }).limit(3),
+        // 💡 수정됨: MOST VIEWED 기사를 3개에서 6개로 늘렸습니다.
+        supabase.from('articles').select('*').eq('is_published', true).order('view_count', { ascending: false }).limit(6),
         supabase.from('categories').select('*').order('sort_order', { ascending: true }) 
       ]);
 
@@ -82,15 +83,12 @@ export default function CEODailyBrief() {
         });
         setHeadlines(newHeadlines);
 
-        // 💡 수정된 EXECUTIVE BRIEFING 채우기 로직
         const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id));
         let finalBriefingArticles = [];
 
         if (remainingArticles.length >= 8) {
-          // 1. 기사가 충분히 많을 때: 헤드라인을 완벽히 제외하고 순수하게 8개 채움
           finalBriefingArticles = remainingArticles.slice(0, 8);
         } else {
-          // 2. 기사가 부족할 때: 남은 기사를 다 넣고, 모자란 만큼 헤드라인 기사에서 끌어와서 8개 채움
           const headlineArticles = articles.filter(a => usedArticleIds.has(a.id));
           finalBriefingArticles = [...remainingArticles];
           const needed = 8 - finalBriefingArticles.length;
@@ -295,7 +293,8 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              <div className="mt-12 lg:mt-auto pt-4">
+              {/* 💡 수정됨: lg:mt-auto 를 제거하여 강제로 맨 밑으로 밀리지 않고 자연스러운 간격(mt-12)을 유지하게 했습니다. */}
+              <div className="mt-12 pt-4">
                 <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                   <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
                     MOST VIEWED
