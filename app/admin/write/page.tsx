@@ -16,30 +16,31 @@ const ReactQuill = dynamic(
   { ssr: false, loading: () => <div className="h-96 flex items-center justify-center bg-gray-50 text-gray-500">에디터 로딩중...</div> }
 );
 
-// 지원할 다국어 목록
+// 지원할 다국어 목록 (프론트엔드와 동일하게 구성, en을 기본으로 설정)
 const LANGUAGES = [
-  { code: 'ko', label: '한국어' },
-  { code: 'en', label: 'English (영어)' },
-  { code: 'zh', label: '中文 (중국어)' },
-  { code: 'ja', label: '日本語 (일본어)' },
-  { code: 'vi', label: 'Tiếng Việt (베트남어)' },
-  { code: 'ru', label: 'Русский (러시아어)' },
+  { code: 'en', label: '🇺🇸 English (Original)' },
+  { code: 'ko', label: '🇰🇷 한국어' },
+  { code: 'ja', label: '🇯🇵 日本語' },
+  { code: 'zh-CN', label: '🇨🇳 中文' },
+  { code: 'ru', label: '🇷🇺 Русский' },
+  { code: 'mn', label: '🇲🇳 Монгол' },
+  { code: 'vi', label: '🇻🇳 Tiếng Việt' }
 ] as const;
 
 type LangCode = typeof LANGUAGES[number]['code'];
-type MultiLangState = Record<LangCode, string>;
-type MultiLangTagsState = Record<LangCode, string[]>;
+type MultiLangState = Record<string, string>;
+type MultiLangTagsState = Record<string, string[]>;
 
-const initialTextState: MultiLangState = { ko: '', en: '', zh: '', ja: '', vi: '', ru: '' };
-const initialTagsState: MultiLangTagsState = { ko: [], en: [], zh: [], ja: [], vi: [], ru: [] };
+const initialTextState: MultiLangState = LANGUAGES.reduce((acc, lang) => ({ ...acc, [lang.code]: '' }), {});
+const initialTagsState: MultiLangTagsState = LANGUAGES.reduce((acc, lang) => ({ ...acc, [lang.code]: [] }), {});
 
 function WriteArticleForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');
 
-  // 다국어 탭 상태
-  const [currentLang, setCurrentLang] = useState<LangCode>('ko');
+  // 다국어 탭 상태 (기본값 en)
+  const [currentLang, setCurrentLang] = useState<string>('en');
   const [editorMode, setEditorMode] = useState<'general' | 'html' | 'preview'>('general');
 
   // 다국어 상태 관리
@@ -67,12 +68,36 @@ function WriteArticleForm() {
       const fetchArticle = async () => {
         const { data, error } = await supabase.from('articles').select('*').eq('id', editId).single();
         if (data) {
-          setTitle(typeof data.title === 'string' ? { ...initialTextState, ko: data.title } : { ...initialTextState, ...(data.title || {}) });
-          setContent(typeof data.content === 'string' ? { ...initialTextState, ko: data.content } : { ...initialTextState, ...(data.content || {}) });
-          setHashtags(typeof data.hashtags === 'string' ? { ...initialTagsState, ko: JSON.parse(data.hashtags) } : { ...initialTagsState, ...(data.hashtags || {}) });
-          setCategory(data.category);
+          const newTitle = { ...initialTextState };
+          const newContent = { ...initialTextState };
+          const newHashtags = { ...initialTagsState };
+
+          // 1. 영어(기본) 데이터 세팅
+          newTitle['en'] = data.title || '';
+          newContent['en'] = data.content || '';
+          try {
+            newHashtags['en'] = data.hashtags ? JSON.parse(data.hashtags) : [];
+          } catch(e) {
+            newHashtags['en'] = typeof data.hashtags === 'string' ? [data.hashtags] : [];
+          }
+
+          // 2. 다국어 번역(translations) 데이터 세팅
+          if (data.translations) {
+            Object.keys(data.translations).forEach(lang => {
+              if (LANGUAGES.some(l => l.code === lang)) {
+                newTitle[lang] = data.translations[lang].title || '';
+                newContent[lang] = data.translations[lang].content || '';
+                newHashtags[lang] = data.translations[lang].hashtags || [];
+              }
+            });
+          }
+
+          setTitle(newTitle);
+          setContent(newContent);
+          setHashtags(newHashtags);
+          setCategory(data.category || 'Politics & Policy');
           setImageUrl(data.image_url || '');
-          setAuthorName(data.author_name);
+          setAuthorName(data.author_name || 'Editor-in-Chief');
         }
         setIsLoading(false);
       };
@@ -96,7 +121,8 @@ function WriteArticleForm() {
       [{ 'header': [1, 2, false] }],
       ['bold', 'italic', 'underline'],
       [{ 'align': [] }],
-      ['image', 'video']
+      ['image', 'video'],
+      ['clean']
     ],
   }), []);
 
@@ -181,32 +207,56 @@ function WriteArticleForm() {
 
     let finalImageUrl = imageUrl;
 
-    // 썸네일 파일 업로드 로직 (Supabase Storage 사용 시)
+    // 1. 이미지 업로드 로직 (수정된 article_images 버킷 사용)
     if (thumbnailFile) {
       const fileExt = thumbnailFile.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `thumbnails/${fileName}`;
+      const filePath = `${fileName}`; // root에 바로 저장 (필요시 'thumbnails/' 추가)
       
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('images') // 사용하는 버킷 이름에 맞게 수정 필요
+        .from('article_images') // 버킷 이름 일치
         .upload(filePath, thumbnailFile);
 
       if (!uploadError) {
-        const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
+        const { data: publicUrlData } = supabase.storage.from('article_images').getPublicUrl(filePath);
         finalImageUrl = publicUrlData.publicUrl;
       } else {
-        alert('이미지 업로드 중 오류가 발생했습니다. URL 방식을 사용하거나 다시 시도해주세요.');
+        console.error("Supabase 업로드 에러:", uploadError);
+        alert(`이미지 업로드 실패: ${uploadError.message}\n(권한 설정을 확인하세요)`);
+        setIsSubmitting(false);
+        return; // 이미지 에러 시 중단
       }
     }
 
+    // 2. 다국어(Translations) 데이터 가공
+    const translationsData: any = {};
+    LANGUAGES.forEach((lang) => {
+      if (lang.code !== 'en') {
+        const tTitle = title[lang.code];
+        const tContent = content[lang.code];
+        const tHashtags = hashtags[lang.code];
+        
+        // 해당 언어에 입력된 값이 하나라도 있으면 저장
+        if (tTitle || tContent || tHashtags.length > 0) {
+          translationsData[lang.code] = {
+            title: tTitle,
+            content: tContent,
+            hashtags: tHashtags
+          };
+        }
+      }
+    });
+
+    // 3. DB에 전송할 최종 Payload
     const articleData = {
-      title, 
-      content, 
-      hashtags, // 해시태그 다국어 객체로 저장
+      title: title['en'], // 영어는 메인 컬럼에 저장
+      content: content['en'], // 영어는 메인 컬럼에 저장
+      hashtags: JSON.stringify(hashtags['en']), // 영어 태그 메인 컬럼에 텍스트화하여 저장
       category, 
       image_url: finalImageUrl, 
       author_name: authorName, 
       is_published: isPublished,
+      translations: translationsData, // 나머지 언어는 통째로 jsonb 컬럼에 저장
       updated_at: new Date().toISOString()
     };
 
@@ -274,7 +324,7 @@ function WriteArticleForm() {
                   type="button"
                   onClick={() => setCurrentLang(lang.code)}
                   className={`
-                    py-2 px-4 border rounded-t-md font-medium text-sm transition-colors
+                    py-2 px-4 border rounded-t-md font-medium text-sm transition-colors whitespace-nowrap
                     ${currentLang === lang.code 
                       ? 'border-gray-300 border-b-transparent bg-white text-black font-bold -mb-px z-10' 
                       : 'border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -295,10 +345,11 @@ function WriteArticleForm() {
               <label className="block text-sm font-bold text-gray-700 mb-2">제목 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
               <input 
                 type="text" 
-                value={title[currentLang]} 
+                value={title[currentLang] || ''} 
                 onChange={(e) => setTitle({ ...title, [currentLang]: e.target.value })} 
                 placeholder="기사 제목을 입력하세요" 
                 className="w-full border border-gray-300 rounded p-3 text-lg focus:outline-none focus:border-black" 
+                required={currentLang === 'en'}
               />
             </div>
 
@@ -306,7 +357,7 @@ function WriteArticleForm() {
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">해시태그 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
               <div className="w-full border border-gray-300 rounded p-2 flex flex-wrap gap-2 items-center bg-white focus-within:border-black">
-                {hashtags[currentLang].map((tag, idx) => (
+                {hashtags[currentLang]?.map((tag, idx) => (
                   <span key={idx} className="bg-gray-100 px-2 py-1 rounded text-sm flex items-center gap-1 border border-gray-200">
                     {tag}
                     <button type="button" onClick={() => removeHashtag(tag)} className="text-gray-400 hover:text-red-500 text-xs">✕</button>
@@ -325,17 +376,17 @@ function WriteArticleForm() {
 
             {/* 에디터 */}
             <div className="border border-gray-300 rounded">
-              <div className="flex bg-gray-50 border-b border-gray-300">
-                <button type="button" onClick={() => setEditorMode('general')} className={`px-6 py-3 text-sm font-bold ${editorMode === 'general' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>일반 글쓰기</button>
-                <button type="button" onClick={() => setEditorMode('html')} className={`px-6 py-3 text-sm font-bold ${editorMode === 'html' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>HTML 에디터</button>
-                <button type="button" onClick={() => setEditorMode('preview')} className={`px-6 py-3 text-sm font-bold ${editorMode === 'preview' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>미리보기</button>
+              <div className="flex bg-gray-50 border-b border-gray-300 overflow-x-auto">
+                <button type="button" onClick={() => setEditorMode('general')} className={`px-6 py-3 text-sm font-bold whitespace-nowrap ${editorMode === 'general' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>일반 글쓰기</button>
+                <button type="button" onClick={() => setEditorMode('html')} className={`px-6 py-3 text-sm font-bold whitespace-nowrap ${editorMode === 'html' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>HTML 에디터</button>
+                <button type="button" onClick={() => setEditorMode('preview')} className={`px-6 py-3 text-sm font-bold whitespace-nowrap ${editorMode === 'preview' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>미리보기</button>
               </div>
               
               <div className="bg-white min-h-[400px]">
                 {editorMode === 'general' && (
                   <ReactQuill 
                     theme="snow" 
-                    value={content[currentLang]} 
+                    value={content[currentLang] || ''} 
                     onChange={(val: string) => setContent({ ...content, [currentLang]: val })} 
                     className="h-96" 
                     modules={modules} 
@@ -344,7 +395,7 @@ function WriteArticleForm() {
                 
                 {editorMode === 'html' && (
                   <textarea 
-                    value={content[currentLang]}
+                    value={content[currentLang] || ''}
                     onChange={(e) => setContent({ ...content, [currentLang]: e.target.value })}
                     className="w-full h-96 p-4 border-none focus:outline-none font-mono text-sm bg-gray-50 text-gray-800"
                     placeholder="HTML 코드를 직접 입력하세요..."
