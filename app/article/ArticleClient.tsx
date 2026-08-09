@@ -5,7 +5,6 @@ import { supabase } from '@/utils/supabase';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-// 지원 언어 목록
 const LANGUAGES = [
   { code: 'en', name: '🇺🇸 English (Original)' },
   { code: 'ko', name: '🇰🇷 한국어' },
@@ -28,14 +27,34 @@ function ArticleContent() {
   const [displayContent, setDisplayContent] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
 
+  // 💡 다국어 객체 파싱 및 상태 판별 헬퍼 (핵심 로직)
+  const getAvailableText = (field: any, targetLang: string) => {
+    if (!field) return { text: '', hasExactLang: false };
+    if (typeof field === 'string') return { text: field, hasExactLang: targetLang === 'en' };
+    
+    // 1순위: DB에 해당 언어가 직접 입력되어 있으면 바로 리턴
+    if (field[targetLang] && field[targetLang].trim() !== '') {
+      return { text: field[targetLang], hasExactLang: true };
+    }
+    
+    // 2순위: 미입력된 언어면 영어(en)를 원문으로 가져와 번역 대상으로 지정
+    const fallbackText = field['en'] || field['ko'] || Object.values(field)[0] || '';
+    return { text: fallbackText, hasExactLang: false };
+  };
+
   useEffect(() => {
     if (articleId) {
       const fetchArticle = async () => {
         const { data } = (await supabase.from('articles').select('*').eq('id', articleId).single()) as any;
         if (data) {
           setArticle(data);
-          setDisplayTitle(data.title);
-          setDisplayContent(data.content);
+          
+          // 첫 로딩 시에는 무조건 'en(영어)' 기준으로 세팅
+          const titleInfo = getAvailableText(data.title, 'en');
+          const contentInfo = getAvailableText(data.content, 'en');
+          
+          setDisplayTitle(titleInfo.text);
+          setDisplayContent(contentInfo.text);
         }
         setIsLoading(false);
       };
@@ -47,76 +66,73 @@ function ArticleContent() {
 
   const handleLanguageChange = async (langCode: string) => {
     setCurrentLang(langCode);
-    
-    if (langCode === 'en' && article) {
-      setDisplayTitle(article.title);
-      setDisplayContent(article.content);
+    if (!article) return;
+
+    const titleInfo = getAvailableText(article.title, langCode);
+    const contentInfo = getAvailableText(article.content, langCode);
+
+    // DB에 해당 언어가 이미 입력되어 있거나 원래 언어와 같으면 구글 번역기를 태우지 않음!
+    if (titleInfo.hasExactLang && contentInfo.hasExactLang) {
+      setDisplayTitle(titleInfo.text);
+      setDisplayContent(contentInfo.text);
       return;
     }
-    
-    if (!article) return;
 
     setIsTranslating(true);
     try {
-      // 1) 제목 번역
-      const titleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t&q=${encodeURIComponent(article.title)}`;
-      const titleRes = await fetch(titleUrl);
-      const titleData = await titleRes.json();
-      const translatedTitle = titleData[0].map((item: any) => item[0]).join('');
+      // 1) 제목 번역 (DB에 해당 언어가 없어서 원문을 가져왔을 때만)
+      let translatedTitle = titleInfo.text;
+      if (!titleInfo.hasExactLang && titleInfo.text) {
+        const titleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t&q=${encodeURIComponent(titleInfo.text)}`;
+        const titleRes = await fetch(titleUrl);
+        const titleData = await titleRes.json();
+        translatedTitle = titleData[0].map((item: any) => item[0]).join('');
+      }
 
-      // 2) 본문 번역 (강화된 V2 HTML 쉴드 알고리즘)
-      let textToTranslate = article.content;
-      
-      const blocks: string[] = [];
-      const tags: string[] = [];
+      // 2) 본문 번역 (DB에 해당 언어가 없어서 원문을 가져왔을 때만)
+      let finalHtml = contentInfo.text;
+      if (!contentInfo.hasExactLang && contentInfo.text) {
+        let textToTranslate = contentInfo.text;
+        const blocks: string[] = [];
+        const tags: string[] = [];
 
-      // 구글 번역기가 절대 건드리지 못하는 특수 알파벳 마커 사용 (특수기호 완전 배제)
-      const BLK_MKR = "XZBLKZX";
-      const TAG_MKR = "XZTAGZX";
+        const BLK_MKR = "XZBLKZX";
+        const TAG_MKR = "XZTAGZX";
 
-      // A. <style> 과 <script> 통째로 숨기기
-      textToTranslate = textToTranslate.replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, (match: string) => {
-        blocks.push(match);
-        return ` ${BLK_MKR}${blocks.length - 1}${BLK_MKR} `;
-      });
+        textToTranslate = textToTranslate.replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, (match: string) => {
+          blocks.push(match);
+          return ` ${BLK_MKR}${blocks.length - 1}${BLK_MKR} `;
+        });
 
-      // B. 나머지 모든 HTML 태그 숨기기
-      textToTranslate = textToTranslate.replace(/<[^>]+>/g, (match: string) => {
-        tags.push(match);
-        return ` ${TAG_MKR}${tags.length - 1}${TAG_MKR} `;
-      });
+        textToTranslate = textToTranslate.replace(/<[^>]+>/g, (match: string) => {
+          tags.push(match);
+          return ` ${TAG_MKR}${tags.length - 1}${TAG_MKR} `;
+        });
 
-      // C. 구글 번역 서버로 전송
-      const contentRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          q: textToTranslate,
-        }),
-      });
-      const contentData = await contentRes.json();
-      let translatedText = contentData[0].map((item: any) => item[0]).join('');
+        const contentRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            q: textToTranslate,
+          }),
+        });
+        const contentData = await contentRes.json();
+        let translatedText = contentData[0].map((item: any) => item[0]).join('');
 
-      // D. 전각 숫자(일본어, 중국어 등) 해독 및 HTML 복구
-      let finalHtml = translatedText;
+        const parseIndex = (str: string) => {
+          const normalized = str.replace(/[０-９]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+          return Number(normalized);
+        };
 
-      // 일본어/중국어 번역기가 만든 전각 숫자(１, ２)를 일반 숫자(1, 2)로 고쳐주는 마법의 함수
-      const parseIndex = (str: string) => {
-        const normalized = str.replace(/[０-９]/g, (c: string) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
-        return Number(normalized);
-      };
+        const tagRegex = new RegExp(`${TAG_MKR}\\s*([\\d０-９]+)\\s*${TAG_MKR}`, 'gi');
+        const blockRegex = new RegExp(`${BLK_MKR}\\s*([\\d０-９]+)\\s*${BLK_MKR}`, 'gi');
 
-      // 마커 사이에 있는 숫자(반각/전각 모두 포함)를 찾아내어 원래 HTML로 치환
-      const tagRegex = new RegExp(`${TAG_MKR}\\s*([\\d０-９]+)\\s*${TAG_MKR}`, 'gi');
-      const blockRegex = new RegExp(`${BLK_MKR}\\s*([\\d０-９]+)\\s*${BLK_MKR}`, 'gi');
-
-      finalHtml = finalHtml.replace(tagRegex, (match: string, p1: string) => tags[parseIndex(p1)] || '');
-      finalHtml = finalHtml.replace(blockRegex, (match: string, p1: string) => blocks[parseIndex(p1)] || '');
-
-      // 혹시라도 남아있는 잔여 마커 클리닝
-      finalHtml = finalHtml.replace(new RegExp(`${TAG_MKR}|${BLK_MKR}`, 'gi'), '');
+        finalHtml = translatedText.replace(tagRegex, (match: string, p1: string) => tags[parseIndex(p1)] || '');
+        finalHtml = finalHtml.replace(blockRegex, (match: string, p1: string) => blocks[parseIndex(p1)] || '');
+        finalHtml = finalHtml.replace(new RegExp(`${TAG_MKR}|${BLK_MKR}`, 'gi'), '');
+      }
 
       setDisplayTitle(translatedTitle);
       setDisplayContent(finalHtml);
@@ -232,7 +248,6 @@ function ArticleContent() {
   );
 }
 
-// 이 부분만 ArticleClient로 이름을 맞췄습니다.
 export default function ArticleClient() {
   return (
     <Suspense fallback={<div className="text-center py-20 text-black">Loading...</div>}>
