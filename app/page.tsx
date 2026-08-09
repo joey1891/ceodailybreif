@@ -82,8 +82,22 @@ export default function CEODailyBrief() {
         });
         setHeadlines(newHeadlines);
 
-        const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id)).slice(0, 5);
-        setBriefingArticles(remainingArticles);
+        // 💡 수정된 EXECUTIVE BRIEFING 채우기 로직
+        const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id));
+        let finalBriefingArticles = [];
+
+        if (remainingArticles.length >= 8) {
+          // 1. 기사가 충분히 많을 때: 헤드라인을 완벽히 제외하고 순수하게 8개 채움
+          finalBriefingArticles = remainingArticles.slice(0, 8);
+        } else {
+          // 2. 기사가 부족할 때: 남은 기사를 다 넣고, 모자란 만큼 헤드라인 기사에서 끌어와서 8개 채움
+          const headlineArticles = articles.filter(a => usedArticleIds.has(a.id));
+          finalBriefingArticles = [...remainingArticles];
+          const needed = 8 - finalBriefingArticles.length;
+          finalBriefingArticles = [...finalBriefingArticles, ...headlineArticles.slice(0, needed)];
+        }
+
+        setBriefingArticles(finalBriefingArticles);
       }
 
       if (topArticles) {
@@ -215,7 +229,6 @@ export default function CEODailyBrief() {
               </div>
             )}
 
-            {/* 💡 수정됨: 서브 기사 6개를 2열로 배치 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mt-2 sm:mt-0">
               {[
                 headlines.SUB_1, 
@@ -263,8 +276,8 @@ export default function CEODailyBrief() {
                 
                 {briefingArticles.length > 0 ? (
                   <ul className="flex flex-col gap-4 sm:gap-6">
-                    {briefingArticles.map((article) => (
-                      <li key={article.id} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
+                    {briefingArticles.map((article, index) => (
+                      <li key={`${article.id}-${index}`} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
                         <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
                         <Link href={`/article?id=${article.id}`}>
                           <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
