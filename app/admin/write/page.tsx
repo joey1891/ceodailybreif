@@ -133,7 +133,7 @@ function WriteArticleForm() {
     }
   }, [thumbnailFile]);
 
-  // 💡 해결 1: 에디터 툴바 풀버전으로 복구 (유튜브, 이미지, 색상 등 모두 포함)
+  // 💡 툴바 복원: 이미지(그림 아이콘), 유튜브 비디오(캠코더 아이콘), 글자색 등 풀버전 장착
   const modules = useMemo(() => ({
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
@@ -141,10 +141,17 @@ function WriteArticleForm() {
       [{ 'color': [] }, { 'background': [] }],
       [{ 'align': [] }],
       [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      ['link', 'image', 'video'], // image(이미지), video(유튜브 링크)
+      ['link', 'image', 'video'], 
       ['clean']
     ],
   }), []);
+
+  // 💡 HTML 양식 보호 로직: 일반 글쓰기 탭이 활성화되어 있을 때만 에디터 내용을 상태에 덮어씁니다.
+  const handleQuillChange = (val: string) => {
+    if (editorMode === 'general') {
+      setContent(prev => ({ ...prev, [currentLang]: val }));
+    }
+  };
 
   const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -379,29 +386,27 @@ function WriteArticleForm() {
               </div>
               
               <div className="bg-white min-h-[400px]">
-                {editorMode === 'general' && (
+                {/* 💡 에디터 분리 로직: 일반 글쓰기 에디터 */}
+                <div style={{ display: editorMode === 'general' ? 'block' : 'none' }}>
                   <ReactQuill 
+                    key={`quill-${currentLang}`} // 데이터 증발 차단용 핵심 Key
                     theme="snow" 
                     value={content[currentLang] || ''} 
-                    {/* 💡 해결 2: 에디터가 임의로 원본 데이터를 덮어씌우는 것 차단 (사용자 입력 시에만 업데이트) */}
-                    onChange={(val: string, delta: any, source: string) => {
-                      if (source === 'user') {
-                        setContent(prev => ({ ...prev, [currentLang]: val }));
-                      }
-                    }} 
+                    onChange={handleQuillChange} 
                     className="h-96" 
                     modules={modules} 
                   />
-                )}
+                </div>
                 
-                {editorMode === 'html' && (
+                {/* 💡 에디터 분리 로직: HTML 에디터 (데이터 손실 방지) */}
+                <div style={{ display: editorMode === 'html' ? 'block' : 'none' }}>
                   <textarea 
                     value={content[currentLang] || ''}
                     onChange={(e) => setContent(prev => ({ ...prev, [currentLang]: e.target.value }))}
                     className="w-full h-96 p-4 border-none focus:outline-none font-mono text-sm bg-gray-50 text-gray-800"
                     placeholder="HTML 코드를 직접 입력하세요..."
                   />
-                )}
+                </div>
 
                 {editorMode === 'preview' && (
                   <div 
