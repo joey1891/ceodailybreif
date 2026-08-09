@@ -16,7 +16,6 @@ const ReactQuill = dynamic(
   { ssr: false, loading: () => <div className="h-96 flex items-center justify-center bg-gray-50 text-gray-500">에디터 로딩중...</div> }
 );
 
-// 지원할 다국어 목록
 const LANGUAGES = [
   { code: 'en', label: '🇺🇸 English (Original)' },
   { code: 'ko', label: '🇰🇷 한국어' },
@@ -27,7 +26,6 @@ const LANGUAGES = [
   { code: 'vi', label: '🇻🇳 Tiếng Việt' }
 ] as const;
 
-type LangCode = typeof LANGUAGES[number]['code'];
 type MultiLangState = Record<string, string>;
 type MultiLangTagsState = Record<string, string[]>;
 
@@ -39,21 +37,17 @@ function WriteArticleForm() {
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');
 
-  // 다국어 탭 상태
   const [currentLang, setCurrentLang] = useState<string>('en');
   const [editorMode, setEditorMode] = useState<'general' | 'html' | 'preview'>('general');
 
-  // 다국어 상태 관리
   const [title, setTitle] = useState<MultiLangState>(initialTextState);
   const [content, setContent] = useState<MultiLangState>(initialTextState);
   const [hashtags, setHashtags] = useState<MultiLangTagsState>(initialTagsState);
   const [hashtagInput, setHashtagInput] = useState('');
   
-  // 공통 상태 관리
   const [category, setCategory] = useState('Politics & Policy');
   const [authorName, setAuthorName] = useState('Editor-in-Chief');
   
-  // 썸네일 상태 관리
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -63,7 +57,6 @@ function WriteArticleForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(!!editId);
 
-  // 💡 잘못된 JSON 문자열이 들어와도 안전하게 텍스트만 추출하는 헬퍼 함수
   const safeExtractString = (val: any) => {
     if (!val) return '';
     if (typeof val === 'string') {
@@ -90,11 +83,9 @@ function WriteArticleForm() {
           const newContent = { ...initialTextState };
           const newHashtags = { ...initialTagsState };
 
-          // 1. 영어(기본) 데이터 세팅 (방어 코드 적용)
           newTitle['en'] = safeExtractString(data.title);
           newContent['en'] = safeExtractString(data.content);
           
-          // 해시태그 객체 에러 방지 방어 코드
           try {
             const parsedTags = data.hashtags ? JSON.parse(data.hashtags) : [];
             if (Array.isArray(parsedTags)) {
@@ -109,7 +100,6 @@ function WriteArticleForm() {
             newHashtags['en'] = typeof data.hashtags === 'string' ? [data.hashtags] : [];
           }
 
-          // 2. 다국어 번역(translations) 데이터 세팅
           if (data.translations) {
             Object.keys(data.translations).forEach(lang => {
               if (LANGUAGES.some(l => l.code === lang)) {
@@ -153,29 +143,34 @@ function WriteArticleForm() {
     ],
   }), []);
 
+  // 💡 방어 코드 적용: 콜백 형태로 업데이트하여 기존 데이터 덮어쓰기 방지
   const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       const val = hashtagInput.trim();
-      const currentTags = hashtags[currentLang] || [];
-      if (val && !currentTags.includes(val)) {
-        setHashtags({ ...hashtags, [currentLang]: [...currentTags, val] });
+      if (val) {
+        setHashtags(prev => {
+          const currentTags = prev[currentLang] || [];
+          if (!currentTags.includes(val)) {
+            return { ...prev, [currentLang]: [...currentTags, val] };
+          }
+          return prev;
+        });
       }
       setHashtagInput('');
     }
   };
 
   const removeHashtag = (tagToRemove: string) => {
-    setHashtags({
-      ...hashtags,
-      [currentLang]: (hashtags[currentLang] || []).filter(tag => tag !== tagToRemove)
-    });
+    setHashtags(prev => ({
+      ...prev,
+      [currentLang]: (prev[currentLang] || []).filter(tag => tag !== tagToRemove)
+    }));
   };
 
   const handlePasteImage = (e: React.ClipboardEvent<HTMLDivElement>) => {
     const items = e.clipboardData?.items;
     if (!items) return;
-
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
         const file = items[i].getAsFile();
@@ -189,22 +184,13 @@ function WriteArticleForm() {
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
+    e.preventDefault(); e.stopPropagation(); setIsDragging(true);
   };
-
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
   };
-
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    
+    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
       if (file.type.startsWith('image/')) {
@@ -216,12 +202,9 @@ function WriteArticleForm() {
   };
 
   const handleClearThumbnail = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     setThumbnailFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = async (e: React.FormEvent, isPublished: boolean) => {
@@ -356,10 +339,11 @@ function WriteArticleForm() {
             
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">제목 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
+              {/* 💡 방어 코드 적용: 콜백(prev) 패턴으로 기존 데이터 보호 */}
               <input 
                 type="text" 
                 value={title[currentLang] || ''} 
-                onChange={(e) => setTitle({ ...title, [currentLang]: e.target.value })} 
+                onChange={(e) => setTitle(prev => ({ ...prev, [currentLang]: e.target.value }))} 
                 placeholder="기사 제목을 입력하세요" 
                 className="w-full border border-gray-300 rounded p-3 text-lg focus:outline-none focus:border-black" 
                 required={currentLang === 'en'}
@@ -398,7 +382,8 @@ function WriteArticleForm() {
                   <ReactQuill 
                     theme="snow" 
                     value={content[currentLang] || ''} 
-                    onChange={(val: string) => setContent({ ...content, [currentLang]: val })} 
+                    {/* 💡 방어 코드 적용: 콜백(prev) 패턴으로 에디터 상태 덮어쓰기 완전 차단 */}
+                    onChange={(val: string) => setContent(prev => ({ ...prev, [currentLang]: val }))} 
                     className="h-96" 
                     modules={modules} 
                   />
@@ -407,7 +392,8 @@ function WriteArticleForm() {
                 {editorMode === 'html' && (
                   <textarea 
                     value={content[currentLang] || ''}
-                    onChange={(e) => setContent({ ...content, [currentLang]: e.target.value })}
+                    {/* 💡 방어 코드 적용 */}
+                    onChange={(e) => setContent(prev => ({ ...prev, [currentLang]: e.target.value }))}
                     className="w-full h-96 p-4 border-none focus:outline-none font-mono text-sm bg-gray-50 text-gray-800"
                     placeholder="HTML 코드를 직접 입력하세요..."
                   />
