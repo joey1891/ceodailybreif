@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useState, useMemo, useEffect, Suspense, useRef } from 'react';
 import { supabase } from '@/utils/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -51,8 +51,13 @@ function WriteArticleForm() {
   // 공통 상태 관리
   const [category, setCategory] = useState('Politics & Policy');
   const [authorName, setAuthorName] = useState('Editor-in-Chief');
+  
+  // 썸네일 파일, 미리보기, 드래그 상태 관리
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(!!editId);
@@ -74,6 +79,17 @@ function WriteArticleForm() {
       fetchArticle();
     }
   }, [editId]);
+
+  // 파일 객체가 변경될 때마다 미리보기 URL 생성 및 해제
+  useEffect(() => {
+    if (thumbnailFile) {
+      const objectUrl = URL.createObjectURL(thumbnailFile);
+      setThumbnailPreview(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setThumbnailPreview(null);
+    }
+  }, [thumbnailFile]);
 
   const modules = useMemo(() => ({
     toolbar: [
@@ -102,6 +118,61 @@ function WriteArticleForm() {
       ...hashtags,
       [currentLang]: hashtags[currentLang].filter(tag => tag !== tagToRemove)
     });
+  };
+
+  // 썸네일 이미지 Ctrl + V (붙여넣기) 핸들러
+  const handlePasteImage = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          setThumbnailFile(file);
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  };
+
+  // 드래그 앤 드롭 핸들러
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        setThumbnailFile(file);
+      } else {
+        alert('이미지 파일만 업로드 가능합니다.');
+      }
+    }
+  };
+
+  // 썸네일 이미지 취소/삭제 핸들러
+  const handleClearThumbnail = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setThumbnailFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // input file 초기화
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent, isPublished: boolean) => {
@@ -297,14 +368,53 @@ function WriteArticleForm() {
             
             <div className="space-y-4">
               <div>
-                <span className="block text-xs text-gray-500 mb-1">방법 1: 파일 직접 업로드</span>
-                <input 
-                  type="file" 
-                  accept=".jpg, .jpeg, .png, .webp"
-                  onChange={(e) => setThumbnailFile(e.target.files ? e.target.files[0] : null)}
-                  className="w-full border border-gray-300 rounded p-2 text-sm bg-white" 
-                />
-                <p className="text-xs text-gray-400 mt-1">jpg, png, webp 형식의 이미지를 업로드해주세요.</p>
+                <span className="block text-xs text-gray-500 mb-1">방법 1: 파일 직접 업로드 (드래그 앤 드롭 또는 Ctrl+V)</span>
+                
+                {/* 점선 박스 (클릭, 드래그 앤 드롭, 붙여넣기 영역) */}
+                <div 
+                  className={`relative w-full border-2 border-dashed rounded-lg p-6 transition-colors focus:outline-none cursor-pointer flex flex-col items-center justify-center min-h-[120px]
+                    ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}
+                  `}
+                  onPaste={handlePasteImage}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  tabIndex={0}
+                >
+                  <input 
+                    type="file" 
+                    accept=".jpg, .jpeg, .png, .webp"
+                    ref={fileInputRef}
+                    onChange={(e) => setThumbnailFile(e.target.files ? e.target.files[0] : null)}
+                    className="hidden" 
+                    id="thumbnail-upload"
+                  />
+                  
+                  {/* 파일이 있을 경우 미리보기 표시, 없을 경우 안내 문구 표시 */}
+                  {thumbnailPreview ? (
+                    <div className="relative inline-block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={thumbnailPreview} alt="Thumbnail Preview" className="max-h-48 object-contain rounded border border-gray-200 shadow-sm" />
+                      <button 
+                        type="button" 
+                        onClick={handleClearThumbnail} 
+                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold shadow-md hover:bg-red-600 transition-colors z-10"
+                        title="이미지 삭제"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <label htmlFor="thumbnail-upload" className="cursor-pointer flex flex-col items-center w-full">
+                      <svg className={`w-10 h-10 mb-2 transition-colors ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                      <span className="block font-bold text-gray-700 text-base text-center">
+                        클릭하여 파일 선택, <span className="text-blue-600">이미지 붙여넣기 (Ctrl+V)</span> <br/>
+                        또는 <span className="text-blue-600">여기로 파일 드래그 앤 드롭</span>
+                      </span>
+                      <span className="block text-xs text-gray-400 mt-2">jpg, png, webp 형식의 이미지를 업로드해주세요.</span>
+                    </label>
+                  )}
+                </div>
               </div>
 
               <div>
