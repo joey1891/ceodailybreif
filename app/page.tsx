@@ -11,7 +11,6 @@ export default function CEODailyBrief() {
   const [briefingArticles, setBriefingArticles] = useState<any[]>([]);
   const [bestArticles, setBestArticles] = useState<any[]>([]);
   
-  // DB에서 불러온 카테고리 목록을 저장할 상태 추가
   const [dbCategories, setDbCategories] = useState<{id: number, name: string}[]>([]);
   
   const [isLoading, setIsLoading] = useState(true);
@@ -28,9 +27,15 @@ export default function CEODailyBrief() {
     }).toUpperCase();
   };
 
+  // 💡 다국어 객체에서 영어(기본) 텍스트를 추출하는 안전한 헬퍼 함수
+  const getDisplayText = (field: any) => {
+    if (!field) return '';
+    if (typeof field === 'string') return field; // 예전 텍스트 데이터 호환
+    return field.en || field.ko || Object.values(field)[0] || '';
+  };
+
   useEffect(() => {
     const fetchNews = async () => {
-      // 헤드라인, 기사, 베스트 기사, 카테고리 데이터를 한 번에 병렬로 불러오기
       const [
         { data: headlineMap },
         { data: articles },
@@ -40,7 +45,7 @@ export default function CEODailyBrief() {
         supabase.from('headlines').select('*'),
         supabase.from('articles').select('*').eq('is_published', true).order('created_at', { ascending: false }),
         supabase.from('articles').select('*').eq('is_published', true).order('view_count', { ascending: false }).limit(3),
-        supabase.from('categories').select('*').order('sort_order', { ascending: true }) // 카테고리 불러오기 추가
+        supabase.from('categories').select('*').order('sort_order', { ascending: true }) 
       ]);
 
       if (categoryData) {
@@ -112,6 +117,7 @@ export default function CEODailyBrief() {
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white">
       <header className="max-w-7xl mx-auto px-4 pt-4 sm:pt-6 pb-2">
+        {/* ... (기존 헤더 UI 유지) ... */}
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 pb-2">
           <span>{currentDate}</span>
           
@@ -150,7 +156,6 @@ export default function CEODailyBrief() {
 
         <nav className="border-y border-gray-300 py-3 mt-6">
           <ul className="flex flex-col sm:flex-row justify-start sm:justify-center items-start sm:items-center gap-3 sm:gap-6 md:gap-8 text-[11px] sm:text-sm md:text-[15px] font-bold tracking-widest uppercase px-2 sm:px-0">
-            {/* 수정됨: DB에서 불러온 카테고리 목록으로 네비게이션 생성 */}
             {dbCategories.map(cat => (
               <li key={cat.id} className="w-full sm:w-auto text-left">
                 <Link href={`/news?category=${encodeURIComponent(cat.name)}`} className="hover:text-red-800 cursor-pointer transition-colors block w-full">
@@ -183,8 +188,9 @@ export default function CEODailyBrief() {
                     <span className="text-gray-400 text-xs hidden sm:inline">|</span>
                     <span className="text-gray-500 font-bold text-[10px] sm:text-xs uppercase">{formatTime(headlines.MAIN_HERO.created_at)}</span>
                   </div>
+                  {/* 💡 타이틀 객체 처리 */}
                   <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-black font-serif leading-[1.15] mb-3 sm:mb-5 group-hover:text-red-800 transition-colors break-words">
-                    {headlines.MAIN_HERO.title}
+                    {getDisplayText(headlines.MAIN_HERO.title)}
                   </h2>          
                 </article>
               </Link>
@@ -203,14 +209,15 @@ export default function CEODailyBrief() {
                         <div className="w-full bg-gray-100 mb-3 sm:mb-4 overflow-hidden rounded">
                           <img 
                             src={subArticle.image_url} 
-                            alt={subArticle.title} 
+                            alt={getDisplayText(subArticle.title)} 
                             className="w-full h-auto group-hover:scale-[1.02] transition-transform duration-700 grayscale-[20%]"
                           />
                         </div>
                       )}
                       <span className="text-red-800 font-bold text-[10px] sm:text-xs tracking-widest mb-2 uppercase">{subArticle.category}</span>
+                      {/* 💡 타이틀 객체 처리 */}
                       <h3 className="text-xl sm:text-2xl font-bold font-serif leading-snug group-hover:text-red-800 transition-colors">
-                        {subArticle.title}
+                        {getDisplayText(subArticle.title)}
                       </h3>
                     </article>
                   </Link>
@@ -239,8 +246,9 @@ export default function CEODailyBrief() {
                         <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
                         <Link href={`/article?id=${article.id}`}>
                           <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
+                          {/* 💡 타이틀 객체 처리 */}
                           <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
-                            {article.title}
+                            {getDisplayText(article.title)}
                           </p>
                         </Link>
                       </li>
@@ -269,8 +277,9 @@ export default function CEODailyBrief() {
                         </span>
                         <Link href={`/article?id=${article.id}`}>
                           <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
+                          {/* 💡 타이틀 객체 처리 */}
                           <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
-                            {article.title}
+                            {getDisplayText(article.title)}
                           </p>
                         </Link>
                       </li>
@@ -291,7 +300,6 @@ export default function CEODailyBrief() {
 
       <footer className="bg-gray-50 text-gray-400 py-10">
         <div className="max-w-7xl mx-auto px-4 flex flex-col lg:flex-row justify-between items-start gap-8">
-          
           <div className="w-full lg:w-1/3">
             <h3 className="text-black font-bold uppercase tracking-widest mb-3">Newsletter</h3>
             <p className="text-sm mb-4">Get the latest intelligence delivered directly to your inbox.</p>
