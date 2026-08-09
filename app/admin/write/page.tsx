@@ -16,7 +16,7 @@ const ReactQuill = dynamic(
   { ssr: false, loading: () => <div className="h-96 flex items-center justify-center bg-gray-50 text-gray-500">에디터 로딩중...</div> }
 );
 
-// 지원할 다국어 목록 (프론트엔드와 동일하게 구성, en을 기본으로 설정)
+// 지원할 다국어 목록
 const LANGUAGES = [
   { code: 'en', label: '🇺🇸 English (Original)' },
   { code: 'ko', label: '🇰🇷 한국어' },
@@ -39,7 +39,7 @@ function WriteArticleForm() {
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');
 
-  // 다국어 탭 상태 (기본값 en)
+  // 다국어 탭 상태
   const [currentLang, setCurrentLang] = useState<string>('en');
   const [editorMode, setEditorMode] = useState<'general' | 'html' | 'preview'>('general');
 
@@ -53,7 +53,7 @@ function WriteArticleForm() {
   const [category, setCategory] = useState('Politics & Policy');
   const [authorName, setAuthorName] = useState('Editor-in-Chief');
   
-  // 썸네일 파일, 미리보기, 드래그 상태 관리
+  // 썸네일 상태 관리
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -62,6 +62,24 @@ function WriteArticleForm() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(!!editId);
+
+  // 💡 잘못된 JSON 문자열이 들어와도 안전하게 텍스트만 추출하는 헬퍼 함수
+  const safeExtractString = (val: any) => {
+    if (!val) return '';
+    if (typeof val === 'string') {
+      if (val.trim().startsWith('{')) {
+        try {
+          const parsed = JSON.parse(val);
+          return parsed.en || parsed.ko || Object.values(parsed)[0] || '';
+        } catch { return val; }
+      }
+      return val;
+    }
+    if (typeof val === 'object') {
+      return val.en || val.ko || Object.values(val)[0] || '';
+    }
+    return String(val);
+  };
 
   useEffect(() => {
     if (editId) {
@@ -72,11 +90,21 @@ function WriteArticleForm() {
           const newContent = { ...initialTextState };
           const newHashtags = { ...initialTagsState };
 
-          // 1. 영어(기본) 데이터 세팅
-          newTitle['en'] = data.title || '';
-          newContent['en'] = data.content || '';
+          // 1. 영어(기본) 데이터 세팅 (방어 코드 적용)
+          newTitle['en'] = safeExtractString(data.title);
+          newContent['en'] = safeExtractString(data.content);
+          
+          // 해시태그 객체 에러 방지 방어 코드
           try {
-            newHashtags['en'] = data.hashtags ? JSON.parse(data.hashtags) : [];
+            const parsedTags = data.hashtags ? JSON.parse(data.hashtags) : [];
+            if (Array.isArray(parsedTags)) {
+              newHashtags['en'] = parsedTags;
+            } else if (typeof parsedTags === 'object') {
+              const tags = parsedTags.en || parsedTags.ko || Object.values(parsedTags)[0];
+              newHashtags['en'] = Array.isArray(tags) ? tags : [];
+            } else {
+              newHashtags['en'] = [];
+            }
           } catch(e) {
             newHashtags['en'] = typeof data.hashtags === 'string' ? [data.hashtags] : [];
           }
@@ -105,7 +133,6 @@ function WriteArticleForm() {
     }
   }, [editId]);
 
-  // 파일 객체가 변경될 때마다 미리보기 URL 생성 및 해제
   useEffect(() => {
     if (thumbnailFile) {
       const objectUrl = URL.createObjectURL(thumbnailFile);
@@ -126,27 +153,25 @@ function WriteArticleForm() {
     ],
   }), []);
 
-  // 해시태그 추가 (Enter 키 입력 시)
   const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       const val = hashtagInput.trim();
-      if (val && !hashtags[currentLang].includes(val)) {
-        setHashtags({ ...hashtags, [currentLang]: [...hashtags[currentLang], val] });
+      const currentTags = hashtags[currentLang] || [];
+      if (val && !currentTags.includes(val)) {
+        setHashtags({ ...hashtags, [currentLang]: [...currentTags, val] });
       }
       setHashtagInput('');
     }
   };
 
-  // 해시태그 삭제
   const removeHashtag = (tagToRemove: string) => {
     setHashtags({
       ...hashtags,
-      [currentLang]: hashtags[currentLang].filter(tag => tag !== tagToRemove)
+      [currentLang]: (hashtags[currentLang] || []).filter(tag => tag !== tagToRemove)
     });
   };
 
-  // 썸네일 이미지 Ctrl + V (붙여넣기) 핸들러
   const handlePasteImage = (e: React.ClipboardEvent<HTMLDivElement>) => {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -163,7 +188,6 @@ function WriteArticleForm() {
     }
   };
 
-  // 드래그 앤 드롭 핸들러
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
@@ -191,13 +215,12 @@ function WriteArticleForm() {
     }
   };
 
-  // 썸네일 이미지 취소/삭제 핸들러
   const handleClearThumbnail = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setThumbnailFile(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''; // input file 초기화
+      fileInputRef.current.value = '';
     }
   };
 
@@ -207,36 +230,32 @@ function WriteArticleForm() {
 
     let finalImageUrl = imageUrl;
 
-    // 1. 이미지 업로드 로직 (수정된 article_images 버킷 사용)
     if (thumbnailFile) {
       const fileExt = thumbnailFile.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`; // root에 바로 저장 (필요시 'thumbnails/' 추가)
       
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('article_images') // 버킷 이름 일치
-        .upload(filePath, thumbnailFile);
+        .from('article_images') 
+        .upload(fileName, thumbnailFile);
 
       if (!uploadError) {
-        const { data: publicUrlData } = supabase.storage.from('article_images').getPublicUrl(filePath);
+        const { data: publicUrlData } = supabase.storage.from('article_images').getPublicUrl(fileName);
         finalImageUrl = publicUrlData.publicUrl;
       } else {
         console.error("Supabase 업로드 에러:", uploadError);
         alert(`이미지 업로드 실패: ${uploadError.message}\n(권한 설정을 확인하세요)`);
         setIsSubmitting(false);
-        return; // 이미지 에러 시 중단
+        return; 
       }
     }
 
-    // 2. 다국어(Translations) 데이터 가공
     const translationsData: any = {};
     LANGUAGES.forEach((lang) => {
       if (lang.code !== 'en') {
         const tTitle = title[lang.code];
         const tContent = content[lang.code];
-        const tHashtags = hashtags[lang.code];
+        const tHashtags = hashtags[lang.code] || [];
         
-        // 해당 언어에 입력된 값이 하나라도 있으면 저장
         if (tTitle || tContent || tHashtags.length > 0) {
           translationsData[lang.code] = {
             title: tTitle,
@@ -247,16 +266,15 @@ function WriteArticleForm() {
       }
     });
 
-    // 3. DB에 전송할 최종 Payload
     const articleData = {
-      title: title['en'], // 영어는 메인 컬럼에 저장
-      content: content['en'], // 영어는 메인 컬럼에 저장
-      hashtags: JSON.stringify(hashtags['en']), // 영어 태그 메인 컬럼에 텍스트화하여 저장
+      title: title['en'], 
+      content: content['en'], 
+      hashtags: JSON.stringify(hashtags['en'] || []), 
       category, 
       image_url: finalImageUrl, 
       author_name: authorName, 
       is_published: isPublished,
-      translations: translationsData, // 나머지 언어는 통째로 jsonb 컬럼에 저장
+      translations: translationsData, 
       updated_at: new Date().toISOString()
     };
 
@@ -285,7 +303,6 @@ function WriteArticleForm() {
     <div className="max-w-5xl mx-auto bg-gray-50 p-8 min-h-screen">
       <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
         
-        {/* 상단 헤더 */}
         <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-300">
           <h1 className="text-2xl font-bold text-black">새 기사 작성</h1>
           <Link href="/admin/articles" className="text-sm text-gray-500 hover:text-black">
@@ -294,7 +311,6 @@ function WriteArticleForm() {
         </div>
         
         <form className="space-y-6 text-black">
-          {/* 카테고리 & 작성자 */}
           <div className="grid grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
@@ -314,7 +330,6 @@ function WriteArticleForm() {
             </div>
           </div>
 
-          {/* === 언어 선택 탭 UI === */}
           <div className="mt-8 pt-4 border-t border-gray-200">
             <label className="block text-sm font-bold text-blue-600 mb-2">입력 언어 선택 (Title, Tags, Content)</label>
             <nav className="flex space-x-2 overflow-x-auto" aria-label="Tabs">
@@ -337,10 +352,8 @@ function WriteArticleForm() {
             </nav>
           </div>
 
-          {/* 언어별 입력 영역 (박스 처리) */}
           <div className="border border-gray-300 rounded-b-md rounded-tr-md p-6 bg-white space-y-6">
             
-            {/* 제목 */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">제목 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
               <input 
@@ -353,11 +366,10 @@ function WriteArticleForm() {
               />
             </div>
 
-            {/* 해시태그 */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">해시태그 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
               <div className="w-full border border-gray-300 rounded p-2 flex flex-wrap gap-2 items-center bg-white focus-within:border-black">
-                {hashtags[currentLang]?.map((tag, idx) => (
+                {(hashtags[currentLang] || []).map((tag, idx) => (
                   <span key={idx} className="bg-gray-100 px-2 py-1 rounded text-sm flex items-center gap-1 border border-gray-200">
                     {tag}
                     <button type="button" onClick={() => removeHashtag(tag)} className="text-gray-400 hover:text-red-500 text-xs">✕</button>
@@ -374,7 +386,6 @@ function WriteArticleForm() {
               </div>
             </div>
 
-            {/* 에디터 */}
             <div className="border border-gray-300 rounded">
               <div className="flex bg-gray-50 border-b border-gray-300 overflow-x-auto">
                 <button type="button" onClick={() => setEditorMode('general')} className={`px-6 py-3 text-sm font-bold whitespace-nowrap ${editorMode === 'general' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>일반 글쓰기</button>
@@ -413,7 +424,6 @@ function WriteArticleForm() {
 
           </div>
 
-          {/* 썸네일 이미지 (공통) */}
           <div className="mt-8 border-t pt-6">
             <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지</label>
             
@@ -421,7 +431,6 @@ function WriteArticleForm() {
               <div>
                 <span className="block text-xs text-gray-500 mb-1">방법 1: 파일 직접 업로드 (드래그 앤 드롭 또는 Ctrl+V)</span>
                 
-                {/* 점선 박스 (클릭, 드래그 앤 드롭, 붙여넣기 영역) */}
                 <div 
                   className={`relative w-full border-2 border-dashed rounded-lg p-6 transition-colors focus:outline-none cursor-pointer flex flex-col items-center justify-center min-h-[120px]
                     ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}
@@ -441,7 +450,6 @@ function WriteArticleForm() {
                     id="thumbnail-upload"
                   />
                   
-                  {/* 파일이 있을 경우 미리보기 표시, 없을 경우 안내 문구 표시 */}
                   {thumbnailPreview ? (
                     <div className="relative inline-block">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -481,7 +489,6 @@ function WriteArticleForm() {
             </div>
           </div>
 
-          {/* 하단 버튼 */}
           <div className="flex justify-end gap-3 pt-6 border-t border-black">
             <button type="button" onClick={(e) => handleSubmit(e, false)} disabled={isSubmitting} className="px-6 py-2 bg-gray-200 text-gray-800 font-bold rounded hover:bg-gray-300 transition text-sm">
               임시 저장
