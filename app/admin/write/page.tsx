@@ -188,7 +188,7 @@ function WriteArticleForm() {
             <ReactQuill 
               theme="snow" 
               value={content[currentLang]} 
-              onChange={(val) => setContent({ ...content, [currentLang]: val })} 
+              onChange={(val: string) => setContent({ ...content, [currentLang]: val })} 
               className="h-96 mb-12 font-sans" 
               modules={modules} 
             />
