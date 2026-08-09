@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, Suspense } from 'react';
 import { supabase } from '@/utils/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import 'react-quill-new/dist/quill.snow.css';
 
 const ReactQuill = dynamic(
@@ -12,7 +13,7 @@ const ReactQuill = dynamic(
     // eslint-disable-next-line react/display-name
     return ({ forwardedRef, ...props }: any) => <RQ ref={forwardedRef} {...props} />;
   },
-  { ssr: false, loading: () => <div className="h-96 flex items-center justify-center bg-gray-50 text-black">에디터 로딩중...</div> }
+  { ssr: false, loading: () => <div className="h-96 flex items-center justify-center bg-gray-50 text-gray-500">에디터 로딩중...</div> }
 );
 
 // 지원할 다국어 목록
@@ -27,24 +28,32 @@ const LANGUAGES = [
 
 type LangCode = typeof LANGUAGES[number]['code'];
 type MultiLangState = Record<LangCode, string>;
+type MultiLangTagsState = Record<LangCode, string[]>;
 
 const initialTextState: MultiLangState = { ko: '', en: '', zh: '', ja: '', vi: '', ru: '' };
+const initialTagsState: MultiLangTagsState = { ko: [], en: [], zh: [], ja: [], vi: [], ru: [] };
 
 function WriteArticleForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get('id');
 
-  // 현재 선택된 언어 탭 상태
+  // 다국어 탭 상태
   const [currentLang, setCurrentLang] = useState<LangCode>('ko');
+  const [editorMode, setEditorMode] = useState<'general' | 'html' | 'preview'>('general');
 
-  // 다국어 상태 관리 (객체 형태)
+  // 다국어 상태 관리
   const [title, setTitle] = useState<MultiLangState>(initialTextState);
   const [content, setContent] = useState<MultiLangState>(initialTextState);
+  const [hashtags, setHashtags] = useState<MultiLangTagsState>(initialTagsState);
+  const [hashtagInput, setHashtagInput] = useState('');
   
+  // 공통 상태 관리
   const [category, setCategory] = useState('Politics & Policy');
+  const [authorName, setAuthorName] = useState('Editor-in-Chief');
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState('');
-  const [authorName, setAuthorName] = useState('편집국');
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(!!editId);
 
@@ -53,9 +62,9 @@ function WriteArticleForm() {
       const fetchArticle = async () => {
         const { data, error } = await supabase.from('articles').select('*').eq('id', editId).single();
         if (data) {
-          // 기존 데이터가 문자열일 경우(마이그레이션 전) 한국어에 할당, 객체일 경우 전체 덮어쓰기
           setTitle(typeof data.title === 'string' ? { ...initialTextState, ko: data.title } : { ...initialTextState, ...(data.title || {}) });
           setContent(typeof data.content === 'string' ? { ...initialTextState, ko: data.content } : { ...initialTextState, ...(data.content || {}) });
+          setHashtags(typeof data.hashtags === 'string' ? { ...initialTagsState, ko: JSON.parse(data.hashtags) } : { ...initialTagsState, ...(data.hashtags || {}) });
           setCategory(data.category);
           setImageUrl(data.image_url || '');
           setAuthorName(data.author_name);
@@ -68,23 +77,63 @@ function WriteArticleForm() {
 
   const modules = useMemo(() => ({
     toolbar: [
-      [{ 'header': [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      ['link', 'image', 'video'],
-      ['clean']
+      [{ 'header': [1, 2, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ 'align': [] }],
+      ['image', 'video']
     ],
   }), []);
+
+  // 해시태그 추가 (Enter 키 입력 시)
+  const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = hashtagInput.trim();
+      if (val && !hashtags[currentLang].includes(val)) {
+        setHashtags({ ...hashtags, [currentLang]: [...hashtags[currentLang], val] });
+      }
+      setHashtagInput('');
+    }
+  };
+
+  // 해시태그 삭제
+  const removeHashtag = (tagToRemove: string) => {
+    setHashtags({
+      ...hashtags,
+      [currentLang]: hashtags[currentLang].filter(tag => tag !== tagToRemove)
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent, isPublished: boolean) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    let finalImageUrl = imageUrl;
+
+    // 썸네일 파일 업로드 로직 (Supabase Storage 사용 시)
+    if (thumbnailFile) {
+      const fileExt = thumbnailFile.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `thumbnails/${fileName}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('images') // 사용하는 버킷 이름에 맞게 수정 필요
+        .upload(filePath, thumbnailFile);
+
+      if (!uploadError) {
+        const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(filePath);
+        finalImageUrl = publicUrlData.publicUrl;
+      } else {
+        alert('이미지 업로드 중 오류가 발생했습니다. URL 방식을 사용하거나 다시 시도해주세요.');
+      }
+    }
+
     const articleData = {
-      title, // 이제 객체가 저장됨 { ko: "...", en: "..." }
-      content, // 이제 객체가 저장됨 { ko: "...", en: "..." }
+      title, 
+      content, 
+      hashtags, // 해시태그 다국어 객체로 저장
       category, 
-      image_url: imageUrl, 
+      image_url: finalImageUrl, 
       author_name: authorName, 
       is_published: isPublished,
       updated_at: new Date().toISOString()
@@ -112,98 +161,176 @@ function WriteArticleForm() {
   if (isLoading) return <div className="text-center py-20 font-bold text-black">데이터 로딩중...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow border border-gray-200">
-      <h1 className="text-3xl font-bold mb-8 font-serif border-b pb-4 text-black">
-        {editId ? '📝 기사 수정하기' : '새 기사 작성'}
-      </h1>
-      
-      <form className="space-y-6 text-black">
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border border-gray-300 rounded p-2 focus:ring-black focus:border-black font-sans">
-              <option value="Politics & Policy">정치 & 정책 (Politics & Policy)</option>
-              <option value="Economy & Markets">경제 & 시장 (Economy & Markets)</option>
-              <option value="Chaebol & Industry">재벌 & 산업 (Chaebol & Industry)</option>
-              <option value="Tech & Innovation">기술 & 혁신 (Tech & Innovation)</option>
-              <option value="K-Beauty">K-뷰티 (K-Beauty)</option>
-              <option value="K-Culture & Society">K-컬쳐 & 사회 (K-Culture & Society)</option>
-              <option value="Editorial">사설 (Editorial)</option>
-            </select>
+    <div className="max-w-5xl mx-auto bg-gray-50 p-8 min-h-screen">
+      <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
+        
+        {/* 상단 헤더 */}
+        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-300">
+          <h1 className="text-2xl font-bold text-black">새 기사 작성</h1>
+          <Link href="/admin/articles" className="text-sm text-gray-500 hover:text-black">
+            목록으로 돌아가기
+          </Link>
+        </div>
+        
+        <form className="space-y-6 text-black">
+          {/* 카테고리 & 작성자 */}
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black">
+                <option value="Politics & Policy">Politics & Policy</option>
+                <option value="Economy & Markets">Economy & Markets</option>
+                <option value="Chaebol & Industry">Chaebol & Industry</option>
+                <option value="Tech & Innovation">Tech & Innovation</option>
+                <option value="K-Beauty">K-Beauty</option>
+                <option value="K-Culture & Society">K-Culture & Society</option>
+                <option value="Editorial">Editorial</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">작성자 (Author)</label>
+              <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black" />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">작성자 / 기자 이름</label>
-            <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="예: 편집국" className="w-full border border-gray-300 rounded p-2 focus:ring-black focus:border-black font-sans" />
+
+          {/* === 언어 선택 탭 UI === */}
+          <div className="mt-8 pt-4 border-t border-gray-200">
+            <label className="block text-sm font-bold text-blue-600 mb-2">입력 언어 선택 (Title, Tags, Content)</label>
+            <nav className="flex space-x-2 overflow-x-auto" aria-label="Tabs">
+              {LANGUAGES.map((lang) => (
+                <button
+                  key={lang.code}
+                  type="button"
+                  onClick={() => setCurrentLang(lang.code)}
+                  className={`
+                    py-2 px-4 border rounded-t-md font-medium text-sm transition-colors
+                    ${currentLang === lang.code 
+                      ? 'border-gray-300 border-b-transparent bg-white text-black font-bold -mb-px z-10' 
+                      : 'border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }
+                  `}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </nav>
           </div>
-        </div>
 
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">메인 이미지 URL (썸네일)</label>
-          <input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 focus:ring-black focus:border-black font-sans" />
-        </div>
+          {/* 언어별 입력 영역 (박스 처리) */}
+          <div className="border border-gray-300 rounded-b-md rounded-tr-md p-6 bg-white space-y-6">
+            
+            {/* 제목 */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">제목 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
+              <input 
+                type="text" 
+                value={title[currentLang]} 
+                onChange={(e) => setTitle({ ...title, [currentLang]: e.target.value })} 
+                placeholder="기사 제목을 입력하세요" 
+                className="w-full border border-gray-300 rounded p-3 text-lg focus:outline-none focus:border-black" 
+              />
+            </div>
 
-        {/* === 언어 선택 탭 UI === */}
-        <div className="mt-8 border-b border-gray-200">
-          <nav className="-mb-px flex space-x-4 overflow-x-auto" aria-label="Tabs">
-            {LANGUAGES.map((lang) => (
-              <button
-                key={lang.code}
-                type="button"
-                onClick={() => setCurrentLang(lang.code)}
-                className={`
-                  whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors
-                  ${currentLang === lang.code 
-                    ? 'border-black text-black font-bold' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }
-                `}
-              >
-                {lang.label}
-              </button>
-            ))}
-          </nav>
-        </div>
+            {/* 해시태그 */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">해시태그 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
+              <div className="w-full border border-gray-300 rounded p-2 flex flex-wrap gap-2 items-center bg-white focus-within:border-black">
+                {hashtags[currentLang].map((tag, idx) => (
+                  <span key={idx} className="bg-gray-100 px-2 py-1 rounded text-sm flex items-center gap-1 border border-gray-200">
+                    {tag}
+                    <button type="button" onClick={() => removeHashtag(tag)} className="text-gray-400 hover:text-red-500 text-xs">✕</button>
+                  </span>
+                ))}
+                <input 
+                  type="text" 
+                  value={hashtagInput}
+                  onChange={(e) => setHashtagInput(e.target.value)}
+                  onKeyDown={handleHashtagKeyDown}
+                  placeholder="해시태그 입력 후 Enter (예: KBeauty, Tech)" 
+                  className="flex-grow outline-none p-1 text-sm min-w-[200px]" 
+                />
+              </div>
+            </div>
 
-        {/* 언어별 제목 입력 */}
-        <div className="bg-gray-50 p-4 rounded-md border border-gray-100">
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            기사 제목 <span className="text-blue-600">[{LANGUAGES.find(l => l.code === currentLang)?.label}]</span>
-          </label>
-          <input 
-            type="text" 
-            value={title[currentLang]} 
-            onChange={(e) => setTitle({ ...title, [currentLang]: e.target.value })} 
-            placeholder={`${LANGUAGES.find(l => l.code === currentLang)?.label} 제목을 입력하세요`} 
-            className="w-full border border-gray-300 rounded p-3 text-lg font-bold font-serif focus:ring-black focus:border-black bg-white" 
-            required={currentLang === 'ko'} // 한국어는 필수
-          />
-        </div>
+            {/* 에디터 */}
+            <div className="border border-gray-300 rounded">
+              <div className="flex bg-gray-50 border-b border-gray-300">
+                <button type="button" onClick={() => setEditorMode('general')} className={`px-6 py-3 text-sm font-bold ${editorMode === 'general' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>일반 글쓰기</button>
+                <button type="button" onClick={() => setEditorMode('html')} className={`px-6 py-3 text-sm font-bold ${editorMode === 'html' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>HTML 에디터</button>
+                <button type="button" onClick={() => setEditorMode('preview')} className={`px-6 py-3 text-sm font-bold ${editorMode === 'preview' ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-200'}`}>미리보기</button>
+              </div>
+              
+              <div className="bg-white min-h-[400px]">
+                {editorMode === 'general' && (
+                  <ReactQuill 
+                    theme="snow" 
+                    value={content[currentLang]} 
+                    onChange={(val: string) => setContent({ ...content, [currentLang]: val })} 
+                    className="h-96" 
+                    modules={modules} 
+                  />
+                )}
+                
+                {editorMode === 'html' && (
+                  <textarea 
+                    value={content[currentLang]}
+                    onChange={(e) => setContent({ ...content, [currentLang]: e.target.value })}
+                    className="w-full h-96 p-4 border-none focus:outline-none font-mono text-sm bg-gray-50 text-gray-800"
+                    placeholder="HTML 코드를 직접 입력하세요..."
+                  />
+                )}
 
-        {/* 언어별 본문 입력 */}
-        <div className="mb-12 bg-gray-50 p-4 rounded-md border border-gray-100">
-          <label className="block text-sm font-bold text-gray-700 mb-2">
-            본문 내용 <span className="text-blue-600">[{LANGUAGES.find(l => l.code === currentLang)?.label}]</span>
-          </label>
-          <div className="bg-white">
-            <ReactQuill 
-              theme="snow" 
-              value={content[currentLang]} 
-              onChange={(val: string) => setContent({ ...content, [currentLang]: val })} 
-              className="h-96 mb-12 font-sans" 
-              modules={modules} 
-            />
+                {editorMode === 'preview' && (
+                  <div 
+                    className="w-full h-96 p-4 overflow-y-auto prose max-w-none"
+                    dangerouslySetInnerHTML={{ __html: content[currentLang] || '<p className="text-gray-400">미리볼 내용이 없습니다.</p>' }}
+                  />
+                )}
+              </div>
+            </div>
+
           </div>
-        </div>
 
-        <div className="flex gap-4 pt-4 border-t">
-          <button type="button" onClick={(e) => handleSubmit(e, false)} disabled={isSubmitting} className="px-6 py-3 bg-gray-200 text-gray-800 font-bold rounded hover:bg-gray-300 transition">
-            임시 저장
-          </button>
-          <button type="button" onClick={(e) => handleSubmit(e, true)} disabled={isSubmitting} className="px-6 py-3 bg-black text-white font-bold rounded hover:bg-gray-800 transition">
-            {editId ? '수정/발행' : '기사 발행'}
-          </button>
-        </div>
-      </form>
+          {/* 썸네일 이미지 (공통) */}
+          <div className="mt-8 border-t pt-6">
+            <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지</label>
+            
+            <div className="space-y-4">
+              <div>
+                <span className="block text-xs text-gray-500 mb-1">방법 1: 파일 직접 업로드</span>
+                <input 
+                  type="file" 
+                  accept=".jpg, .jpeg, .png, .webp"
+                  onChange={(e) => setThumbnailFile(e.target.files ? e.target.files[0] : null)}
+                  className="w-full border border-gray-300 rounded p-2 text-sm bg-white" 
+                />
+                <p className="text-xs text-gray-400 mt-1">jpg, png, webp 형식의 이미지를 업로드해주세요.</p>
+              </div>
+
+              <div>
+                <span className="block text-xs text-gray-500 mb-1">방법 2: 이미지 URL 입력 (파일 업로드 시 무시됨)</span>
+                <input 
+                  type="url" 
+                  value={imageUrl} 
+                  onChange={(e) => setImageUrl(e.target.value)} 
+                  placeholder="https://..." 
+                  className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" 
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 하단 버튼 */}
+          <div className="flex justify-end gap-3 pt-6 border-t border-black">
+            <button type="button" onClick={(e) => handleSubmit(e, false)} disabled={isSubmitting} className="px-6 py-2 bg-gray-200 text-gray-800 font-bold rounded hover:bg-gray-300 transition text-sm">
+              임시 저장
+            </button>
+            <button type="button" onClick={(e) => handleSubmit(e, true)} disabled={isSubmitting} className="px-6 py-2 bg-black text-white font-bold rounded hover:bg-gray-800 transition text-sm">
+              발행하기
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
