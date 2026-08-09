@@ -28,6 +28,13 @@ function ArticleContent() {
   const [displayContent, setDisplayContent] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
 
+  // 💡 폰트 최적화 로직: 아시아권 언어는 고딕체(sans), 나머지는 명조체(serif) 적용
+  const isAsianLang = ['ko', 'ja', 'zh-CN', 'mn', 'vi'].includes(currentLang);
+  const titleFontClass = isAsianLang ? 'font-sans font-black tracking-tight' : 'font-serif font-black';
+  const bodyFontClass = isAsianLang 
+    ? 'prose-p:font-sans prose-p:font-medium prose-p:tracking-wide prose-p:leading-relaxed' 
+    : 'font-serif leading-loose';
+
   const getAvailableText = (articleData: any, fieldName: 'title' | 'content', targetLang: string) => {
     if (!articleData) return { text: '', hasExactLang: false };
 
@@ -81,7 +88,6 @@ function ArticleContent() {
         const blocks: string[] = [];
         const tags: string[] = [];
 
-        // 💡 핵심 수정: 구글 번역기가 스펠링 수정을 시도하지 못하도록 언더바(_) 기반의 특수 마커로 교체
         textToTranslate = textToTranslate.replace(/<(style|script)[^>]*>[\s\S]*?<\/\1>/gi, (match: string) => {
           blocks.push(match);
           return ` __B${blocks.length - 1}__ `;
@@ -109,11 +115,8 @@ function ArticleContent() {
           return Number(normalized);
         };
 
-        // 💡 핵심 수정: 번역기가 __ T 0 __ 처럼 공백을 제멋대로 집어넣어도 완벽하게 HTML을 찾아 복구하는 정규식 적용
         finalHtml = translatedText.replace(/__\s*T\s*([\d０-９]+)\s*__/gi, (match: string, p1: string) => tags[parseIndex(p1)] || '');
         finalHtml = finalHtml.replace(/__\s*B\s*([\d０-９]+)\s*__/gi, (match: string, p1: string) => blocks[parseIndex(p1)] || '');
-        
-        // 혹시라도 복구되지 못한 찌꺼기 마커 클리닝
         finalHtml = finalHtml.replace(/__\s*[TB]\s*[\d０-９]+\s*__/gi, '');
       }
 
@@ -223,7 +226,8 @@ function ArticleContent() {
         {isTranslating && <div className="text-[10px] text-red-600 mb-4 font-bold uppercase tracking-widest animate-pulse text-center">Translating...</div>}
 
         <div style={{ textAlign: 'left', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} className="mb-10">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black font-serif leading-[1.15] mb-6 break-words" style={{ textAlign: 'left', width: '100%' }}>
+          {/* 💡 폰트 클래스 동적 적용 */}
+          <h1 className={`text-4xl md:text-5xl lg:text-6xl leading-[1.15] mb-6 break-words ${titleFontClass}`} style={{ textAlign: 'left', width: '100%' }}>
             {displayTitle}
           </h1>
           <div className="flex items-center gap-4 text-sm text-gray-500 font-serif italic border-y border-gray-200 py-3 w-full" style={{ justifyContent: 'flex-start' }}>
@@ -239,8 +243,9 @@ function ArticleContent() {
           </div>
         )}
 
+        {/* 💡 본문 폰트 클래스 동적 적용 */}
         <div 
-          className="prose prose-lg max-w-none font-serif text-gray-800 leading-loose prose-p:mb-6 prose-img:rounded-sm prose-a:text-red-700 hover:prose-a:text-red-900"
+          className={`prose prose-lg max-w-none text-gray-800 prose-img:rounded-sm prose-a:text-red-700 hover:prose-a:text-red-900 ${bodyFontClass}`}
           style={{ textAlign: 'left' }}
           dangerouslySetInnerHTML={{ __html: displayContent }}
         />
