@@ -133,7 +133,6 @@ function WriteArticleForm() {
     }
   }, [thumbnailFile]);
 
-  // 💡 툴바 완벽 복원 (이미지, 유튜브 동영상, 글자색, 배경색, 정렬 등 풀옵션)
   const modules = useMemo(() => ({
     toolbar: [
       [{ 'header': [1, 2, 3, 4, false] }],
@@ -141,20 +140,32 @@ function WriteArticleForm() {
       [{ 'color': [] }, { 'background': [] }],
       [{ 'align': [] }],
       [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      ['link', 'image', 'video'], // image=사진첨부, video=유튜브링크
+      ['link', 'image', 'video'], 
       ['clean']
     ],
   }), []);
 
+  // 💡 수정된 해시태그 로직: #을 기준으로 문자열을 분리하여 한 번에 여러 태그를 등록합니다.
   const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       const val = hashtagInput.trim();
+      
       if (val) {
+        // 1. #을 기준으로 자르고, 공백 제거 후 빈 값이 아닌 것만 추려냅니다.
+        // 예: "#KBeauty #Tech" -> ["KBeauty", "Tech"]
+        const newTags = val.split('#')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+
         setHashtags(prev => {
           const currentTags = prev[currentLang] || [];
-          if (!currentTags.includes(val)) {
-            return { ...prev, [currentLang]: [...currentTags, val] };
+          
+          // 2. 이미 등록된 태그와 중복되지 않는 것만 필터링합니다.
+          const tagsToAdd = newTags.filter(tag => !currentTags.includes(tag));
+          
+          if (tagsToAdd.length > 0) {
+            return { ...prev, [currentLang]: [...currentTags, ...tagsToAdd] };
           }
           return prev;
         });
@@ -365,8 +376,8 @@ function WriteArticleForm() {
                   value={hashtagInput}
                   onChange={(e) => setHashtagInput(e.target.value)}
                   onKeyDown={handleHashtagKeyDown}
-                  placeholder="해시태그 입력 후 Enter (예: KBeauty, Tech)" 
-                  className="flex-grow outline-none p-1 text-sm min-w-[200px]" 
+                  placeholder="해시태그 띄어쓰기 또는 # 기호로 구분 후 Enter (예: #KBeauty #Tech)" 
+                  className="flex-grow outline-none p-1 text-sm min-w-[300px]" 
                 />
               </div>
             </div>
@@ -380,14 +391,12 @@ function WriteArticleForm() {
               
               <div className="bg-white min-h-[400px]">
                 
-                {/* 💡 핵심 로직: 언어별로 독립된 일반 글쓰기 에디터를 렌더링하여 데이터 증발 및 HTML 덮어쓰기 원천 차단 */}
                 {LANGUAGES.map(lang => (
                   <div key={`editor-${lang.code}`} style={{ display: editorMode === 'general' && currentLang === lang.code ? 'block' : 'none' }}>
                     <ReactQuill 
                       theme="snow" 
                       defaultValue={content[lang.code] || ''} 
                       onChange={(val: string, delta: any, source: string) => {
-                        // 사용자가 직접 타이핑할 때만 저장됨. HTML을 읽고 제멋대로 지우는 현상 차단.
                         if (source === 'user') {
                           setContent(prev => ({ ...prev, [lang.code]: val }));
                         }
@@ -398,7 +407,6 @@ function WriteArticleForm() {
                   </div>
                 ))}
                 
-                {/* HTML 에디터는 있는 그대로의 원본 상태를 완벽하게 보여줌 */}
                 <div style={{ display: editorMode === 'html' ? 'block' : 'none' }}>
                   <textarea 
                     value={content[currentLang] || ''}
