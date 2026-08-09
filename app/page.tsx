@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation';
 export default function CEODailyBrief() {
   const router = useRouter();
   
-  // 💡 수정됨: 서브 기사를 6개까지 담을 수 있도록 상태 확장
   const [headlines, setHeadlines] = useState<any>({ 
     MAIN_HERO: null, 
     SUB_1: null, 
@@ -63,7 +62,6 @@ export default function CEODailyBrief() {
       }
 
       if (articles && headlineMap) {
-        // 💡 수정됨: 새로운 헤드라인 맵핑 객체 확장
         const newHeadlines: any = { 
           MAIN_HERO: null, 
           SUB_1: null, 
@@ -217,8 +215,8 @@ export default function CEODailyBrief() {
               </div>
             )}
 
-            {/* 💡 수정됨: 서브 기사 6개를 3열(md:grid-cols-3)로 배치 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mt-2 sm:mt-0">
+            {/* 💡 수정됨: 서브 기사 6개를 2열로 배치 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mt-2 sm:mt-0">
               {[
                 headlines.SUB_1, 
                 headlines.SUB_2, 
