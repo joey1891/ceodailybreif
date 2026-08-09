@@ -18,25 +18,24 @@ const LANGUAGES = [
 function ArticleContent() {
   const searchParams = useSearchParams() as any;
   const articleId = searchParams?.get('id');
+  // 💡 URL에서 직접 언어 파라미터(lang)를 읽어옵니다. 없으면 기본값 'en' 적용
+  const initialLang = searchParams?.get('lang') || 'en'; 
 
   const [article, setArticle] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [currentLang, setCurrentLang] = useState('en');
+  const [currentLang, setCurrentLang] = useState(initialLang);
   const [displayTitle, setDisplayTitle] = useState('');
   const [displayContent, setDisplayContent] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
 
-  // 💡 핵심 수정: 새로운 DB 구조(translations 컬럼)에서 데이터를 정확히 찾아오는 헬퍼 함수
   const getAvailableText = (articleData: any, fieldName: 'title' | 'content', targetLang: string) => {
     if (!articleData) return { text: '', hasExactLang: false };
 
-    // 1순위: 영어를 선택한 경우 메인 컬럼(title, content)의 원본을 즉시 반환
     if (targetLang === 'en') {
       return { text: articleData[fieldName] || '', hasExactLang: true };
     }
 
-    // 2순위: translations 컬럼에 해당 언어로 직접 작성한 데이터가 존재하는지 확인
     if (
       articleData.translations &&
       articleData.translations[targetLang] &&
@@ -46,41 +45,23 @@ function ArticleContent() {
       return { text: articleData.translations[targetLang][fieldName], hasExactLang: true };
     }
 
-    // 3순위: 직접 작성한 데이터가 없으면, 영어 메인 컬럼을 반환하고 번역기(hasExactLang: false)를 태움
     return { text: articleData[fieldName] || '', hasExactLang: false };
   };
 
-  useEffect(() => {
-    if (articleId) {
-      const fetchArticle = async () => {
-        const { data } = (await supabase.from('articles').select('*').eq('id', articleId).single()) as any;
-        if (data) {
-          setArticle(data);
-          
-          // 첫 로딩 시에는 영어(en) 기준으로 세팅
-          const titleInfo = getAvailableText(data, 'title', 'en');
-          const contentInfo = getAvailableText(data, 'content', 'en');
-          
-          setDisplayTitle(titleInfo.text);
-          setDisplayContent(contentInfo.text);
-        }
-        setIsLoading(false);
-      };
-      fetchArticle();
-    } else {
-      setIsLoading(false);
-    }
-  }, [articleId]);
-
-  const handleLanguageChange = async (langCode: string) => {
+  // 💡 언어 적용 및 번역 통합 헬퍼 함수
+  const applyLanguage = async (articleData: any, langCode: string) => {
     setCurrentLang(langCode);
-    if (!article) return;
+    
+    // 언어를 바꿀 때마다 주소창 URL을 새로고침 없이 조용히 변경합니다 (공유 시 꼬리표 유지)
+    if (typeof window !== 'undefined') {
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('lang', langCode);
+      window.history.replaceState({}, '', newUrl.toString());
+    }
 
-    // 변경된 언어에 맞춰 직접 작성된 데이터가 있는지 확인
-    const titleInfo = getAvailableText(article, 'title', langCode);
-    const contentInfo = getAvailableText(article, 'content', langCode);
+    const titleInfo = getAvailableText(articleData, 'title', langCode);
+    const contentInfo = getAvailableText(articleData, 'content', langCode);
 
-    // DB에 해당 언어가 이미 입력되어 있으면 구글 번역기를 건너뛰고 즉시 출력!
     if (titleInfo.hasExactLang && contentInfo.hasExactLang) {
       setDisplayTitle(titleInfo.text);
       setDisplayContent(contentInfo.text);
@@ -89,7 +70,6 @@ function ArticleContent() {
 
     setIsTranslating(true);
     try {
-      // 1) 제목 번역 (직접 작성한 데이터가 없을 때만 실행)
       let translatedTitle = titleInfo.text;
       if (!titleInfo.hasExactLang && titleInfo.text) {
         const titleUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${langCode}&dt=t&q=${encodeURIComponent(titleInfo.text)}`;
@@ -98,7 +78,6 @@ function ArticleContent() {
         translatedTitle = titleData[0].map((item: any) => item[0]).join('');
       }
 
-      // 2) 본문 번역 (직접 작성한 데이터가 없을 때만 실행)
       let finalHtml = contentInfo.text;
       if (!contentInfo.hasExactLang && contentInfo.text) {
         let textToTranslate = contentInfo.text;
@@ -154,17 +133,37 @@ function ArticleContent() {
     }
   };
 
+  useEffect(() => {
+    if (articleId) {
+      const fetchArticle = async () => {
+        const { data } = (await supabase.from('articles').select('*').eq('id', articleId).single()) as any;
+        if (data) {
+          setArticle(data);
+          // 💡 최초 접속 시에도 URL에 있는 언어 파라미터(initialLang)를 기준으로 처리합니다.
+          applyLanguage(data, initialLang);
+        }
+        setIsLoading(false);
+      };
+      fetchArticle();
+    } else {
+      setIsLoading(false);
+    }
+  }, [articleId]);
+
+  const handleLanguageChange = (langCode: string) => {
+    if (!article) return;
+    applyLanguage(article, langCode);
+  };
+
   const handleShare = async () => {
     if (typeof window === 'undefined') return;
 
-    let currentUrl = window.location.href;
-    if (currentUrl.startsWith('blob:')) {
-      currentUrl = `https://ceodailybrief.com/article?id=${article?.id}`;
-    }
+    // 💡 공유되는 URL에 명시적으로 선택한 언어 꼬리표(?id=...&lang=ko)를 부착합니다.
+    const shareUrl = `https://ceodailybrief.com/article?id=${article?.id}&lang=${currentLang}`;
 
     const shareData = {
       title: displayTitle || article?.title,
-      url: currentUrl,
+      url: shareUrl,
     };
 
     try {
@@ -176,7 +175,7 @@ function ArticleContent() {
     } catch (err) {
       try {
         if (typeof navigator !== 'undefined' && navigator.clipboard) {
-          await navigator.clipboard.writeText(currentUrl);
+          await navigator.clipboard.writeText(shareUrl);
           alert('기사 링크가 클립보드에 복사되었습니다.');
         }
       } catch (clipboardErr) {
