@@ -3,123 +3,393 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-export default function AdminDashboardPage() {
-  const [stats, setStats] = useState({
-    total: 0,
-    published: 0,
-    drafts: 0,
+export default function CEODailyBrief() {
+  const router = useRouter();
+  
+  const [headlines, setHeadlines] = useState<any>({ 
+    MAIN_HERO: null, 
+    SUB_1: null, 
+    SUB_2: null, 
+    SUB_3: null, 
+    SUB_4: null, 
+    SUB_5: null, 
+    SUB_6: null 
   });
-  const [recentArticles, setRecentArticles] = useState<any[]>([]);
+  
+  const [briefingArticles, setBriefingArticles] = useState<any[]>([]);
+  const [bestArticles, setBestArticles] = useState<any[]>([]);
+  
+  const [dbCategories, setDbCategories] = useState<{id: number, name: string}[]>([]);
+  
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [email, setEmail] = useState('');
+
+  const currentDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+  }).toUpperCase();
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric'
+    }).toUpperCase();
+  };
+
+  const getDisplayText = (field: any) => {
+    if (!field) return '';
+    if (typeof field === 'string') return field; 
+    return field.en || field.ko || Object.values(field)[0] || '';
+  };
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
+    const fetchNews = async () => {
+      const [
+        { data: headlineMap },
+        { data: articles },
+        { data: topArticles },
+        { data: categoryData }
+      ] = await Promise.all([
+        supabase.from('headlines').select('*'),
+        supabase.from('articles').select('*').eq('is_published', true).order('created_at', { ascending: false }),
+        supabase.from('articles').select('*').eq('is_published', true).order('view_count', { ascending: false }).limit(6),
+        supabase.from('categories').select('*').order('sort_order', { ascending: true }) 
+      ]);
 
-      // 1. 전체 기사 통계 가져오기
-      const { data: allArticles, error } = await supabase
-        .from('articles')
-        .select('id, is_published, title, category, created_at')
-        .order('created_at', { ascending: false });
+      if (categoryData) {
+        setDbCategories(categoryData);
+      }
 
-      if (allArticles && !error) {
-        const publishedCount = allArticles.filter(a => a.is_published).length;
+      if (articles && headlineMap) {
+        const newHeadlines: any = { 
+          MAIN_HERO: null, 
+          SUB_1: null, 
+          SUB_2: null, 
+          SUB_3: null, 
+          SUB_4: null, 
+          SUB_5: null, 
+          SUB_6: null 
+        };
+        const usedArticleIds = new Set();
         
-        setStats({
-          total: allArticles.length,
-          published: publishedCount,
-          drafts: allArticles.length - publishedCount,
+        headlineMap.forEach(h => {
+          const matchedArticle = articles.find(a => a.id === h.article_id);
+          if (matchedArticle) {
+            newHeadlines[h.position] = matchedArticle;
+            usedArticleIds.add(matchedArticle.id);
+          }
         });
+        setHeadlines(newHeadlines);
 
-        // 2. 최근 작성된 기사 5개만 추출
-        setRecentArticles(allArticles.slice(0, 5));
+        const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id));
+        let finalBriefingArticles = [];
+
+        if (remainingArticles.length >= 8) {
+          finalBriefingArticles = remainingArticles.slice(0, 8);
+        } else {
+          const headlineArticles = articles.filter(a => usedArticleIds.has(a.id));
+          finalBriefingArticles = [...remainingArticles];
+          const needed = 8 - finalBriefingArticles.length;
+          finalBriefingArticles = [...finalBriefingArticles, ...headlineArticles.slice(0, needed)];
+        }
+
+        setBriefingArticles(finalBriefingArticles);
+      }
+
+      if (topArticles) {
+        setBestArticles(topArticles);
       }
 
       setIsLoading(false);
     };
 
-    fetchDashboardData();
+    fetchNews();
   }, []);
 
-  if (isLoading) {
-    return <div className="text-center py-20 text-gray-500 font-bold">대시보드 데이터를 불러오는 중입니다...</div>;
-  }
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/news?search=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    try {
+      const { error } = await supabase
+        .from('subscribers')
+        .insert([{ email: email }]);
+
+      if (error) {
+        if (error.code === '23505') { 
+          alert('이미 구독 중인 이메일입니다.');
+        } else {
+          console.error('Supabase Insert Error:', error);
+          alert('구독 중 오류가 발생했습니다: ' + error.message);
+        }
+      } else {
+        alert(`${email} 구독이 완료되었습니다!`);
+        setEmail('');
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      alert('구독 처리 중 예기치 못한 문제가 발생했습니다.');
+    }
+  };
+
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading CEO Daily Brief...</div>;
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 font-sans">
-      
-      {/* 1. 환영 메시지 */}
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-        <h1 className="text-3xl font-black font-serif text-black mb-2 tracking-tight">Welcome, Editor-in-Chief!</h1>
-        <p className="text-gray-500 font-bold">CEO Daily Brief 관리자 시스템에 오신 것을 환영합니다. 오늘의 주요 뉴스를 확인하고 배치하세요.</p>
-      </div>
-
-      {/* 2. 빠른 통계 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-center items-center">
-          <span className="text-gray-500 font-bold text-sm mb-2 uppercase tracking-widest">총 작성된 기사</span>
-          <span className="text-4xl font-black text-black">{stats.total}</span>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-black flex flex-col justify-center items-center">
-          <span className="text-gray-500 font-bold text-sm mb-2 uppercase tracking-widest">발행 완료 (Public)</span>
-          <span className="text-4xl font-black text-black">{stats.published}</span>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 border-t-4 border-t-red-600 flex flex-col justify-center items-center">
-          <span className="text-red-800 font-bold text-sm mb-2 uppercase tracking-widest">임시 저장 (Drafts)</span>
-          <span className="text-4xl font-black text-red-600">{stats.drafts}</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* 3. 빠른 액션 메뉴 */}
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-xl font-bold text-black mb-6 border-b pb-4">바로가기 (Quick Actions)</h2>
-          <div className="space-y-4">
-            <Link href="/admin/write" className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-black hover:text-white transition-colors group border border-gray-200">
-              <span className="font-bold">📝 새 기사 작성하기</span>
-              <span className="text-gray-400 group-hover:text-white">→</span>
-            </Link>
-            <Link href="/admin/headlines" className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-black hover:text-white transition-colors group border border-gray-200">
-              <span className="font-bold">⭐ 1면 메인 헤드라인 편집</span>
-              <span className="text-gray-400 group-hover:text-white">→</span>
-            </Link>
-            <Link href="/admin/articles" className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-black hover:text-white transition-colors group border border-gray-200">
-              <span className="font-bold">📚 전체 기사 목록 관리</span>
-              <span className="text-gray-400 group-hover:text-white">→</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* 4. 최근 활동 (최신 기사 5개) */}
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex justify-between items-center mb-6 border-b pb-4">
-            <h2 className="text-xl font-bold text-black">최근 작업한 기사</h2>
-            <Link href="/admin/articles" className="text-sm font-bold text-gray-500 hover:text-black">전체보기</Link>
-          </div>
+    <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white">
+      <header className="max-w-7xl mx-auto px-4 pt-4 sm:pt-6 pb-2">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-widest mb-4 pb-2">
+          <span>{currentDate}</span>
           
-          {recentArticles.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">아직 작성된 기사가 없습니다.</p>
-          ) : (
-            <ul className="space-y-4">
-              {recentArticles.map(article => (
-                <li key={article.id} className="flex justify-between items-start gap-4">
-                  <div className="flex-1 overflow-hidden">
-                    <p className="font-bold text-black truncate">{article.title}</p>
-                    <p className="text-xs text-gray-500 mt-1 font-bold">
-                      <span className="text-red-700 uppercase">{article.category}</span> • {new Date(article.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <span className={`shrink-0 px-2 py-1 rounded text-[10px] font-bold ${article.is_published ? 'bg-black text-white' : 'bg-gray-200 text-gray-600'}`}>
-                    {article.is_published ? '발행됨' : '임시저장'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <form onSubmit={handleSearch} className="flex w-full sm:w-auto">
+              <input 
+                type="text" 
+                placeholder="Search news..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="px-3 py-1.5 border border-gray-300 rounded-l-md text-black focus:outline-none focus:border-black w-full sm:w-48"
+              />
+              <button type="submit" className="bg-blue-950 text-white px-3 py-1.5 rounded-r-md hover:bg-blue-800 transition-colors">
+                Search
+              </button>
+            </form>
+            <Link 
+              href="/news" 
+              className="bg-blue-950 text-white px-4 py-1.5 rounded-md shadow-sm hover:bg-blue-800 transition-colors text-center w-full sm:w-auto"
+            >
+              All News
+            </Link>
+          </div>
         </div>
-      </div>
+        
+        <div className="text-center py-6 sm:py-8 cursor-pointer border-none">
+          <Link href="/">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-black font-serif tracking-tighter uppercase leading-none break-words hover:text-gray-800 transition-colors" style={{ letterSpacing: '-0.05em' }}>
+              CEO Daily Brief
+            </h1>
+          </Link>
+          <p className="mt-4 sm:mt-6 text-xs sm:text-sm md:text-lg font-serif italic text-gray-600 px-2">
+            The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence
+          </p>
+        </div>
 
+        <nav className="border-y border-gray-300 py-3 mt-6">
+          <ul className="flex flex-col sm:flex-row justify-start sm:justify-center items-start sm:items-center gap-3 sm:gap-6 md:gap-8 text-[11px] sm:text-sm md:text-[15px] font-bold tracking-widest uppercase px-2 sm:px-0">
+            {dbCategories.map(cat => (
+              <li key={cat.id} className="w-full sm:w-auto text-left">
+                <Link href={`/news?category=${encodeURIComponent(cat.name)}`} className="hover:text-red-800 cursor-pointer transition-colors block w-full">
+                  {cat.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 pb-8 sm:pb-12">
+          
+          {/* Left Column (Main News) */}
+          <div className="lg:col-span-8 flex flex-col gap-8 sm:gap-10">
+            {headlines.MAIN_HERO ? (
+              <Link href={`/article?id=${headlines.MAIN_HERO.id}`}>
+                <article className="group cursor-pointer">
+                  {headlines.MAIN_HERO.image_url && (
+                    <div className="w-full bg-gray-100 mb-4 sm:mb-6 overflow-hidden rounded">
+                      <img 
+                        src={headlines.MAIN_HERO.image_url} 
+                        alt="Lead story" 
+                        className="w-full h-auto group-hover:scale-[1.02] transition-transform duration-700 ease-in-out grayscale-[20%]"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <span className="text-red-800 font-bold text-xs sm:text-sm tracking-widest uppercase">{headlines.MAIN_HERO.category}</span>
+                    <span className="text-gray-400 text-xs hidden sm:inline">|</span>
+                    <span className="text-gray-500 font-bold text-[10px] sm:text-xs uppercase">{formatTime(headlines.MAIN_HERO.created_at)}</span>
+                  </div>
+                  <h2 className="text-3xl sm:text-4xl md:text-[2.75rem] font-black font-serif leading-[1.15] mb-3 sm:mb-5 group-hover:text-red-800 transition-colors break-words">
+                    {getDisplayText(headlines.MAIN_HERO.title)}
+                  </h2>          
+                </article>
+              </Link>
+            ) : (
+              <div className="h-64 flex items-center justify-center bg-gray-50 border border-gray-200 text-gray-400 font-serif italic text-xl">
+                No Lead Story Published Yet.
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mt-2 sm:mt-0">
+              {[
+                headlines.SUB_1, 
+                headlines.SUB_2, 
+                headlines.SUB_3, 
+                headlines.SUB_4, 
+                headlines.SUB_5, 
+                headlines.SUB_6
+              ].map((subArticle, idx) => (
+                subArticle ? (
+                  <Link key={idx} href={`/article?id=${subArticle.id}`}>
+                    <article className="group cursor-pointer flex flex-col h-full">
+                      {subArticle.image_url && (
+                        {/* 💡 비율 고정 및 object-cover 적용된 썸네일 컨테이너 */}
+                        <div className="relative w-full aspect-[4/3] bg-gray-100 mb-3 sm:mb-4 overflow-hidden rounded">
+                          <img 
+                            src={subArticle.image_url} 
+                            alt={getDisplayText(subArticle.title)} 
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 grayscale-[20%]"
+                          />
+                        </div>
+                      )}
+                      <span className="text-red-800 font-bold text-[10px] sm:text-xs tracking-widest mb-2 uppercase">{subArticle.category}</span>
+                      <h3 className="text-xl sm:text-lg font-bold font-serif leading-snug group-hover:text-red-800 transition-colors">
+                        {getDisplayText(subArticle.title)}
+                      </h3>
+                    </article>
+                  </Link>
+                ) : null
+              ))}
+            </div>
+          </div>
+
+          {/* Right Column (Briefing, Mid Ad, Best, Bottom Sticky Ad) */}
+          <div className="lg:col-span-4 h-full relative">
+            <div className="px-2 sm:px-0 flex flex-col gap-10 h-full">
+              
+              {/* 1. EXECUTIVE BRIEFING */}
+              <div>
+                <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
+                  <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
+                    EXECUTIVE BRIEFING
+                  </h3>
+                  <Link href="/news" className="text-[10px] sm:text-xs font-bold text-gray-500 hover:text-black transition-colors uppercase">
+                    View All &rarr;
+                  </Link>
+                </div>
+                
+                {briefingArticles.length > 0 ? (
+                  <ul className="flex flex-col gap-4 sm:gap-6">
+                    {briefingArticles.map((article, index) => (
+                      <li key={`${article.id}-${index}`} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
+                        <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
+                        <Link href={`/article?id=${article.id}`}>
+                          <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
+                          <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
+                            {getDisplayText(article.title)}
+                          </p>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm font-serif italic text-gray-500">
+                    Awaiting breaking news updates.
+                  </p>
+                )}
+              </div>
+
+              {/* 2. MID ADVERTISEMENT BANNER (중앙 배너) */}
+              <div className="flex justify-center w-full">
+                <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[250px] overflow-hidden">
+                  <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider text-gray-400">Advertisement</span>
+                  <div className="text-center">
+                    <p className="text-sm font-bold tracking-widest mb-1">MID AD SPACE</p>
+                    <p className="text-xs">300 x 250</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. MOST VIEWED */}
+              <div>
+                <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
+                  <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
+                    MOST VIEWED
+                  </h3>
+                </div>
+                
+                {bestArticles.length > 0 ? (
+                  <ul className="flex flex-col gap-4 sm:gap-6">
+                    {bestArticles.map((article, index) => (
+                      <li key={article.id} className="relative pl-7 sm:pl-8 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
+                        <span className="absolute left-0 top-0 text-red-800 font-black text-xl italic font-serif">
+                          {index + 1}
+                        </span>
+                        <Link href={`/article?id=${article.id}`}>
+                          <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
+                          <p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 transition-colors text-gray-800">
+                            {getDisplayText(article.title)}
+                          </p>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm font-serif italic text-gray-500">
+                    No popular articles yet.
+                  </p>
+                )}
+              </div>
+
+              {/* 4. BOTTOM STICKY AD BANNER (스크롤 고정 하단 배너) */}
+              <div className="mt-auto sticky top-10 pb-8 flex justify-center w-full">
+                <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[600px] overflow-hidden">
+                  <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider text-gray-400">Advertisement</span>
+                  <div className="text-center">
+                    <p className="text-sm font-bold tracking-widest mb-1">BOTTOM STICKY AD</p>
+                    <p className="text-xs">300 x 600</p>
+                    <p className="text-[10px] mt-2 italic text-gray-500">Scroll down to see the effect</p>
+                  </div>
+                </div>
+              </div>
+              
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+      <footer className="bg-gray-50 text-gray-400 py-10">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col lg:flex-row justify-between items-start gap-8">
+          <div className="w-full lg:w-1/3">
+            <h3 className="text-black font-bold uppercase tracking-widest mb-3">Newsletter</h3>
+            <p className="text-sm mb-4">Get the latest intelligence delivered directly to your inbox.</p>
+            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-2">
+              <input 
+                type="email" 
+                placeholder="Your email address" 
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded text-black focus:outline-none focus:border-black"
+              />
+              <button type="submit" className="bg-blue-950 text-white px-6 py-2 rounded font-bold uppercase text-xs tracking-wider hover:bg-blue-800 transition-colors whitespace-nowrap">
+                Subscribe
+              </button>
+            </form>
+          </div>
+
+          <div className="w-full lg:w-auto flex flex-col sm:flex-row justify-between gap-8 lg:gap-16">
+            <div>
+              <h2 className="text-base font-serif font-black text-gray-800 uppercase tracking-tighter">CEO Daily Brief</h2>
+              <p className="text-xs font-serif italic mt-1">The Global Executive's Guide to South Korea.</p>
+            </div>
+            
+            <div className="shrink-0">
+              <Link href="/admin" className="inline-block bg-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-300 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors whitespace-nowrap">
+                Admin Login
+              </Link>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
