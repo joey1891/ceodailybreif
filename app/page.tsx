@@ -259,12 +259,12 @@ export default function CEODailyBrief() {
             </div>
           </div>
 
-          {/* Right Column (Briefing, Ad, Best) */}
-          <div className="lg:col-span-4">
-            {/* flex-1 및 h-full 제거, gap-10을 통해 위에서부터 차곡차곡 쌓이도록 설정 */}
-            <div className="px-2 sm:px-0 flex flex-col gap-10">
+          {/* Right Column (Briefing, Mid Ad, Best, Bottom Sticky Ad) */}
+          {/* 부모 컬럼에 h-full을 주어 sticky 요소가 스크롤을 따라다닐 수 있는 공간을 확보합니다. */}
+          <div className="lg:col-span-4 h-full relative">
+            <div className="px-2 sm:px-0 flex flex-col gap-10 h-full">
               
-              {/* EXECUTIVE BRIEFING */}
+              {/* 1. EXECUTIVE BRIEFING */}
               <div>
                 <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                   <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
@@ -296,21 +296,18 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              {/* ADVERTISEMENT BANNER (광고 배너 영역 추가) */}
+              {/* 2. MID ADVERTISEMENT BANNER (중앙 배너) */}
               <div className="flex justify-center w-full">
-                <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[250px] lg:h-[600px] overflow-hidden">
+                <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[250px] overflow-hidden">
                   <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider text-gray-400">Advertisement</span>
                   <div className="text-center">
-                    <p className="text-sm font-bold tracking-widest mb-1">AD SPACE</p>
-                    <p className="text-xs hidden lg:block">300 x 600</p>
-                    <p className="text-xs lg:hidden">300 x 250</p>
+                    <p className="text-sm font-bold tracking-widest mb-1">MID AD SPACE</p>
+                    <p className="text-xs">300 x 250</p>
                   </div>
-                  {/* 실제 광고 이미지를 넣으려면 아래 img 태그의 주석을 풀고 사용하세요. */}
-                  {/* <img src="/path-to-your-ad-image.jpg" alt="Advertisement" className="absolute inset-0 w-full h-full object-cover" /> */}
                 </div>
               </div>
 
-              {/* MOST VIEWED */}
+              {/* 3. MOST VIEWED */}
               <div>
                 <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                   <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
@@ -339,6 +336,19 @@ export default function CEODailyBrief() {
                     No popular articles yet.
                   </p>
                 )}
+              </div>
+
+              {/* 4. NEW: BOTTOM STICKY AD BANNER (스크롤 고정 하단 배너) */}
+              {/* mt-auto를 주어 남는 공간을 모두 위로 밀고, sticky top-10으로 스크롤 시 화면 상단 40px 위치에 고정시킵니다. */}
+              <div className="mt-auto sticky top-10 pb-8 flex justify-center w-full">
+                <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[600px] overflow-hidden">
+                  <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider text-gray-400">Advertisement</span>
+                  <div className="text-center">
+                    <p className="text-sm font-bold tracking-widest mb-1">BOTTOM STICKY AD</p>
+                    <p className="text-xs">300 x 600</p>
+                    <p className="text-[10px] mt-2 italic text-gray-500">Scroll down to see the effect</p>
+                  </div>
+                </div>
               </div>
               
             </div>
