@@ -148,6 +148,41 @@ function WriteArticleForm() {
     }
   }, [thumbnailFile]);
 
+  // ✅ 붙여넣기(Ctrl+V) 전역 이벤트 리스너 추가
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      // 현재 포커스된 요소가 입력창(Input, Textarea)이거나 에디터(.ql-editor) 내부인지 확인
+      const target = e.target as HTMLElement;
+      const isInputOrEditor = 
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.closest('.ql-editor');
+      
+      // 에디터나 입력창에서 붙여넣기 중이라면 썸네일 로직을 실행하지 않고 통과시킴
+      if (isInputOrEditor) return;
+
+      // 클립보드에서 이미지 찾기
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            setThumbnailFile(file);
+            e.preventDefault();
+            return;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, []);
+
   const modules = useMemo(() => ({
     toolbar: [
       [{ 'header': [1, 2, 3, 4, false] }],
@@ -189,21 +224,6 @@ function WriteArticleForm() {
       ...prev,
       [currentLang]: (prev[currentLang] || []).filter(tag => tag !== tagToRemove)
     }));
-  };
-
-  const handlePasteImage = (e: React.ClipboardEvent<HTMLDivElement>) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile();
-        if (file) {
-          setThumbnailFile(file);
-          e.preventDefault();
-          return;
-        }
-      }
-    }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -438,13 +458,12 @@ function WriteArticleForm() {
             
             <div className="space-y-4">
               <div>
-                <span className="block text-xs text-gray-500 mb-1">방법 1: 파일 직접 업로드 (드래그 앤 드롭 또는 Ctrl+V)</span>
+                <span className="block text-xs text-gray-500 mb-1">방법 1: 파일 직접 업로드 (드래그 앤 드롭 또는 화면 어디서나 Ctrl+V)</span>
                 
                 <div 
                   className={`relative w-full border-2 border-dashed rounded-lg p-6 transition-colors focus:outline-none cursor-pointer flex flex-col items-center justify-center min-h-[120px]
                     ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}
                   `}
-                  onPaste={handlePasteImage}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
