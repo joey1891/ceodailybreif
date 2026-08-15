@@ -52,7 +52,7 @@ export default function CEODailyBrief() {
         { data: articles },
         { data: topArticles },
         { data: categoryData },
-        { data: adData } // DB에서 배너 데이터 호출
+        { data: adData } 
       ] = await Promise.all([
         supabase.from('headlines').select('*'),
         supabase.from('articles').select('*').eq('is_published', true).order('created_at', { ascending: false }),
@@ -65,7 +65,6 @@ export default function CEODailyBrief() {
         setDbCategories(categoryData);
       }
 
-      // 배너 데이터를 상태에 저장
       if (adData) {
         const adMap: any = { mid: null, bottom: null };
         adData.forEach(ad => {
@@ -139,18 +138,18 @@ export default function CEODailyBrief() {
 
       if (error) {
         if (error.code === '23505') { 
-          alert('이미 구독 중인 이메일입니다.');
+          alert('This email is already subscribed.');
         } else {
           console.error('Supabase Insert Error:', error);
-          alert('구독 중 오류가 발생했습니다: ' + error.message);
+          alert('An error occurred during subscription: ' + error.message);
         }
       } else {
-        alert(`${email} 구독이 완료되었습니다!`);
+        alert(`Successfully subscribed with ${email}!`);
         setEmail('');
       }
     } catch (err) {
       console.error('Unexpected error:', err);
-      alert('구독 처리 중 예기치 못한 문제가 발생했습니다.');
+      alert('An unexpected error occurred. Please try again.');
     }
   };
 
@@ -211,7 +210,6 @@ export default function CEODailyBrief() {
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 pb-8 sm:pb-12">
           
-          {/* Left Column (Main News) */}
           <div className="lg:col-span-8 flex flex-col gap-8 sm:gap-10">
             {headlines.MAIN_HERO ? (
               <Link href={`/article?id=${headlines.MAIN_HERO.id}`}>
@@ -273,7 +271,6 @@ export default function CEODailyBrief() {
             </div>
           </div>
 
-          {/* Right Column (Briefing, Mid Ad, Best, Bottom Sticky Ad) */}
           <div className="lg:col-span-4 h-full relative">
             <div className="px-2 sm:px-0 flex flex-col gap-10 h-full">
               
@@ -308,7 +305,6 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              {/* 1. 중앙 배너 (MID AD) 렌더링 영역 */}
               <div className="flex justify-center w-full">
                 {ads.mid?.image_url ? (
                   <a href={ads.mid.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[250px] relative">
@@ -355,7 +351,6 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              {/* 2. 하단 스크롤 고정 배너 (BOTTOM AD) 렌더링 영역 */}
               <div className="mt-auto sticky top-10 pb-8 flex justify-center w-full">
                 {ads.bottom?.image_url ? (
                   <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[600px] relative">
@@ -398,12 +393,12 @@ export default function CEODailyBrief() {
               </button>
             </form>
             
-            {/* 새롭게 추가된 링크 공유 버튼 */}
             <div className="mt-3">
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText('https://ceodailybreif.vercel.app/subscribe');
-                  alert('구독 전용 링크가 복사되었습니다! SNS나 메신저로 공유해보세요.');
+                  {/* 💡 알림창 문구를 영문으로 변경 */}
+                  alert('Subscribe link copied to clipboard! Share it with your network.');
                 }}
                 className="text-xs text-blue-900 hover:text-black font-bold uppercase tracking-widest flex items-center gap-1 transition-colors"
               >
