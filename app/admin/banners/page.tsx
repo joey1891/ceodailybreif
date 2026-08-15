@@ -41,7 +41,6 @@ const getCroppedImg = (imageSrc: string, pixelCrop: any, targetWidth: number, ta
   });
 };
 
-
 export default function AdminBanners() {
   const [ads, setAds] = useState({ 
     mid: { image_url: '', link_url: '', alt_text: '' }, 
@@ -58,6 +57,9 @@ export default function AdminBanners() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  // 💡 [추가됨] 현재 전역 붙여넣기(Ctrl+V)의 대상이 되는 배너 위치
+  const [pasteTarget, setPasteTarget] = useState<'mid' | 'bottom'>('mid');
 
   useEffect(() => {
     async function fetchAds() {
@@ -88,6 +90,39 @@ export default function AdminBanners() {
     };
     reader.readAsDataURL(file);
   };
+
+  // 💡 [추가됨] 전역 붙여넣기(Ctrl+V) 이벤트 리스너 추가
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      // 1. 현재 포커스된 요소가 입력창이면 무시 (텍스트 붙여넣기 방해 안 함)
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      // 2. 이미 크롭 팝업이 열려있다면 무시 (이중 업로드 방지)
+      if (cropModal.isOpen) return;
+
+      // 3. 클립보드에서 이미지 찾기
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            // pasteTarget(현재 활성화된 배너) 쪽으로 이미지 전달
+            handleFileSelect(file, pasteTarget);
+            e.preventDefault(); // 기본 붙여넣기 동작 방지
+            return;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [pasteTarget, cropModal.isOpen]); // pasteTarget이 바뀔 때마다 업데이트
 
   const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -152,6 +187,7 @@ export default function AdminBanners() {
   const renderBannerEditor = (position: 'mid' | 'bottom', title: string, reqSize: string) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDragOver, setIsDragOver] = useState(false);
+    const isActiveTarget = pasteTarget === position;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files[0]) handleFileSelect(e.target.files[0], position);
@@ -168,20 +204,22 @@ export default function AdminBanners() {
       }
     };
 
-    const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
-      const items = e.clipboardData.items;
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) {
-          const file = items[i].getAsFile();
-          if (file) handleFileSelect(file, position);
-          break;
-        }
-      }
-    };
-
     return (
-      <div className="mb-8 border p-6 rounded-xl bg-white shadow-sm transition-all">
-        <h2 className="text-xl font-bold mb-4">{title} <span className="text-sm font-normal text-gray-500 ml-2">권장 크기: {reqSize}</span></h2>
+      <div 
+        // 💡 [추가됨] 이 배너 구역 안쪽을 클릭하거나 건드리면 Ctrl+V 타겟을 이 배너로 변경
+        onMouseDownCapture={() => setPasteTarget(position)}
+        className={`mb-8 border p-6 rounded-xl shadow-sm transition-all ${isActiveTarget ? 'border-blue-500 bg-blue-50/20' : 'bg-white border-gray-200'}`}
+      >
+        <h2 className="text-xl font-bold mb-4 flex items-center gap-2 flex-wrap">
+          {title} 
+          <span className="text-sm font-normal text-gray-500">권장 크기: {reqSize}</span>
+          {/* 💡 [추가됨] 현재 활성화된 붙여넣기 타겟임을 사용자에게 알려줌 */}
+          {isActiveTarget && (
+            <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-bold shadow-sm">
+              ✨ 현재 Ctrl+V 대상
+            </span>
+          )}
+        </h2>
         
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 space-y-6">
@@ -189,19 +227,18 @@ export default function AdminBanners() {
               <label className="block text-sm font-bold text-gray-700 mb-2">이미지 업로드</label>
               <div 
                 tabIndex={0}
-                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); setPasteTarget(position); }}
                 onDragLeave={() => setIsDragOver(false)}
                 onDrop={handleDrop}
-                onPaste={handlePaste}
-                onClick={() => fileInputRef.current?.click()}
-                className={`w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-black
-                  ${isDragOver ? 'border-black bg-gray-50' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
+                onClick={() => { fileInputRef.current?.click(); setPasteTarget(position); }}
+                className={`w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
+                  ${isDragOver ? 'border-blue-500 bg-blue-50' : isActiveTarget ? 'border-blue-300 hover:border-blue-400 bg-white' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
               >
                 <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                 <div className="text-gray-500">
                   <p className="font-bold mb-1 text-black">클릭하여 이미지 업로드</p>
                   <p className="text-sm">또는 이미지를 이곳으로 <span className="font-bold">드래그</span> 하세요</p>
-                  <p className="text-sm mt-2 p-1 bg-gray-100 rounded inline-block">이 박스를 클릭한 후 <span className="font-bold text-red-600">Ctrl + V</span> 로 캡처본 붙여넣기 가능</p>
+                  <p className="text-sm mt-2 p-1 bg-gray-100 rounded inline-block">화면 어디서나 <span className="font-bold text-blue-600">Ctrl + V</span> 로 캡처본 붙여넣기 가능</p>
                 </div>
               </div>
             </div>
@@ -213,7 +250,7 @@ export default function AdminBanners() {
                   type="text" 
                   value={ads[position].link_url}
                   onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))}
-                  className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-black"
+                  className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500"
                   placeholder="https://example.com"
                 />
               </div>
@@ -226,7 +263,7 @@ export default function AdminBanners() {
                   type="text" 
                   value={ads[position].alt_text || ''}
                   onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], alt_text: e.target.value } }))}
-                  className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-black"
+                  className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500"
                   placeholder="예: #한국경제 #CEO뉴스레터 #비즈니스트렌드"
                 />
               </div>
