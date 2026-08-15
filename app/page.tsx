@@ -240,11 +240,11 @@ export default function CEODailyBrief() {
                   <Link key={idx} href={`/article?id=${subArticle.id}`}>
                     <article className="group cursor-pointer flex flex-col h-full">
                       {subArticle.image_url && (
-                        <div className="w-full bg-gray-100 mb-3 sm:mb-4 overflow-hidden rounded">
+                        <div className="relative w-full aspect-[4/3] bg-gray-100 mb-3 sm:mb-4 overflow-hidden rounded">
                           <img 
                             src={subArticle.image_url} 
                             alt={getDisplayText(subArticle.title)} 
-                            className="w-full h-auto group-hover:scale-[1.02] transition-transform duration-700 grayscale-[20%]"
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 grayscale-[20%]"
                           />
                         </div>
                       )}
@@ -260,7 +260,6 @@ export default function CEODailyBrief() {
           </div>
 
           {/* Right Column (Briefing, Mid Ad, Best, Bottom Sticky Ad) */}
-          {/* 부모 컬럼에 h-full을 주어 sticky 요소가 스크롤을 따라다닐 수 있는 공간을 확보합니다. */}
           <div className="lg:col-span-4 h-full relative">
             <div className="px-2 sm:px-0 flex flex-col gap-10 h-full">
               
@@ -338,8 +337,7 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              {/* 4. NEW: BOTTOM STICKY AD BANNER (스크롤 고정 하단 배너) */}
-              {/* mt-auto를 주어 남는 공간을 모두 위로 밀고, sticky top-10으로 스크롤 시 화면 상단 40px 위치에 고정시킵니다. */}
+              {/* 4. BOTTOM STICKY AD BANNER (스크롤 고정 하단 배너) */}
               <div className="mt-auto sticky top-10 pb-8 flex justify-center w-full">
                 <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[600px] overflow-hidden">
                   <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider text-gray-400">Advertisement</span>
