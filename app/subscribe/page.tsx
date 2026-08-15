@@ -23,16 +23,16 @@ export default function SubscribePage() {
 
       if (error) {
         if (error.code === '23505') { 
-          alert('이미 구독 중인 이메일입니다.');
+          alert('This email is already subscribed.');
         } else {
-          alert('구독 중 오류가 발생했습니다: ' + error.message);
+          alert('An error occurred during subscription: ' + error.message);
         }
       } else {
-        alert('환영합니다! 성공적으로 구독되었습니다.');
+        alert('Welcome! You have successfully subscribed to CEO Daily Brief.');
         router.push('/'); // 구독 완료 후 메인 페이지로 이동
       }
     } catch (err) {
-      alert('예기치 못한 문제가 발생했습니다.');
+      alert('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -47,7 +47,7 @@ export default function SubscribePage() {
         <p className="text-gray-500 font-bold mb-8 text-sm md:text-base leading-relaxed">
           The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence.
           <br /><br />
-          매일 아침, 글로벌 리더를 위한 한국 시장의 핵심 인사이트를 메일함으로 직접 보내드립니다.
+          Get the core insights into the South Korean market delivered directly to your inbox every morning.
         </p>
 
         <form onSubmit={handleSubscribe} className="flex flex-col gap-4">
@@ -62,15 +62,15 @@ export default function SubscribePage() {
           <button 
             type="submit" 
             disabled={isSubmitting}
-            className="w-full bg-blue-950 text-white px-6 py-4 rounded-lg font-bold uppercase tracking-widest hover:bg-blue-800 transition-colors disabled:bg-gray-400"
+            className="w-full bg-blue-950 text-white px-6 py-4 rounded-lg font-bold uppercase tracking-widest hover:bg-blue-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? '처리 중...' : 'SUBSCRIBE NOW'}
+            {isSubmitting ? 'PROCESSING...' : 'SUBSCRIBE NOW'}
           </button>
         </form>
 
         <div className="mt-8 text-sm">
           <Link href="/" className="text-gray-400 hover:text-black transition-colors font-bold tracking-wider">
-            &larr; 웹사이트 둘러보기
+            &larr; Back to Website
           </Link>
         </div>
       </div>
