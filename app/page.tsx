@@ -20,8 +20,10 @@ export default function CEODailyBrief() {
   
   const [briefingArticles, setBriefingArticles] = useState<any[]>([]);
   const [bestArticles, setBestArticles] = useState<any[]>([]);
-  
   const [dbCategories, setDbCategories] = useState<{id: number, name: string}[]>([]);
+  
+  // 💡 메인 페이지에 배너 상태를 저장하는 공간 추가
+  const [ads, setAds] = useState<any>({ mid: null, bottom: null });
   
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,16 +51,28 @@ export default function CEODailyBrief() {
         { data: headlineMap },
         { data: articles },
         { data: topArticles },
-        { data: categoryData }
+        { data: categoryData },
+        { data: adData } // 💡 DB에서 배너 데이터 호출
       ] = await Promise.all([
         supabase.from('headlines').select('*'),
         supabase.from('articles').select('*').eq('is_published', true).order('created_at', { ascending: false }),
         supabase.from('articles').select('*').eq('is_published', true).order('view_count', { ascending: false }).limit(6),
-        supabase.from('categories').select('*').order('sort_order', { ascending: true }) 
+        supabase.from('categories').select('*').order('sort_order', { ascending: true }),
+        supabase.from('ads').select('*') 
       ]);
 
       if (categoryData) {
         setDbCategories(categoryData);
+      }
+
+      // 💡 배너 데이터를 상태에 저장
+      if (adData) {
+        const adMap: any = { mid: null, bottom: null };
+        adData.forEach(ad => {
+          if (ad.position === 'mid') adMap.mid = ad;
+          if (ad.position === 'bottom') adMap.bottom = ad;
+        });
+        setAds(adMap);
       }
 
       if (articles && headlineMap) {
@@ -263,7 +277,6 @@ export default function CEODailyBrief() {
           <div className="lg:col-span-4 h-full relative">
             <div className="px-2 sm:px-0 flex flex-col gap-10 h-full">
               
-              {/* 1. EXECUTIVE BRIEFING */}
               <div>
                 <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                   <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
@@ -295,18 +308,23 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              {/* 2. MID ADVERTISEMENT BANNER (중앙 배너) */}
+              {/* 💡 1. 중앙 배너 (MID AD) 렌더링 영역 */}
               <div className="flex justify-center w-full">
-                <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[250px] overflow-hidden">
-                  <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider text-gray-400">Advertisement</span>
-                  <div className="text-center">
-                    <p className="text-sm font-bold tracking-widest mb-1">MID AD SPACE</p>
-                    <p className="text-xs">300 x 250</p>
+                {ads.mid?.image_url ? (
+                  <a href={ads.mid.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[250px] relative">
+                    <img src={ads.mid.image_url} alt="Advertisement" className="absolute inset-0 w-full h-full object-cover border border-gray-200" />
+                  </a>
+                ) : (
+                  <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[250px] overflow-hidden">
+                    <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider text-gray-400">Advertisement</span>
+                    <div className="text-center">
+                      <p className="text-sm font-bold tracking-widest mb-1">MID AD SPACE</p>
+                      <p className="text-xs">300 x 250</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* 3. MOST VIEWED */}
               <div>
                 <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
                   <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">
@@ -337,16 +355,22 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              {/* 4. BOTTOM STICKY AD BANNER (스크롤 고정 하단 배너) */}
+              {/* 💡 2. 하단 스크롤 고정 배너 (BOTTOM AD) 렌더링 영역 */}
               <div className="mt-auto sticky top-10 pb-8 flex justify-center w-full">
-                <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[600px] overflow-hidden">
-                  <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider text-gray-400">Advertisement</span>
-                  <div className="text-center">
-                    <p className="text-sm font-bold tracking-widest mb-1">BOTTOM STICKY AD</p>
-                    <p className="text-xs">300 x 600</p>
-                    <p className="text-[10px] mt-2 italic text-gray-500">Scroll down to see the effect</p>
+                {ads.bottom?.image_url ? (
+                  <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[600px] relative">
+                    <img src={ads.bottom.image_url} alt="Advertisement" className="absolute inset-0 w-full h-full object-cover border border-gray-200" />
+                  </a>
+                ) : (
+                  <div className="relative flex items-center justify-center bg-gray-100 border border-gray-200 text-gray-400 font-sans w-[300px] h-[600px] overflow-hidden">
+                    <span className="absolute top-2 right-2 text-[9px] uppercase tracking-wider text-gray-400">Advertisement</span>
+                    <div className="text-center">
+                      <p className="text-sm font-bold tracking-widest mb-1">BOTTOM STICKY AD</p>
+                      <p className="text-xs">300 x 600</p>
+                      <p className="text-[10px] mt-2 italic text-gray-500">Scroll down to see the effect</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
               
             </div>
