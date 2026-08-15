@@ -81,6 +81,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/write" className="hover:text-red-400 transition-colors">새 기사 작성</Link>
           <Link href="/admin/articles" className="hover:text-red-400 transition-colors">기사 관리</Link>
           <Link href="/admin/headlines" className="hover:text-red-400 transition-colors">헤드라인 편집</Link>
+          {/* 💡 새로 추가된 배너 관리 메뉴 */}
+          <Link href="/admin/banners" className="hover:text-red-400 transition-colors">배너 관리</Link>
         </nav>
 
         <div className="mt-auto pt-8 border-t border-gray-800">
