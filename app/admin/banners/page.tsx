@@ -2,51 +2,45 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/utils/supabase';
+import Cropper from 'react-easy-crop';
 
-const resizeAndCropImage = (file: File, targetWidth: number, targetHeight: number): Promise<File> => {
+// --- 수동 크롭 처리 함수 (선택한 영역을 Canvas로 잘라내어 File로 반환) ---
+const getCroppedImg = (imageSrc: string, pixelCrop: any, targetWidth: number, targetHeight: number): Promise<File> => {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return reject('Canvas error');
+    const image = new Image();
+    image.src = imageSrc;
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = targetWidth; // 지정된 배너 사이즈 (300x250 또는 300x600)
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject('Canvas error');
 
-        const imgRatio = img.width / img.height;
-        const targetRatio = targetWidth / targetHeight;
-        let drawWidth = targetWidth;
-        let drawHeight = targetHeight;
-        let offsetX = 0;
-        let offsetY = 0;
+      ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        targetWidth,
+        targetHeight
+      );
 
-        if (imgRatio > targetRatio) {
-          drawWidth = img.height * targetRatio;
-          offsetX = (img.width - drawWidth) / 2;
-          ctx.drawImage(img, offsetX, 0, drawWidth, img.height, 0, 0, targetWidth, targetHeight);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const newFile = new File([blob], `cropped-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          resolve(newFile);
         } else {
-          drawHeight = img.width / targetRatio;
-          offsetY = (img.height - drawHeight) / 2;
-          ctx.drawImage(img, 0, offsetY, img.width, drawHeight, 0, 0, targetWidth, targetHeight);
+          reject('Blob conversion failed');
         }
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const newFile = new File([blob], file.name, { type: file.type });
-            resolve(newFile);
-          } else {
-            reject('Blob conversion failed');
-          }
-        }, file.type, 0.9);
-      };
-      img.src = e.target?.result as string;
+      }, 'image/jpeg', 0.95); // 고화질 JPEG로 압축
     };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    image.onerror = reject;
   });
 };
+
 
 export default function AdminBanners() {
   const [ads, setAds] = useState({ 
@@ -54,6 +48,16 @@ export default function AdminBanners() {
     bottom: { image_url: '', link_url: '', alt_text: '' } 
   });
   const [isUploading, setIsUploading] = useState<{ [key: string]: boolean }>({ mid: false, bottom: false });
+
+  // 💡 크롭 모달 상태 관리
+  const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; position: 'mid' | 'bottom' | null }>({
+    isOpen: false,
+    imageSrc: '',
+    position: null
+  });
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   useEffect(() => {
     async function fetchAds() {
@@ -70,22 +74,47 @@ export default function AdminBanners() {
     fetchAds();
   }, []);
 
-  const processAndUpload = async (file: File, position: 'mid' | 'bottom') => {
+  // 💡 파일이 선택되면 바로 업로드하지 않고 크롭 팝업(모달)을 띄움
+  const handleFileSelect = (file: File, position: 'mid' | 'bottom') => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCropModal({
+        isOpen: true,
+        imageSrc: e.target?.result as string,
+        position: position
+      });
+      setCrop({ x: 0, y: 0 }); // 초기화
+      setZoom(1);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  // 💡 크롭 팝업에서 '영역 자르기 및 업로드' 버튼 클릭 시 실행
+  const handleCropSave = async () => {
+    const position = cropModal.position;
+    if (!position || !croppedAreaPixels) return;
+
+    const targetWidth = 300;
+    const targetHeight = position === 'mid' ? 250 : 600;
+
     setIsUploading(prev => ({ ...prev, [position]: true }));
+    setCropModal({ isOpen: false, imageSrc: '', position: null }); // 팝업 닫기
+
     try {
-      const targetWidth = 300;
-      const targetHeight = position === 'mid' ? 250 : 600;
+      // 1. 유저가 선택한 영역대로 이미지 자르기
+      const croppedFile = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels, targetWidth, targetHeight);
 
-      const resizedFile = await resizeAndCropImage(file, targetWidth, targetHeight);
-
-      const fileExt = resizedFile.name.split('.').pop() || 'png';
-      const fileName = `${position}-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage.from('banners').upload(fileName, resizedFile);
+      // 2. Storage에 업로드
+      const fileName = `${position}-${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from('banners').upload(fileName, croppedFile);
       if (uploadError) throw uploadError;
 
+      // 3. DB 업데이트
       const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName);
-
       const { error: dbError } = await supabase.from('ads').upsert({
         id: position === 'mid' ? 1 : 2,
         position: position,
@@ -97,7 +126,7 @@ export default function AdminBanners() {
       if (dbError) throw dbError;
 
       setAds(prev => ({ ...prev, [position]: { ...prev[position], image_url: publicUrl } }));
-      alert(`${position === 'mid' ? '중앙' : '하단'} 배너 업로드 성공!`);
+      alert(`${position === 'mid' ? '중앙' : '하단'} 배너가 지정하신 영역대로 업로드되었습니다!`);
 
     } catch (error: any) {
       console.error('Upload Error:', error);
@@ -125,7 +154,8 @@ export default function AdminBanners() {
     const [isDragOver, setIsDragOver] = useState(false);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) processAndUpload(e.target.files[0], position);
+      if (e.target.files && e.target.files[0]) handleFileSelect(e.target.files[0], position);
+      if (fileInputRef.current) fileInputRef.current.value = ''; // 같은 파일 재선택 가능하게 초기화
     };
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -133,7 +163,7 @@ export default function AdminBanners() {
       setIsDragOver(false);
       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
         const file = e.dataTransfer.files[0];
-        if (file.type.startsWith('image/')) processAndUpload(file, position);
+        if (file.type.startsWith('image/')) handleFileSelect(file, position);
         else alert('이미지 파일만 업로드 가능합니다.');
       }
     };
@@ -143,7 +173,7 @@ export default function AdminBanners() {
       for (let i = 0; i < items.length; i++) {
         if (items[i].type.indexOf('image') !== -1) {
           const file = items[i].getAsFile();
-          if (file) processAndUpload(file, position);
+          if (file) handleFileSelect(file, position);
           break;
         }
       }
@@ -151,12 +181,10 @@ export default function AdminBanners() {
 
     return (
       <div className="mb-8 border p-6 rounded-xl bg-white shadow-sm transition-all">
-        <h2 className="text-xl font-bold mb-4">{title} <span className="text-sm font-normal text-gray-500 ml-2">권장 크기: {reqSize} (자동 리사이즈 됨)</span></h2>
+        <h2 className="text-xl font-bold mb-4">{title} <span className="text-sm font-normal text-gray-500 ml-2">권장 크기: {reqSize}</span></h2>
         
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 space-y-6">
-            
-            {/* 드래그 & 드롭 & Paste 컨테이너 */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">이미지 업로드</label>
               <div 
@@ -234,12 +262,51 @@ export default function AdminBanners() {
   };
 
   return (
-    <div className="p-2 md:p-8 max-w-5xl mx-auto font-sans text-black">
+    <div className="p-2 md:p-8 max-w-5xl mx-auto font-sans text-black relative">
       <h1 className="text-3xl font-black font-serif mb-2">광고 배너 관리</h1>
       <p className="text-gray-500 font-bold mb-8">사이트 우측에 노출되는 배너 이미지와 검색엔진(SEO) 최적화를 위한 해시태그를 설정합니다.</p>
       
       {renderBannerEditor('mid', '중앙 배너 (EXECUTIVE BRIEFING 하단)', '300 x 250')}
       {renderBannerEditor('bottom', '하단 배너 (MOST VIEWED 하단 스크롤 고정)', '300 x 600')}
+
+      {/* 💡 이미지 크롭 모달 팝업 */}
+      {cropModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-2xl flex flex-col gap-4 shadow-2xl">
+            <div>
+              <h3 className="text-xl font-bold">마우스로 드래그하여 영역 맞추기</h3>
+              <p className="text-sm text-gray-500 mt-1">배너에 노출될 부분을 지정해주세요. (마우스 휠로 확대/축소 가능)</p>
+            </div>
+            
+            <div className="relative w-full h-[50vh] min-h-[300px] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+              <Cropper
+                image={cropModal.imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={cropModal.position === 'mid' ? 300 / 250 : 300 / 600} // 배너 비율에 맞춰 크롭 박스 강제 고정
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-3 mt-4">
+              <button 
+                onClick={() => setCropModal({ isOpen: false, imageSrc: '', position: null })} 
+                className="px-6 py-2.5 border border-gray-300 rounded font-bold hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button 
+                onClick={handleCropSave} 
+                className="px-6 py-2.5 bg-blue-700 text-white rounded font-bold hover:bg-blue-800 transition-colors"
+              >
+                적용 및 업로드
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
