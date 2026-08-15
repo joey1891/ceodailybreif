@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Script from 'next/script'; // GTM 삽입을 위해 추가된 패키지
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   // 인증 상태 관리 (기본은 미인증 상태)
@@ -34,68 +35,113 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   };
 
+  // --- GTM NoScript 공통 컴포넌트 ---
+  const gtmNoscript = (
+    <noscript>
+      <iframe 
+        src="https://www.googletagmanager.com/ns.html?id=GTM-PTCS5PBM"
+        height="0" 
+        width="0" 
+        style={{ display: 'none', visibility: 'hidden' }}
+      />
+    </noscript>
+  );
+
   // --- 화면 렌더링 시작 ---
 
   // 확인 중일 때
-  if (isChecking) return <div className="min-h-screen bg-gray-100 flex items-center justify-center">확인 중...</div>;
+  if (isChecking) return (
+    <>
+      {gtmNoscript}
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">확인 중...</div>
+    </>
+  );
 
   // 인증되지 않았을 때 (로그인 화면 렌더링)
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#fcfcfc] flex items-center justify-center font-sans">
-        <form onSubmit={handleLogin} className="bg-white p-10 rounded-xl shadow-lg border border-gray-200 text-center max-w-sm w-full mx-4">
-          <h2 className="text-2xl font-black font-serif mb-2 text-black uppercase tracking-tight">CEO Daily Brief</h2>
-          <p className="text-gray-500 text-sm font-bold tracking-widest mb-8 uppercase">Admin Area</p>
-          
-          <input 
-            type="password" 
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            placeholder="Enter password" 
-            className="w-full border-b-2 border-gray-300 p-3 mb-8 text-center text-xl font-bold focus:outline-none focus:border-red-800 text-black transition-colors"
-            autoFocus
-          />
-          <button type="submit" className="w-full bg-black text-white font-bold py-3 rounded hover:bg-red-800 transition-colors uppercase tracking-widest text-sm">
-            Login
-          </button>
-          
-          <div className="mt-6 text-sm">
-            <Link href="/" className="text-gray-400 hover:text-black">Return to Main</Link>
-          </div>
-        </form>
-      </div>
+      <>
+        {/* Google Tag Manager Script */}
+        <Script id="google-tag-manager" strategy="afterInteractive">
+          {`
+            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+            })(window,document,'script','dataLayer','GTM-PTCS5PBM');
+          `}
+        </Script>
+        {gtmNoscript}
+        
+        <div className="min-h-screen bg-[#fcfcfc] flex items-center justify-center font-sans">
+          <form onSubmit={handleLogin} className="bg-white p-10 rounded-xl shadow-lg border border-gray-200 text-center max-w-sm w-full mx-4">
+            <h2 className="text-2xl font-black font-serif mb-2 text-black uppercase tracking-tight">CEO Daily Brief</h2>
+            <p className="text-gray-500 text-sm font-bold tracking-widest mb-8 uppercase">Admin Area</p>
+            
+            <input 
+              type="password" 
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              placeholder="Enter password" 
+              className="w-full border-b-2 border-gray-300 p-3 mb-8 text-center text-xl font-bold focus:outline-none focus:border-red-800 text-black transition-colors"
+              autoFocus
+            />
+            <button type="submit" className="w-full bg-black text-white font-bold py-3 rounded hover:bg-red-800 transition-colors uppercase tracking-widest text-sm">
+              Login
+            </button>
+            
+            <div className="mt-6 text-sm">
+              <Link href="/" className="text-gray-400 hover:text-black">Return to Main</Link>
+            </div>
+          </form>
+        </div>
+      </>
     );
   }
 
   // 인증 성공 시 (관리자 레이아웃 렌더링)
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-black font-sans">
-      {/* 1. 왼쪽 사이드바 메뉴 */}
-      <aside className="w-full md:w-64 bg-black text-white p-6 flex flex-col min-h-screen">
-        <div className="mb-10">
-          <h2 className="text-2xl font-serif font-black uppercase tracking-tighter mb-1">CEO Daily Brief</h2>
-          <p className="text-red-500 text-xs font-bold tracking-widest">CMS ADMIN</p>
-        </div>
-        
-        <nav className="flex flex-col gap-6 font-bold flex-1">
-          <Link href="/admin/write" className="hover:text-red-400 transition-colors">새 기사 작성</Link>
-          <Link href="/admin/articles" className="hover:text-red-400 transition-colors">기사 관리</Link>
-          <Link href="/admin/headlines" className="hover:text-red-400 transition-colors">헤드라인 편집</Link>
-          {/* 💡 새로 추가된 배너 관리 메뉴 */}
-          <Link href="/admin/banners" className="hover:text-red-400 transition-colors">배너 관리</Link>
-        </nav>
+    <>
+      {/* Google Tag Manager Script (인증 후 화면용) */}
+      <Script id="google-tag-manager" strategy="afterInteractive">
+        {`
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','GTM-PTCS5PBM');
+        `}
+      </Script>
+      {gtmNoscript}
 
-        <div className="mt-auto pt-8 border-t border-gray-800">
-          <Link href="/" className="text-gray-400 hover:text-white text-sm transition-colors">
-            ← 메인 홈으로
-          </Link>
-        </div>
-      </aside>
+      <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row text-black font-sans">
+        {/* 1. 왼쪽 사이드바 메뉴 */}
+        <aside className="w-full md:w-64 bg-black text-white p-6 flex flex-col min-h-screen">
+          <div className="mb-10">
+            <h2 className="text-2xl font-serif font-black uppercase tracking-tighter mb-1">CEO Daily Brief</h2>
+            <p className="text-red-500 text-xs font-bold tracking-widest">CMS ADMIN</p>
+          </div>
+          
+          <nav className="flex flex-col gap-6 font-bold flex-1">
+            <Link href="/admin/write" className="hover:text-red-400 transition-colors">새 기사 작성</Link>
+            <Link href="/admin/articles" className="hover:text-red-400 transition-colors">기사 관리</Link>
+            <Link href="/admin/headlines" className="hover:text-red-400 transition-colors">헤드라인 편집</Link>
+            {/* 💡 새로 추가된 배너 관리 메뉴 */}
+            <Link href="/admin/banners" className="hover:text-red-400 transition-colors">배너 관리</Link>
+          </nav>
 
-      {/* 2. 메인 콘텐츠 영역 (이 자리에 기사 작성/관리 내용이 들어옴) */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+          <div className="mt-auto pt-8 border-t border-gray-800">
+            <Link href="/" className="text-gray-400 hover:text-white text-sm transition-colors">
+              ← 메인 홈으로
+            </Link>
+          </div>
+        </aside>
+
+        {/* 2. 메인 콘텐츠 영역 (이 자리에 기사 작성/관리 내용이 들어옴) */}
+        <main className="flex-1 p-6 md:p-12 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+    </>
   );
 }
