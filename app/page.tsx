@@ -22,7 +22,7 @@ export default function CEODailyBrief() {
   const [bestArticles, setBestArticles] = useState<any[]>([]);
   const [dbCategories, setDbCategories] = useState<{id: number, name: string}[]>([]);
   
-  // 💡 메인 페이지에 배너 상태를 저장하는 공간 추가
+  // 메인 페이지에 배너 상태를 저장하는 공간
   const [ads, setAds] = useState<any>({ mid: null, bottom: null });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -52,7 +52,7 @@ export default function CEODailyBrief() {
         { data: articles },
         { data: topArticles },
         { data: categoryData },
-        { data: adData } // 💡 DB에서 배너 데이터 호출
+        { data: adData } // DB에서 배너 데이터 호출
       ] = await Promise.all([
         supabase.from('headlines').select('*'),
         supabase.from('articles').select('*').eq('is_published', true).order('created_at', { ascending: false }),
@@ -65,7 +65,7 @@ export default function CEODailyBrief() {
         setDbCategories(categoryData);
       }
 
-      // 💡 배너 데이터를 상태에 저장
+      // 배너 데이터를 상태에 저장
       if (adData) {
         const adMap: any = { mid: null, bottom: null };
         adData.forEach(ad => {
@@ -308,7 +308,7 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              {/* 💡 1. 중앙 배너 (MID AD) 렌더링 영역 */}
+              {/* 1. 중앙 배너 (MID AD) 렌더링 영역 */}
               <div className="flex justify-center w-full">
                 {ads.mid?.image_url ? (
                   <a href={ads.mid.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[250px] relative">
@@ -355,7 +355,7 @@ export default function CEODailyBrief() {
                 )}
               </div>
 
-              {/* 💡 2. 하단 스크롤 고정 배너 (BOTTOM AD) 렌더링 영역 */}
+              {/* 2. 하단 스크롤 고정 배너 (BOTTOM AD) 렌더링 영역 */}
               <div className="mt-auto sticky top-10 pb-8 flex justify-center w-full">
                 {ads.bottom?.image_url ? (
                   <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[600px] relative">
@@ -397,6 +397,19 @@ export default function CEODailyBrief() {
                 Subscribe
               </button>
             </form>
+            
+            {/* 새롭게 추가된 링크 공유 버튼 */}
+            <div className="mt-3">
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText('https://ceodailybreif.vercel.app/subscribe');
+                  alert('구독 전용 링크가 복사되었습니다! SNS나 메신저로 공유해보세요.');
+                }}
+                className="text-xs text-blue-900 hover:text-black font-bold uppercase tracking-widest flex items-center gap-1 transition-colors"
+              >
+                🔗 Share Subscribe Link
+              </button>
+            </div>
           </div>
 
           <div className="w-full lg:w-auto flex flex-col sm:flex-row justify-between gap-8 lg:gap-16">
