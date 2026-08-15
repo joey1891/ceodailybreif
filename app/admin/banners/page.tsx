@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/utils/supabase';
 
-// --- 이미지 리사이즈 및 크롭 헬퍼 함수 ---
-// 브라우저의 Canvas를 이용하여 지정된 크기(300x250 등)에 맞게 꽉 차도록 자릅니다.
 const resizeAndCropImage = (file: File, targetWidth: number, targetHeight: number): Promise<File> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -17,7 +15,6 @@ const resizeAndCropImage = (file: File, targetWidth: number, targetHeight: numbe
         const ctx = canvas.getContext('2d');
         if (!ctx) return reject('Canvas error');
 
-        // 비율을 계산하여 여백 없이 꽉 차게(object-cover) 잘라냅니다.
         const imgRatio = img.width / img.height;
         const targetRatio = targetWidth / targetHeight;
         let drawWidth = targetWidth;
@@ -37,7 +34,6 @@ const resizeAndCropImage = (file: File, targetWidth: number, targetHeight: numbe
 
         canvas.toBlob((blob) => {
           if (blob) {
-            // 변환된 Blob을 다시 File 객체로 만듭니다.
             const newFile = new File([blob], file.name, { type: file.type });
             resolve(newFile);
           } else {
@@ -52,20 +48,18 @@ const resizeAndCropImage = (file: File, targetWidth: number, targetHeight: numbe
   });
 };
 
-
 export default function AdminBanners() {
   const [ads, setAds] = useState({ 
-    mid: { image_url: '', link_url: '' }, 
-    bottom: { image_url: '', link_url: '' } 
+    mid: { image_url: '', link_url: '', alt_text: '' }, 
+    bottom: { image_url: '', link_url: '', alt_text: '' } 
   });
   const [isUploading, setIsUploading] = useState<{ [key: string]: boolean }>({ mid: false, bottom: false });
 
-  // DB에서 기존 배너 데이터 불러오기
   useEffect(() => {
     async function fetchAds() {
       const { data } = await supabase.from('ads').select('*');
       if (data) {
-        const adData = { mid: { image_url: '', link_url: '' }, bottom: { image_url: '', link_url: '' } };
+        const adData = { mid: { image_url: '', link_url: '', alt_text: '' }, bottom: { image_url: '', link_url: '', alt_text: '' } };
         data.forEach(ad => {
           if (ad.position === 'mid') adData.mid = ad;
           if (ad.position === 'bottom') adData.bottom = ad;
@@ -76,68 +70,64 @@ export default function AdminBanners() {
     fetchAds();
   }, []);
 
-  // 실제 업로드 로직 (리사이즈 -> 스토리지 업로드 -> DB 업데이트)
   const processAndUpload = async (file: File, position: 'mid' | 'bottom') => {
     setIsUploading(prev => ({ ...prev, [position]: true }));
     try {
-      // 1. 크기 지정 (중앙: 300x250, 하단: 300x600)
       const targetWidth = 300;
       const targetHeight = position === 'mid' ? 250 : 600;
 
-      // 2. 이미지 리사이즈 및 크롭 실행
       const resizedFile = await resizeAndCropImage(file, targetWidth, targetHeight);
 
-      // 3. 고유 파일명 생성 및 Supabase Storage 업로드
       const fileExt = resizedFile.name.split('.').pop() || 'png';
       const fileName = `${position}-${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage.from('banners').upload(fileName, resizedFile);
       if (uploadError) throw uploadError;
 
-      // 4. Public URL 가져오기
       const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName);
 
-      // 5. DB 업데이트
       const { error: dbError } = await supabase.from('ads').upsert({
         id: position === 'mid' ? 1 : 2,
         position: position,
         image_url: publicUrl,
-        link_url: ads[position].link_url
+        link_url: ads[position].link_url,
+        alt_text: ads[position].alt_text
       });
+      
       if (dbError) throw dbError;
 
-      // 화면 상태 업데이트
       setAds(prev => ({ ...prev, [position]: { ...prev[position], image_url: publicUrl } }));
-      alert(`${position === 'mid' ? '중앙' : '하단'} 배너가 성공적으로 업로드되었습니다.\n(사이즈 ${targetWidth}x${targetHeight} 자동 맞춤 완료)`);
+      alert(`${position === 'mid' ? '중앙' : '하단'} 배너 업로드 성공!`);
 
     } catch (error: any) {
-      console.error(error);
-      alert('업로드 실패: ' + (error.message || error));
+      console.error('Upload Error:', error);
+      alert('업로드 실패: ' + (error.message || '오류 발생'));
     } finally {
       setIsUploading(prev => ({ ...prev, [position]: false }));
     }
   };
 
-  // 링크 저장 함수
-  const saveLink = async (position: 'mid' | 'bottom') => {
-    const { error } = await supabase.from('ads').update({ link_url: ads[position].link_url }).eq('position', position);
-    if (error) alert('링크 저장 실패');
-    else alert('링크가 저장되었습니다.');
+  const saveData = async (position: 'mid' | 'bottom') => {
+    const { error } = await supabase
+      .from('ads')
+      .update({ 
+        link_url: ads[position].link_url,
+        alt_text: ads[position].alt_text 
+      })
+      .eq('position', position);
+      
+    if (error) alert('저장 실패');
+    else alert('링크와 SEO 키워드가 성공적으로 저장되었습니다.');
   };
 
-  // --- UI 컴포넌트 렌더링 ---
   const renderBannerEditor = (position: 'mid' | 'bottom', title: string, reqSize: string) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDragOver, setIsDragOver] = useState(false);
 
-    // 1. 파일 선택 버튼 핸들러
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-        processAndUpload(e.target.files[0], position);
-      }
+      if (e.target.files && e.target.files[0]) processAndUpload(e.target.files[0], position);
     };
 
-    // 2. 드래그 앤 드롭 핸들러
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       setIsDragOver(false);
@@ -148,7 +138,6 @@ export default function AdminBanners() {
       }
     };
 
-    // 3. Ctrl+V (붙여넣기) 핸들러
     const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
       const items = e.clipboardData.items;
       for (let i = 0; i < items.length; i++) {
@@ -165,10 +154,9 @@ export default function AdminBanners() {
         <h2 className="text-xl font-bold mb-4">{title} <span className="text-sm font-normal text-gray-500 ml-2">권장 크기: {reqSize} (자동 리사이즈 됨)</span></h2>
         
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* 입력 폼 영역 */}
           <div className="flex-1 space-y-6">
             
-            {/* 드래그 앤 드롭 / 붙여넣기 박스 */}
+            {/* 드래그 & 드롭 & Paste 컨테이너 */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">이미지 업로드</label>
               <div 
@@ -178,16 +166,10 @@ export default function AdminBanners() {
                 onDrop={handleDrop}
                 onPaste={handlePaste}
                 onClick={() => fileInputRef.current?.click()}
-                className={`w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent
+                className={`w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-black
                   ${isDragOver ? 'border-black bg-gray-50' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
               >
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                />
+                <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                 <div className="text-gray-500">
                   <p className="font-bold mb-1 text-black">클릭하여 이미지 업로드</p>
                   <p className="text-sm">또는 이미지를 이곳으로 <span className="font-bold">드래그</span> 하세요</p>
@@ -196,28 +178,40 @@ export default function AdminBanners() {
               </div>
             </div>
             
-            {/* 링크 입력 영역 */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">연결할 링크 (URL)</label>
-              <div className="flex gap-2">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">연결할 링크 (URL)</label>
                 <input 
                   type="text" 
                   value={ads[position].link_url}
                   onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))}
-                  className="flex-1 border border-gray-300 p-2 rounded focus:outline-none focus:border-black"
+                  className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-black"
                   placeholder="https://example.com"
                 />
-                <button 
-                  onClick={() => saveLink(position)}
-                  className="bg-black text-white px-4 py-2 rounded text-sm font-bold hover:bg-gray-800 transition-colors whitespace-nowrap"
-                >
-                  링크 저장
-                </button>
               </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  SEO 키워드 / 해시태그 <span className="text-xs font-normal text-gray-500 ml-1">(검색 엔진 노출용 대체 텍스트)</span>
+                </label>
+                <input 
+                  type="text" 
+                  value={ads[position].alt_text || ''}
+                  onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], alt_text: e.target.value } }))}
+                  className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-black"
+                  placeholder="예: #한국경제 #CEO뉴스레터 #비즈니스트렌드"
+                />
+              </div>
+              
+              <button 
+                onClick={() => saveData(position)}
+                className="w-full bg-black text-white px-4 py-3 rounded text-sm font-bold hover:bg-gray-800 transition-colors whitespace-nowrap"
+              >
+                정보 및 키워드 저장
+              </button>
             </div>
           </div>
 
-          {/* 미리보기 영역 */}
           <div className="shrink-0 flex flex-col items-center justify-center">
             <label className="block text-sm font-bold text-gray-700 mb-2 self-start">업로드된 배너 미리보기</label>
             <div 
@@ -242,7 +236,7 @@ export default function AdminBanners() {
   return (
     <div className="p-2 md:p-8 max-w-5xl mx-auto font-sans text-black">
       <h1 className="text-3xl font-black font-serif mb-2">광고 배너 관리</h1>
-      <p className="text-gray-500 font-bold mb-8">사이트 우측에 노출되는 배너 이미지를 설정합니다. 이미지는 최적의 크기로 자동 리사이징됩니다.</p>
+      <p className="text-gray-500 font-bold mb-8">사이트 우측에 노출되는 배너 이미지와 검색엔진(SEO) 최적화를 위한 해시태그를 설정합니다.</p>
       
       {renderBannerEditor('mid', '중앙 배너 (EXECUTIVE BRIEFING 하단)', '300 x 250')}
       {renderBannerEditor('bottom', '하단 배너 (MOST VIEWED 하단 스크롤 고정)', '300 x 600')}
