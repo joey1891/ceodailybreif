@@ -12,12 +12,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// 파비콘과 메인 썸네일(OG 이미지)이 모두 적용된 메타데이터 설정
 export const metadata: Metadata = {
   title: "CEO Daily Brief",
   description: "The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence",
   icons: {
-    // 웹 브라우저 탭에 표시되는 파비콘 적용
     icon: "https://inpfhtkdghdidkbgtrzj.supabase.co/storage/v1/object/public/article_images/fabicon.jpg",
   },
   openGraph: {
@@ -28,7 +26,6 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        // 메인 홈페이지 공유 시 나타나는 썸네일 적용
         url: "https://inpfhtkdghdidkbgtrzj.supabase.co/storage/v1/object/public/article_images/thumb.jpg", 
         width: 1200,
         height: 630,
@@ -45,10 +42,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      /* 💡 h-full을 제거하고, 최상위 html 태그에 직접 bg-[#fcfcfc]를 적용하여 끊김 방지 */
+      className={`${geistSans.variable} ${geistMono.variable} bg-[#fcfcfc] antialiased`}
     >
-      {/* 💡 bg-[#fcfcfc] 와 text-[#111111] 속성을 추가하여 브라우저 강제 다크모드 간섭 차단 */}
-      <body className="min-h-full flex flex-col bg-[#fcfcfc] text-[#111111]">
+      <body className="min-h-screen flex flex-col text-[#111111]">
         {children}
       </body>
     </html>
