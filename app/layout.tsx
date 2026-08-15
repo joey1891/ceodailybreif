@@ -47,7 +47,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/* 💡 bg-[#fcfcfc] 와 text-[#111111] 속성을 추가하여 브라우저 강제 다크모드 간섭 차단 */}
+      <body className="min-h-full flex flex-col bg-[#fcfcfc] text-[#111111]">
+        {children}
+      </body>
     </html>
   );
 }
