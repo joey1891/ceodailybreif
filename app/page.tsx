@@ -18,6 +18,13 @@ export default function CEODailyBrief() {
   const [searchQuery, setSearchQuery] = useState('');
   const [email, setEmail] = useState('');
 
+  // 💡 영상 팝업(모달) 상태 관리
+  const [videoModal, setVideoModal] = useState<{ isOpen: boolean; youtubeId: string; linkUrl?: string }>({ 
+    isOpen: false, 
+    youtubeId: '',
+    linkUrl: ''
+  });
+
   const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).toUpperCase();
   const formatTime = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
   const getDisplayText = (field: any) => typeof field === 'string' ? field : field?.en || field?.ko || Object.values(field || {})[0] || '';
@@ -158,8 +165,12 @@ export default function CEODailyBrief() {
                     allow="autoplay; encrypted-media" 
                     allowFullScreen={!ads.article_bottom.autoplay}
                   ></iframe>
-                  {ads.article_bottom.autoplay && ads.article_bottom.link_url && (
-                    <a href={ads.article_bottom.link_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                  {/* 💡 클릭 시 모달 열기 */}
+                  {ads.article_bottom.autoplay && (
+                    <div 
+                      onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.article_bottom.youtube_id, linkUrl: ads.article_bottom.link_url })}
+                      className="absolute inset-0 z-10 block cursor-pointer"
+                    ></div>
                   )}
                 </div>
               ) : ads.article_bottom.image_url ? (
@@ -224,8 +235,12 @@ export default function CEODailyBrief() {
                         allow="autoplay; encrypted-media" 
                         allowFullScreen={!ads.mid.autoplay}
                       ></iframe>
-                      {ads.mid.autoplay && ads.mid.link_url && (
-                        <a href={ads.mid.link_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                      {/* 💡 클릭 시 모달 열기 */}
+                      {ads.mid.autoplay && (
+                        <div 
+                          onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.mid.youtube_id, linkUrl: ads.mid.link_url })}
+                          className="absolute inset-0 z-10 block cursor-pointer"
+                        ></div>
                       )}
                     </div>
                   ) : ads.mid.image_url ? (
@@ -255,7 +270,7 @@ export default function CEODailyBrief() {
                 ) : <p className="text-sm font-serif italic text-gray-500">No popular articles yet.</p>}
               </div>
 
-              {/* 📸 [기존 배너 2] 우측 하단 배너 (좌측 영역에 맞게 꽉 차게 확장) */}
+              {/* 📸 [기존 배너 2] 우측 하단 배너 */}
               {ads.bottom?.is_visible && (
                 <div className="flex-1 w-full relative pb-8 min-h-[600px]">
                   {ads.bottom.is_youtube && ads.bottom.youtube_id ? (
@@ -266,8 +281,12 @@ export default function CEODailyBrief() {
                         allow="autoplay; encrypted-media" 
                         allowFullScreen={!ads.bottom.autoplay}
                       ></iframe>
-                      {ads.bottom.autoplay && ads.bottom.link_url && (
-                        <a href={ads.bottom.link_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                      {/* 💡 클릭 시 모달 열기 */}
+                      {ads.bottom.autoplay && (
+                        <div 
+                          onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.bottom.youtube_id, linkUrl: ads.bottom.link_url })}
+                          className="absolute inset-0 z-10 block cursor-pointer"
+                        ></div>
                       )}
                     </div>
                   ) : ads.bottom.image_url ? (
@@ -295,8 +314,12 @@ export default function CEODailyBrief() {
                 allow="autoplay; encrypted-media" 
                 allowFullScreen={!ads.footer_top.autoplay}
               ></iframe>
-              {ads.footer_top.autoplay && ads.footer_top.link_url && (
-                <a href={ads.footer_top.link_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+              {/* 💡 클릭 시 모달 열기 */}
+              {ads.footer_top.autoplay && (
+                <div 
+                  onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.footer_top.youtube_id, linkUrl: ads.footer_top.link_url })}
+                  className="absolute inset-0 z-10 block cursor-pointer"
+                ></div>
               )}
             </div>
           ) : ads.footer_top.image_url ? (
@@ -326,6 +349,46 @@ export default function CEODailyBrief() {
           </div>
         </div>
       </footer>
+
+      {/* 🎬 [새로 추가된 기능] 영상 클릭 시 뜨는 유튜브 팝업 모달 */}
+      {videoModal.isOpen && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" 
+          onClick={() => setVideoModal({ isOpen: false, youtubeId: '' })}
+        >
+          <div className="relative w-full max-w-5xl flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setVideoModal({ isOpen: false, youtubeId: '' })}
+              className="absolute -top-12 right-0 text-white font-bold text-xl hover:text-gray-300 transition-colors"
+            >
+              닫기 ✕
+            </button>
+            <div className="w-full aspect-video bg-black rounded-lg shadow-2xl overflow-hidden border border-gray-700">
+              {/* 모달에서는 controls=1 을 부여하여 소리, 속도, 화질 등을 모두 제어할 수 있게 합니다. */}
+              <iframe 
+                className="w-full h-full"
+                src={`https://www.youtube.com/embed/${videoModal.youtubeId}?autoplay=1&controls=1&rel=0`} 
+                allow="autoplay; encrypted-media; fullscreen" 
+                allowFullScreen
+              ></iframe>
+            </div>
+            {/* 링크 URL이 있는 경우 배너 광고주/기사로 이동하는 버튼 제공 */}
+            {videoModal.linkUrl && (
+              <div className="text-center mt-2">
+                <a 
+                  href={videoModal.linkUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="inline-block bg-blue-600 text-white px-8 py-3 rounded-full font-bold hover:bg-blue-700 transition-colors shadow-lg"
+                >
+                  자세히 보기 (배너 링크로 이동)
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
