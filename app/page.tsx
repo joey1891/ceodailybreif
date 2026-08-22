@@ -13,9 +13,7 @@ export default function CEODailyBrief() {
   const [bestArticles, setBestArticles] = useState<any[]>([]);
   const [dbCategories, setDbCategories] = useState<{id: number, name: string}[]>([]);
   
-  // 💡 총 4개의 배너 상태를 담을 공간
   const [ads, setAds] = useState<any>({ mid: null, bottom: null, article_bottom: null, footer_top: null });
-  
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [email, setEmail] = useState('');
@@ -23,6 +21,13 @@ export default function CEODailyBrief() {
   const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).toUpperCase();
   const formatTime = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
   const getDisplayText = (field: any) => typeof field === 'string' ? field : field?.en || field?.ko || Object.values(field || {})[0] || '';
+
+  // 💡 [추가] 유튜브 URL을 깔끔하게 만들어주는 헬퍼 함수
+  const getYoutubeSrc = (id: string, autoplay: boolean) => {
+    if (!autoplay) return `https://www.youtube.com/embed/${id}?rel=0`;
+    // 자동재생 시 컨트롤러 숨김(controls=0), 키보드 조작 금지(disablekb=1), 반복재생(loop=1) 적용
+    return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${id}&iv_load_policy=3&disablekb=1`;
+  };
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -38,7 +43,6 @@ export default function CEODailyBrief() {
 
       if (categoryData) setDbCategories(categoryData);
 
-      // 💡 4개의 배너 데이터를 매핑
       if (adData) {
         const adMap: any = { mid: null, bottom: null, article_bottom: null, footer_top: null };
         adData.forEach(ad => {
@@ -132,11 +136,20 @@ export default function CEODailyBrief() {
               </Link>
             ) : <div className="h-64 flex items-center justify-center bg-gray-50 border text-gray-400 font-serif italic text-xl">No Lead Story Published Yet.</div>}
 
-            {/* 🎥 [추가된 배너 3] 메인 기사 바로 아래 (article_bottom) */}
+            {/* 🎥 [배너 3] 메인 기사 하단 */}
             {ads.article_bottom && (
               ads.article_bottom.is_youtube && ads.article_bottom.youtube_id ? (
-                <div className="w-full aspect-video bg-black rounded overflow-hidden shadow-md my-2 sm:my-0">
-                  <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ads.article_bottom.youtube_id}?rel=0${ads.article_bottom.autoplay ? '&autoplay=1&mute=1' : ''}`} title={ads.article_bottom.alt_text} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen></iframe>
+                <div className="relative w-full aspect-video bg-black rounded overflow-hidden shadow-md my-2 sm:my-0">
+                  <iframe 
+                    className={`absolute inset-0 w-full h-full ${ads.article_bottom.autoplay ? 'pointer-events-none scale-[1.2]' : ''}`} 
+                    src={getYoutubeSrc(ads.article_bottom.youtube_id, ads.article_bottom.autoplay)} 
+                    title={ads.article_bottom.alt_text} 
+                    allow="autoplay; encrypted-media" 
+                    allowFullScreen={!ads.article_bottom.autoplay}
+                  ></iframe>
+                  {ads.article_bottom.autoplay && (
+                    <a href={ads.article_bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                  )}
                 </div>
               ) : ads.article_bottom.image_url ? (
                 <div className="w-full my-2 sm:my-0">
@@ -144,7 +157,12 @@ export default function CEODailyBrief() {
                     <img src={ads.article_bottom.image_url} alt={ads.article_bottom.alt_text} className="w-full h-auto object-cover rounded shadow-md border border-gray-200" />
                   </a>
                 </div>
-              ) : null
+              ) : (
+                <div className="w-full aspect-video bg-gray-100 border border-gray-200 flex flex-col items-center justify-center text-gray-400 my-2 sm:my-0 rounded">
+                  <span className="font-bold tracking-widest mb-1 text-sm">ARTICLE BOTTOM AD</span>
+                  <span className="text-xs">비어있음 (유튜브 영상 권장)</span>
+                </div>
+              )
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mt-4 sm:mt-2">
@@ -192,15 +210,26 @@ export default function CEODailyBrief() {
               {/* 📸 [기존 배너 1] 우측 사이드바 중앙 (mid) */}
               <div className="flex justify-center w-full">
                 {ads.mid?.is_youtube && ads.mid?.youtube_id ? (
-                  <div className="w-[300px] h-[250px] bg-black relative">
-                    <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ads.mid.youtube_id}?rel=0${ads.mid.autoplay ? '&autoplay=1&mute=1' : ''}`} allow="autoplay; encrypted-media" allowFullScreen></iframe>
+                  <div className="w-[300px] h-[250px] bg-black relative overflow-hidden rounded">
+                    <iframe 
+                      className={`absolute inset-0 w-full h-full ${ads.mid.autoplay ? 'pointer-events-none scale-[1.2]' : ''}`} 
+                      src={getYoutubeSrc(ads.mid.youtube_id, ads.mid.autoplay)} 
+                      allow="autoplay; encrypted-media" 
+                      allowFullScreen={!ads.mid.autoplay}
+                    ></iframe>
+                    {ads.mid.autoplay && (
+                      <a href={ads.mid.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                    )}
                   </div>
                 ) : ads.mid?.image_url ? (
                   <a href={ads.mid.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[250px] relative">
-                    <img src={ads.mid.image_url} alt={ads.mid.alt_text} className="absolute inset-0 w-full h-full object-cover border border-gray-200" />
+                    <img src={ads.mid.image_url} alt={ads.mid.alt_text} className="absolute inset-0 w-full h-full object-cover border border-gray-200 rounded" />
                   </a>
                 ) : (
-                  <div className="flex items-center justify-center bg-gray-100 border text-gray-400 w-[300px] h-[250px]">MID AD SPACE (300x250)</div>
+                  <div className="flex flex-col items-center justify-center bg-gray-100 border text-gray-400 w-[300px] h-[250px] rounded">
+                    <span className="font-bold text-sm tracking-widest">MID AD SPACE</span>
+                    <span className="text-xs mt-1">300 x 250</span>
+                  </div>
                 )}
               </div>
 
@@ -226,15 +255,26 @@ export default function CEODailyBrief() {
               {/* 📸 [기존 배너 2] 우측 사이드바 하단 스크롤 고정 (bottom) */}
               <div className="mt-auto sticky top-10 pb-8 flex justify-center w-full">
                 {ads.bottom?.is_youtube && ads.bottom?.youtube_id ? (
-                  <div className="w-[300px] h-[600px] bg-black relative">
-                    <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ads.bottom.youtube_id}?rel=0${ads.bottom.autoplay ? '&autoplay=1&mute=1' : ''}`} allow="autoplay; encrypted-media" allowFullScreen></iframe>
+                  <div className="w-[300px] h-[600px] bg-black relative overflow-hidden rounded">
+                    <iframe 
+                      className={`absolute inset-0 w-full h-full ${ads.bottom.autoplay ? 'pointer-events-none scale-[1.2]' : ''}`} 
+                      src={getYoutubeSrc(ads.bottom.youtube_id, ads.bottom.autoplay)} 
+                      allow="autoplay; encrypted-media" 
+                      allowFullScreen={!ads.bottom.autoplay}
+                    ></iframe>
+                    {ads.bottom.autoplay && (
+                      <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                    )}
                   </div>
                 ) : ads.bottom?.image_url ? (
                   <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[600px] relative">
-                    <img src={ads.bottom.image_url} alt={ads.bottom.alt_text} className="absolute inset-0 w-full h-full object-cover border border-gray-200" />
+                    <img src={ads.bottom.image_url} alt={ads.bottom.alt_text} className="absolute inset-0 w-full h-full object-cover border border-gray-200 rounded" />
                   </a>
                 ) : (
-                  <div className="flex items-center justify-center bg-gray-100 border text-gray-400 w-[300px] h-[600px]">BOTTOM AD (300x600)</div>
+                  <div className="flex flex-col items-center justify-center bg-gray-100 border text-gray-400 w-[300px] h-[600px] rounded">
+                    <span className="font-bold text-sm tracking-widest">BOTTOM AD</span>
+                    <span className="text-xs mt-1">300 x 600</span>
+                  </div>
                 )}
               </div>
               
@@ -244,19 +284,38 @@ export default function CEODailyBrief() {
       </main>
 
       {/* 🎥 [추가된 배너 4] 푸터 바로 위 전체 너비 (footer_top) */}
-      {ads.footer_top && (
-        <div className="max-w-7xl mx-auto px-4 mb-16">
-          {ads.footer_top.is_youtube && ads.footer_top.youtube_id ? (
-            <div className="w-full aspect-video sm:aspect-[21/9] md:aspect-[24/9] bg-black rounded overflow-hidden shadow-lg border border-gray-200">
-              <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${ads.footer_top.youtube_id}?rel=0${ads.footer_top.autoplay ? '&autoplay=1&mute=1' : ''}`} title={ads.footer_top.alt_text} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen></iframe>
+      <div className="max-w-7xl mx-auto px-4 mb-16">
+        {ads.footer_top ? (
+          ads.footer_top.is_youtube && ads.footer_top.youtube_id ? (
+            <div className="relative w-full aspect-video sm:aspect-[21/9] md:aspect-[24/9] bg-black rounded overflow-hidden shadow-lg border border-gray-200">
+              <iframe 
+                className={`absolute inset-0 w-full h-full ${ads.footer_top.autoplay ? 'pointer-events-none scale-[1.2]' : ''}`} 
+                src={getYoutubeSrc(ads.footer_top.youtube_id, ads.footer_top.autoplay)} 
+                title={ads.footer_top.alt_text} 
+                allow="autoplay; encrypted-media" 
+                allowFullScreen={!ads.footer_top.autoplay}
+              ></iframe>
+              {ads.footer_top.autoplay && (
+                <a href={ads.footer_top.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+              )}
             </div>
           ) : ads.footer_top.image_url ? (
             <a href={ads.footer_top.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-full">
               <img src={ads.footer_top.image_url} alt={ads.footer_top.alt_text} className="w-full h-auto object-cover rounded shadow-lg border border-gray-200" />
             </a>
-          ) : null}
-        </div>
-      )}
+          ) : (
+            <div className="w-full aspect-video sm:aspect-[21/9] md:aspect-[24/9] bg-gray-100 border border-gray-200 flex flex-col items-center justify-center text-gray-400 rounded shadow-sm">
+              <span className="font-bold tracking-widest mb-1 text-sm">FOOTER TOP WIDE AD</span>
+              <span className="text-xs">비어있음 (유튜브 영상 권장)</span>
+            </div>
+          )
+        ) : (
+          <div className="w-full aspect-video sm:aspect-[21/9] md:aspect-[24/9] bg-gray-100 border border-gray-200 flex flex-col items-center justify-center text-gray-400 rounded shadow-sm">
+            <span className="font-bold tracking-widest mb-1 text-sm">FOOTER TOP WIDE AD</span>
+            <span className="text-xs">비어있음 (유튜브 영상 권장)</span>
+          </div>
+        )}
+      </div>
 
       <footer className="bg-gray-50 text-gray-400 py-10 border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 flex flex-col lg:flex-row justify-between items-start gap-8">
