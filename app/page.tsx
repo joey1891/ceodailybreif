@@ -153,7 +153,7 @@ export default function CEODailyBrief() {
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading CEO Daily Brief...</div>;
 
-  // 총 카테고리 배열을 절반(또는 5개/4개)으로 나누어 양끝 정렬(justify-between) 두 줄로 표시
+  // 총 카테고리 배열을 절반으로 나누기
   const midPoint = Math.ceil(dbCategories.length / 2);
   const topRowCategories = dbCategories.slice(0, midPoint);
   const bottomRowCategories = dbCategories.slice(midPoint);
@@ -197,11 +197,11 @@ export default function CEODailyBrief() {
           </p>
         </div>
 
-        {/* 양끝 정렬된 두 줄 네비게이션 */}
+        {/* 중앙 정렬 및 고정 간격을 적용한 두 줄 네비게이션 */}
         <nav className="border-y border-gray-300 py-3 sm:py-4 mt-6">
-          <div className="max-w-6xl mx-auto flex flex-col gap-y-3 px-2 sm:px-0">
+          <div className="max-w-7xl mx-auto flex flex-col gap-y-3 sm:gap-y-4 px-2 sm:px-0">
             {topRowCategories.length > 0 && (
-              <ul className="flex justify-between items-center w-full text-[11px] sm:text-[13px] md:text-[15px] font-bold tracking-widest uppercase">
+              <ul className="flex flex-wrap justify-center items-center gap-x-6 sm:gap-x-12 md:gap-x-16 w-full text-[11px] sm:text-[13px] md:text-[15px] font-bold tracking-widest uppercase">
                 {topRowCategories.map(cat => (
                   <li key={cat.id} className="whitespace-nowrap">
                     <Link href={`/news?category=${encodeURIComponent(cat.name)}`} className="hover:text-red-800 cursor-pointer transition-colors block">
@@ -213,7 +213,7 @@ export default function CEODailyBrief() {
             )}
             
             {bottomRowCategories.length > 0 && (
-              <ul className="flex justify-between items-center w-full text-[11px] sm:text-[13px] md:text-[15px] font-bold tracking-widest uppercase mt-1">
+              <ul className="flex flex-wrap justify-center items-center gap-x-6 sm:gap-x-12 md:gap-x-16 w-full text-[11px] sm:text-[13px] md:text-[15px] font-bold tracking-widest uppercase mt-1 sm:mt-0">
                 {bottomRowCategories.map(cat => (
                   <li key={cat.id} className="whitespace-nowrap">
                     <Link href={`/news?category=${encodeURIComponent(cat.name)}`} className="hover:text-red-800 cursor-pointer transition-colors block">
