@@ -43,7 +43,10 @@ export default function AdminBanners() {
   const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; position: BannerPosition | null }>({ isOpen: false, imageSrc: '', position: null });
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  
+  // 💡 TypeScript 에러 해결: <any> 타입 추가
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  
   const [pasteTarget, setPasteTarget] = useState<BannerPosition>('mid');
 
   useEffect(() => {
@@ -92,8 +95,8 @@ export default function AdminBanners() {
 
     let targetWidth = 300, targetHeight = 250;
     if (position === 'bottom') { targetWidth = 300; targetHeight = 600; }
-    if (position === 'article_bottom') { targetWidth = 800; targetHeight = 450; } // 16:9 비율
-    if (position === 'footer_top') { targetWidth = 1200; targetHeight = 400; } // 와이드 비율
+    if (position === 'article_bottom') { targetWidth = 800; targetHeight = 450; } 
+    if (position === 'footer_top') { targetWidth = 1200; targetHeight = 400; } 
 
     setIsUploading(prev => ({ ...prev, [position]: true }));
     setCropModal({ isOpen: false, imageSrc: '', position: null }); 
