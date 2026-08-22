@@ -62,7 +62,6 @@ function ArticleContent() {
   const [subscribeEmail, setSubscribeEmail] = useState('');
   const [isSubscribing, setIsSubscribing] = useState(false);
 
-  // 💡 댓글 기능 State 확장
   const [comments, setComments] = useState<any[]>([]);
   const [commentName, setCommentName] = useState('');
   const [commentEmail, setCommentEmail] = useState('');
@@ -139,7 +138,6 @@ function ArticleContent() {
       fetchArticle();
       fetchComments();
       
-      // 관리자 여부 확인 및 로컬 스토리지에서 이메일 복원
       supabase.auth.getSession().then(({ data }) => setIsAdmin(!!data.session));
       const savedEmail = localStorage.getItem('comment_email');
       if (savedEmail) setCommentEmail(savedEmail);
@@ -167,7 +165,6 @@ function ArticleContent() {
     } catch (err) { alert(t.error); } finally { setIsSubscribing(false); }
   };
 
-  // 💡 구독자 전용 댓글 작성
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentName.trim() || !commentText.trim() || !commentEmail.trim()) return;
@@ -175,7 +172,6 @@ function ArticleContent() {
     setIsSubmittingComment(true);
     const t = uiDict[currentLang] || uiDict['en'];
 
-    // 구독자 확인
     const { data: subscriber } = await supabase.from('subscribers').select('email').eq('email', commentEmail.trim()).single();
     if (!subscriber) {
       alert(t.notSubscribed);
@@ -190,12 +186,11 @@ function ArticleContent() {
     setIsSubmittingComment(false);
     
     if (!error) {
-      localStorage.setItem('comment_email', commentEmail.trim()); // 본인 확인용 로컬스토리지 저장
+      localStorage.setItem('comment_email', commentEmail.trim()); 
       setCommentText(''); fetchComments();
     } else { alert('Error posting comment: ' + error.message); }
   };
 
-  // 💡 댓글 삭제 핸들러
   const handleDeleteComment = async (commentId: string) => {
     if (!confirm('정말로 이 댓글을 삭제하시겠습니까?')) return;
     const { error } = await supabase.from('comments').delete().eq('id', commentId);
@@ -252,7 +247,9 @@ function ArticleContent() {
             <div className="flex flex-col text-center sm:text-left w-full mt-2 sm:mt-0">
               <span className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-1">Written By</span>
               <h3 className="text-lg font-bold text-gray-900 mb-2 font-serif">{article.author_name || 'Editor-in-Chief'}</h3>
-              {article.author_bio && <p className="text-sm text-gray-600 leading-relaxed">{article.author_bio}</p>}
+              
+              {/* 💡 whitespace-pre-wrap 속성 적용으로 줄바꿈 유지 */}
+              {article.author_bio && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{article.author_bio}</p>}
             </div>
           </div>
         )}
@@ -268,7 +265,6 @@ function ArticleContent() {
           </form>
         </div>
 
-        {/* 💬 관리자가 허용한 기사에서만 댓글 섹션 렌더링 */}
         {article.allow_comments !== false && (
           <div className="mt-16 border-t border-gray-200 pt-8">
             <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
@@ -308,7 +304,6 @@ function ArticleContent() {
                         {comment.content}
                       </p>
                       
-                      {/* 💡 삭제 권한이 있는 경우 표시 */}
                       {canDelete && (
                         <button 
                           onClick={() => handleDeleteComment(comment.id)}
