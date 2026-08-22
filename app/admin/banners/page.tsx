@@ -4,14 +4,14 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/utils/supabase';
 import Cropper from 'react-easy-crop';
 
-// --- 수동 크롭 처리 함수 (선택한 영역을 Canvas로 잘라내어 File로 반환) ---
+// --- 수동 크롭 처리 함수 ---
 const getCroppedImg = (imageSrc: string, pixelCrop: any, targetWidth: number, targetHeight: number): Promise<File> => {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.src = imageSrc;
     image.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = targetWidth; // 지정된 배너 사이즈 (300x250 또는 300x600)
+      canvas.width = targetWidth; 
       canvas.height = targetHeight;
       const ctx = canvas.getContext('2d');
       if (!ctx) return reject('Canvas error');
@@ -35,20 +35,26 @@ const getCroppedImg = (imageSrc: string, pixelCrop: any, targetWidth: number, ta
         } else {
           reject('Blob conversion failed');
         }
-      }, 'image/jpeg', 0.95); // 고화질 JPEG로 압축
+      }, 'image/jpeg', 0.95);
     };
     image.onerror = reject;
   });
 };
 
+// 유튜브 링크에서 ID 추출하는 헬퍼 함수
+const extractYoutubeId = (url: string) => {
+  if (!url) return '';
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+  return match ? match[1] : url;
+};
+
 export default function AdminBanners() {
-  const [ads, setAds] = useState({ 
-    mid: { image_url: '', link_url: '', alt_text: '' }, 
-    bottom: { image_url: '', link_url: '', alt_text: '' } 
+  const [ads, setAds] = useState<any>({ 
+    mid: { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false }, 
+    bottom: { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false } 
   });
   const [isUploading, setIsUploading] = useState<{ [key: string]: boolean }>({ mid: false, bottom: false });
 
-  // 💡 크롭 모달 상태 관리
   const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; position: 'mid' | 'bottom' | null }>({
     isOpen: false,
     imageSrc: '',
@@ -58,17 +64,19 @@ export default function AdminBanners() {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
-  // 💡 [추가됨] 현재 전역 붙여넣기(Ctrl+V)의 대상이 되는 배너 위치
   const [pasteTarget, setPasteTarget] = useState<'mid' | 'bottom'>('mid');
 
   useEffect(() => {
     async function fetchAds() {
       const { data } = await supabase.from('ads').select('*');
       if (data) {
-        const adData = { mid: { image_url: '', link_url: '', alt_text: '' }, bottom: { image_url: '', link_url: '', alt_text: '' } };
+        const adData: any = { 
+          mid: { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false }, 
+          bottom: { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false } 
+        };
         data.forEach(ad => {
-          if (ad.position === 'mid') adData.mid = ad;
-          if (ad.position === 'bottom') adData.bottom = ad;
+          if (ad.position === 'mid') adData.mid = { ...adData.mid, ...ad };
+          if (ad.position === 'bottom') adData.bottom = { ...adData.bottom, ...ad };
         });
         setAds(adData);
       }
@@ -76,7 +84,6 @@ export default function AdminBanners() {
     fetchAds();
   }, []);
 
-  // 💡 파일이 선택되면 바로 업로드하지 않고 크롭 팝업(모달)을 띄움
   const handleFileSelect = (file: File, position: 'mid' | 'bottom') => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -85,23 +92,18 @@ export default function AdminBanners() {
         imageSrc: e.target?.result as string,
         position: position
       });
-      setCrop({ x: 0, y: 0 }); // 초기화
+      setCrop({ x: 0, y: 0 }); 
       setZoom(1);
     };
     reader.readAsDataURL(file);
   };
 
-  // 💡 [추가됨] 전역 붙여넣기(Ctrl+V) 이벤트 리스너 추가
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
-      // 1. 현재 포커스된 요소가 입력창이면 무시 (텍스트 붙여넣기 방해 안 함)
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
-
-      // 2. 이미 크롭 팝업이 열려있다면 무시 (이중 업로드 방지)
       if (cropModal.isOpen) return;
 
-      // 3. 클립보드에서 이미지 찾기
       const items = e.clipboardData?.items;
       if (!items) return;
 
@@ -109,9 +111,8 @@ export default function AdminBanners() {
         if (items[i].type.indexOf('image') !== -1) {
           const file = items[i].getAsFile();
           if (file) {
-            // pasteTarget(현재 활성화된 배너) 쪽으로 이미지 전달
             handleFileSelect(file, pasteTarget);
-            e.preventDefault(); // 기본 붙여넣기 동작 방지
+            e.preventDefault(); 
             return;
           }
         }
@@ -119,36 +120,29 @@ export default function AdminBanners() {
     };
 
     window.addEventListener('paste', handleGlobalPaste);
-    return () => {
-      window.removeEventListener('paste', handleGlobalPaste);
-    };
-  }, [pasteTarget, cropModal.isOpen]); // pasteTarget이 바뀔 때마다 업데이트
+    return () => window.removeEventListener('paste', handleGlobalPaste);
+  }, [pasteTarget, cropModal.isOpen]);
 
   const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
   };
 
-  // 💡 크롭 팝업에서 '영역 자르기 및 업로드' 버튼 클릭 시 실행
   const handleCropSave = async () => {
     const position = cropModal.position;
     if (!position || !croppedAreaPixels) return;
 
-    const targetWidth = 300;
-    const targetHeight = position === 'mid' ? 250 : 600;
+    const targetWidth = position === 'mid' ? 300 : 1200; // bottom을 와이드로 가정 시 넓게 크롭
+    const targetHeight = position === 'mid' ? 250 : 350;
 
     setIsUploading(prev => ({ ...prev, [position]: true }));
-    setCropModal({ isOpen: false, imageSrc: '', position: null }); // 팝업 닫기
+    setCropModal({ isOpen: false, imageSrc: '', position: null }); 
 
     try {
-      // 1. 유저가 선택한 영역대로 이미지 자르기
       const croppedFile = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels, targetWidth, targetHeight);
-
-      // 2. Storage에 업로드
       const fileName = `${position}-${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage.from('banners').upload(fileName, croppedFile);
       if (uploadError) throw uploadError;
 
-      // 3. DB 업데이트
       const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName);
       const { error: dbError } = await supabase.from('ads').upsert({
         id: position === 'mid' ? 1 : 2,
@@ -160,8 +154,8 @@ export default function AdminBanners() {
       
       if (dbError) throw dbError;
 
-      setAds(prev => ({ ...prev, [position]: { ...prev[position], image_url: publicUrl } }));
-      alert(`${position === 'mid' ? '중앙' : '하단'} 배너가 지정하신 영역대로 업로드되었습니다!`);
+      setAds((prev: any) => ({ ...prev, [position]: { ...prev[position], image_url: publicUrl } }));
+      alert(`배너 이미지가 성공적으로 업로드되었습니다!`);
 
     } catch (error: any) {
       console.error('Upload Error:', error);
@@ -176,22 +170,25 @@ export default function AdminBanners() {
       .from('ads')
       .update({ 
         link_url: ads[position].link_url,
-        alt_text: ads[position].alt_text 
+        alt_text: ads[position].alt_text,
+        is_youtube: ads[position].is_youtube,
+        youtube_id: ads[position].youtube_id,
+        autoplay: ads[position].autoplay
       })
       .eq('position', position);
       
-    if (error) alert('저장 실패');
-    else alert('링크와 SEO 키워드가 성공적으로 저장되었습니다.');
+    if (error) alert('저장 실패: ' + error.message);
+    else alert('설정이 성공적으로 저장되었습니다.');
   };
 
-  const renderBannerEditor = (position: 'mid' | 'bottom', title: string, reqSize: string) => {
+  const renderBannerEditor = (position: 'mid' | 'bottom', title: string) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDragOver, setIsDragOver] = useState(false);
     const isActiveTarget = pasteTarget === position;
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files[0]) handleFileSelect(e.target.files[0], position);
-      if (fileInputRef.current) fileInputRef.current.value = ''; // 같은 파일 재선택 가능하게 초기화
+      if (fileInputRef.current) fileInputRef.current.value = ''; 
     };
 
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -206,25 +203,73 @@ export default function AdminBanners() {
 
     return (
       <div 
-        // 💡 [추가됨] 이 배너 구역 안쪽을 클릭하거나 건드리면 Ctrl+V 타겟을 이 배너로 변경
         onMouseDownCapture={() => setPasteTarget(position)}
         className={`mb-8 border p-6 rounded-xl shadow-sm transition-all ${isActiveTarget ? 'border-blue-500 bg-blue-50/20' : 'bg-white border-gray-200'}`}
       >
         <h2 className="text-xl font-bold mb-4 flex items-center gap-2 flex-wrap">
           {title} 
-          <span className="text-sm font-normal text-gray-500">권장 크기: {reqSize}</span>
-          {/* 💡 [추가됨] 현재 활성화된 붙여넣기 타겟임을 사용자에게 알려줌 */}
           {isActiveTarget && (
             <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-bold shadow-sm">
               ✨ 현재 Ctrl+V 대상
             </span>
           )}
         </h2>
+
+        {/* 배너 타입 선택 */}
+        <div className="flex gap-4 mb-6 pb-4 border-b border-gray-200">
+          <label className="flex items-center gap-2 cursor-pointer font-bold text-sm">
+            <input 
+              type="radio" 
+              checked={!ads[position].is_youtube} 
+              onChange={() => setAds((prev: any) => ({ ...prev, [position]: { ...prev[position], is_youtube: false } }))} 
+              className="w-4 h-4 text-blue-600"
+            />
+            일반 이미지 배너
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-red-600">
+            <input 
+              type="radio" 
+              checked={ads[position].is_youtube} 
+              onChange={() => setAds((prev: any) => ({ ...prev, [position]: { ...prev[position], is_youtube: true } }))} 
+              className="w-4 h-4 text-red-600"
+            />
+            유튜브 영상 배너
+          </label>
+        </div>
         
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 space-y-6">
+            
+            {/* 유튜브 설정 섹션 */}
+            {ads[position].is_youtube && (
+              <div className="bg-red-50 p-4 rounded border border-red-200 space-y-4 mb-4">
+                <div>
+                  <label className="block text-sm font-bold text-red-800 mb-2">유튜브 영상 링크 (또는 ID)</label>
+                  <input 
+                    type="text" 
+                    value={ads[position].youtube_id}
+                    onChange={(e) => setAds((prev: any) => ({ ...prev, [position]: { ...prev[position], youtube_id: extractYoutubeId(e.target.value) } }))}
+                    className="w-full border border-red-300 p-2 rounded focus:outline-none focus:border-red-500"
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-800">
+                  <input 
+                    type="checkbox" 
+                    checked={ads[position].autoplay}
+                    onChange={(e) => setAds((prev: any) => ({ ...prev, [position]: { ...prev[position], autoplay: e.target.checked } }))}
+                    className="w-4 h-4"
+                  />
+                  썸네일 이미지 없이 즉시 자동재생 (Mute 기본 적용)
+                </label>
+                <p className="text-xs text-gray-500">자동재생을 끄시면 아래 업로드한 이미지가 썸네일로 노출되며, 클릭 시 영상을 볼 수 있습니다.</p>
+              </div>
+            )}
+
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">이미지 업로드</label>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                {ads[position].is_youtube && ads[position].autoplay ? '대체 이미지 (선택사항)' : '배너 썸네일 이미지 업로드'}
+              </label>
               <div 
                 tabIndex={0}
                 onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); setPasteTarget(position); }}
@@ -237,34 +282,35 @@ export default function AdminBanners() {
                 <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                 <div className="text-gray-500">
                   <p className="font-bold mb-1 text-black">클릭하여 이미지 업로드</p>
-                  <p className="text-sm">또는 이미지를 이곳으로 <span className="font-bold">드래그</span> 하세요</p>
-                  <p className="text-sm mt-2 p-1 bg-gray-100 rounded inline-block">화면 어디서나 <span className="font-bold text-blue-600">Ctrl + V</span> 로 캡처본 붙여넣기 가능</p>
+                  <p className="text-sm p-1 bg-gray-100 rounded inline-block mt-1">화면 어디서나 <span className="font-bold text-blue-600">Ctrl + V</span> 로 캡처본 붙여넣기 가능</p>
                 </div>
               </div>
             </div>
             
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">연결할 링크 (URL)</label>
-                <input 
-                  type="text" 
-                  value={ads[position].link_url}
-                  onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))}
-                  className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500"
-                  placeholder="https://example.com"
-                />
-              </div>
+              {!ads[position].is_youtube && (
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">연결할 링크 (URL)</label>
+                  <input 
+                    type="text" 
+                    value={ads[position].link_url || ''}
+                    onChange={(e) => setAds((prev: any) => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))}
+                    className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500"
+                    placeholder="https://example.com"
+                  />
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">
-                  SEO 키워드 / 해시태그 <span className="text-xs font-normal text-gray-500 ml-1">(검색 엔진 노출용 대체 텍스트)</span>
+                  SEO 해시태그 / 설명 <span className="text-xs font-normal text-gray-500 ml-1">(검색 엔진 노출용)</span>
                 </label>
                 <input 
                   type="text" 
                   value={ads[position].alt_text || ''}
-                  onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], alt_text: e.target.value } }))}
+                  onChange={(e) => setAds((prev: any) => ({ ...prev, [position]: { ...prev[position], alt_text: e.target.value } }))}
                   className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500"
-                  placeholder="예: #한국경제 #CEO뉴스레터 #비즈니스트렌드"
+                  placeholder="예: #한국경제 #CEO뉴스레터"
                 />
               </div>
               
@@ -272,27 +318,33 @@ export default function AdminBanners() {
                 onClick={() => saveData(position)}
                 className="w-full bg-black text-white px-4 py-3 rounded text-sm font-bold hover:bg-gray-800 transition-colors whitespace-nowrap"
               >
-                정보 및 키워드 저장
+                배너 설정 전체 저장하기
               </button>
             </div>
           </div>
 
           <div className="shrink-0 flex flex-col items-center justify-center">
-            <label className="block text-sm font-bold text-gray-700 mb-2 self-start">업로드된 배너 미리보기</label>
+            <label className="block text-sm font-bold text-gray-700 mb-2 self-start">실제 화면 미리보기</label>
             <div 
               className="bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden relative shadow-inner"
               style={{ width: '300px', height: position === 'mid' ? '250px' : '600px' }}
             >
               {isUploading[position] ? (
                 <span className="text-black font-bold animate-pulse">업로드 중...</span>
+              ) : ads[position].is_youtube && ads[position].autoplay && ads[position].youtube_id ? (
+                <iframe 
+                  className="w-full h-full pointer-events-none" 
+                  src={`https://www.youtube.com/embed/${ads[position].youtube_id}?autoplay=1&mute=1&controls=0&loop=1`} 
+                  title="YouTube Preview" 
+                  frameBorder="0">
+                </iframe>
               ) : ads[position].image_url ? (
                 <img src={ads[position].image_url} alt="Preview" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-gray-400 text-sm font-bold tracking-widest uppercase">No Image</span>
+                <span className="text-gray-400 text-sm font-bold tracking-widest uppercase">No Content</span>
               )}
             </div>
           </div>
-
         </div>
       </div>
     );
@@ -301,18 +353,16 @@ export default function AdminBanners() {
   return (
     <div className="p-2 md:p-8 max-w-5xl mx-auto font-sans text-black relative">
       <h1 className="text-3xl font-black font-serif mb-2">광고 배너 관리</h1>
-      <p className="text-gray-500 font-bold mb-8">사이트 우측에 노출되는 배너 이미지와 검색엔진(SEO) 최적화를 위한 해시태그를 설정합니다.</p>
+      <p className="text-gray-500 font-bold mb-8">이미지 배너 또는 유튜브 동영상 배너를 유연하게 설정할 수 있습니다.</p>
       
-      {renderBannerEditor('mid', '중앙 배너 (EXECUTIVE BRIEFING 하단)', '300 x 250')}
-      {renderBannerEditor('bottom', '하단 배너 (MOST VIEWED 하단 스크롤 고정)', '300 x 600')}
+      {renderBannerEditor('mid', '중앙 섹션 배너')}
+      {renderBannerEditor('bottom', '하단 전체너비 배너')}
 
-      {/* 💡 이미지 크롭 모달 팝업 */}
       {cropModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-2xl flex flex-col gap-4 shadow-2xl">
             <div>
               <h3 className="text-xl font-bold">마우스로 드래그하여 영역 맞추기</h3>
-              <p className="text-sm text-gray-500 mt-1">배너에 노출될 부분을 지정해주세요. (마우스 휠로 확대/축소 가능)</p>
             </div>
             
             <div className="relative w-full h-[50vh] min-h-[300px] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
@@ -320,7 +370,7 @@ export default function AdminBanners() {
                 image={cropModal.imageSrc}
                 crop={crop}
                 zoom={zoom}
-                aspect={cropModal.position === 'mid' ? 300 / 250 : 300 / 600} // 배너 비율에 맞춰 크롭 박스 강제 고정
+                aspect={cropModal.position === 'mid' ? 300 / 250 : 21 / 9}
                 onCropChange={setCrop}
                 onCropComplete={onCropComplete}
                 onZoomChange={setZoom}
@@ -328,18 +378,8 @@ export default function AdminBanners() {
             </div>
             
             <div className="flex justify-end gap-3 mt-4">
-              <button 
-                onClick={() => setCropModal({ isOpen: false, imageSrc: '', position: null })} 
-                className="px-6 py-2.5 border border-gray-300 rounded font-bold hover:bg-gray-50 transition-colors"
-              >
-                취소
-              </button>
-              <button 
-                onClick={handleCropSave} 
-                className="px-6 py-2.5 bg-blue-700 text-white rounded font-bold hover:bg-blue-800 transition-colors"
-              >
-                적용 및 업로드
-              </button>
+              <button onClick={() => setCropModal({ isOpen: false, imageSrc: '', position: null })} className="px-6 py-2.5 border rounded font-bold">취소</button>
+              <button onClick={handleCropSave} className="px-6 py-2.5 bg-blue-700 text-white rounded font-bold">적용 및 업로드</button>
             </div>
           </div>
         </div>
