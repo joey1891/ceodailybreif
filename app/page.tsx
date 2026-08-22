@@ -18,7 +18,6 @@ export default function CEODailyBrief() {
   const [searchQuery, setSearchQuery] = useState('');
   const [email, setEmail] = useState('');
 
-  // 💡 영상 팝업(모달) 상태 정보 확장 (설명, 파일 링크 추가)
   const [videoModal, setVideoModal] = useState<{ 
     isOpen: boolean; 
     youtubeId: string; 
@@ -350,14 +349,13 @@ export default function CEODailyBrief() {
         </div>
       </footer>
 
-      {/* 🎬 팝업 모달 UI (설명 및 링크, 파일 다운로드 추가) */}
+      {/* 🎬 팝업 모달 UI (블랙 배경, 짙은 빨강 링크 버튼, 가짜 언어코드로 자막 끄기) */}
       {videoModal.isOpen && (
         <div 
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" 
           onClick={() => setVideoModal({ isOpen: false, youtubeId: '' })}
         >
           <div className="relative w-full max-w-5xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-            {/* 💡 요청하신 심플한 닫기 버튼 */}
             <button 
               onClick={() => setVideoModal({ isOpen: false, youtubeId: '' })}
               className="absolute -top-12 right-0 text-white font-bold text-3xl hover:text-gray-300 transition-colors"
@@ -367,20 +365,19 @@ export default function CEODailyBrief() {
             </button>
             
             <div className="w-full aspect-video bg-black rounded-t-lg shadow-2xl overflow-hidden border border-gray-700">
-              {/* cc_load_policy=0 를 통해 최초 모달 실행 시 자막 강제 끄기 적용 */}
+              {/* 💡 cc_lang_pref=zz 트릭을 통해 존재하지 않는 자막을 호출하여 자막을 원천 차단 */}
               <iframe 
                 className="w-full h-full"
-                src={`https://www.youtube.com/embed/${videoModal.youtubeId}?autoplay=1&controls=1&rel=0&cc_load_policy=0`} 
+                src={`https://www.youtube.com/embed/${videoModal.youtubeId}?autoplay=1&controls=1&rel=0&cc_load_policy=0&cc_lang_pref=zz`} 
                 allow="autoplay; encrypted-media; fullscreen" 
                 allowFullScreen
               ></iframe>
             </div>
 
-            {/* 💡 영상 하단: 설명 및 버튼 렌더링 영역 */}
             {(videoModal.description || videoModal.linkUrl || videoModal.fileUrl) && (
-              <div className="bg-white p-6 rounded-b-lg shadow-lg flex flex-col gap-4">
+              <div className="bg-[#111] p-6 rounded-b-lg shadow-lg flex flex-col gap-4 border border-t-0 border-gray-700">
                 {videoModal.description && (
-                  <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{videoModal.description}</p>
+                  <p className="text-white whitespace-pre-wrap leading-relaxed">{videoModal.description}</p>
                 )}
                 
                 <div className="flex flex-wrap gap-4 mt-2">
@@ -389,7 +386,7 @@ export default function CEODailyBrief() {
                       href={videoModal.linkUrl} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-bold hover:bg-blue-700 transition shadow-sm text-sm"
+                      className="bg-red-800 text-white px-6 py-2.5 rounded-full font-bold hover:bg-red-900 transition shadow-sm text-sm"
                     >
                       웹페이지 링크 이동
                     </a>
@@ -399,7 +396,7 @@ export default function CEODailyBrief() {
                       href={videoModal.fileUrl} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="bg-gray-800 text-white px-6 py-2.5 rounded-full font-bold hover:bg-black transition shadow-sm text-sm"
+                      className="bg-gray-700 text-white px-6 py-2.5 rounded-full font-bold hover:bg-gray-600 transition shadow-sm text-sm"
                     >
                       파일 다운로드 (Download)
                     </a>
