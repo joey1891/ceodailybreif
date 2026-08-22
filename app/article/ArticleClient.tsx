@@ -266,13 +266,13 @@ function ArticleContent() {
 
       if (error) {
         if (error.code === '23505') { 
-          alert(t.duplicate); // 다국어 에러 메시지
+          alert(t.duplicate); 
         } else {
           console.error('Supabase Insert Error:', error);
           alert(t.error + ': ' + error.message);
         }
       } else {
-        alert(t.success); // 다국어 성공 메시지
+        alert(t.success); 
         setSubscribeEmail('');
       }
     } catch (err) {
@@ -286,7 +286,6 @@ function ArticleContent() {
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading article...</div>;
   if (!article) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-black"><h1 className="text-2xl mb-4">기사를 찾을 수 없습니다.</h1><Link href="/" className="text-blue-600 underline">홈으로 돌아가기</Link></div>;
 
-  // 현재 선택된 언어에 맞는 구독 문구 객체 추출
   const t = subscribeDict[currentLang] || subscribeDict['en'];
 
   return (
@@ -336,7 +335,7 @@ function ArticleContent() {
             {displayTitle}
           </h1>
           <div className="flex items-center gap-4 text-sm text-gray-500 font-serif italic border-y border-gray-200 py-3 w-full" style={{ justifyContent: 'flex-start' }}>
-            <span className="font-bold text-black font-sans uppercase not-italic">By {article.author_name}</span>
+            <span className="font-bold text-black font-sans uppercase not-italic">By {article.author_name || 'Editor-in-Chief'}</span>
             <span>|</span>
             <span>Published: {new Date(article.created_at).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
           </div>
@@ -353,6 +352,34 @@ function ArticleContent() {
           style={{ textAlign: 'left' }}
           dangerouslySetInnerHTML={{ __html: displayContent }}
         />
+
+        {/* 💡 작성자 프로필 섹션 (사진이나 소개글이 있을 때만 렌더링) */}
+        {(article?.author_image_url || article?.author_bio) && (
+          <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col sm:flex-row items-center sm:items-start gap-6 bg-gray-50 p-6 rounded-lg">
+            {article.author_image_url && (
+              <div className="shrink-0">
+                <img 
+                  src={article.author_image_url} 
+                  alt={article.author_name || 'Author'} 
+                  className="w-24 h-24 sm:w-20 sm:h-20 rounded-full object-cover border border-gray-300 shadow-sm"
+                />
+              </div>
+            )}
+            <div className="flex flex-col text-center sm:text-left w-full">
+              <span className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-1">
+                Written By
+              </span>
+              <h3 className="text-lg font-bold text-gray-900 mb-2 font-serif">
+                {article.author_name || 'Editor-in-Chief'}
+              </h3>
+              {article.author_bio && (
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  {article.author_bio}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 💡 기사 본문 하단 다국어 지원 구독 폼 */}
         <div className="mt-16 p-8 md:p-10 bg-[#f4f4f4] border border-gray-200 rounded-xl text-center shadow-sm">
