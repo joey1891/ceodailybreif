@@ -195,7 +195,7 @@ export default function CEODailyBrief() {
         </div>
 
         <nav className="border-y border-gray-300 py-3 mt-6">
-          <ul className="flex flex-col sm:flex-row justify-start sm:justify-center items-start sm:items-center gap-3 sm:gap-6 md:gap-8 text-[11px] sm:text-sm md:text-[15px] font-bold tracking-widest uppercase px-2 sm:px-0">
+          <ul className="flex flex-col sm:flex-row sm:flex-wrap justify-start sm:justify-center items-start sm:items-center gap-y-4 gap-x-3 sm:gap-x-6 md:gap-x-8 text-[11px] sm:text-sm md:text-[15px] font-bold tracking-widest uppercase px-2 sm:px-0 max-w-5xl mx-auto">
             {dbCategories.map(cat => (
               <li key={cat.id} className="w-full sm:w-auto text-left">
                 <Link href={`/news?category=${encodeURIComponent(cat.name)}`} className="hover:text-red-800 cursor-pointer transition-colors block w-full">
@@ -397,7 +397,6 @@ export default function CEODailyBrief() {
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText('https://ceodailybreif.vercel.app/subscribe');
-                  {/* 💡 알림창 문구를 영문으로 변경 */}
                   alert('Subscribe link copied to clipboard! Share it with your network.');
                 }}
                 className="text-xs text-blue-900 hover:text-black font-bold uppercase tracking-widest flex items-center gap-1 transition-colors"
