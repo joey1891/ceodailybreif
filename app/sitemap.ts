@@ -1,29 +1,29 @@
 import { MetadataRoute } from 'next';
+import { supabase } from '@/utils/supabase';
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://www.ceodailybrief.com';
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = 'https://www.ceodailybrief.com'; // 실제 운영하시는 도메인으로 변경하세요
 
-  return [
-    // 1. 메인 홈 화면 (app/page.tsx)
-    {
-      url: `${baseUrl}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1.0, // 가장 중요도가 높음
-    },
-    // 2. 뉴스 목록 화면 (app/news/page.tsx)
-    {
-      url: `${baseUrl}/news`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
-    // 3. 개별 기사 화면 (app/article/page.tsx)
-    {
-      url: `${baseUrl}/article`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.8,
-    },
+  // 1. 고정된 정적 페이지
+  const staticRoutes = [
+    { url: `${baseUrl}`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 1.0 },
+    { url: `${baseUrl}/news`, lastModified: new Date(), changeFrequency: 'daily' as const, priority: 0.8 },
   ];
+
+  // 2. DB에서 발행된 기사 목록 가져오기
+  const { data: articles } = await supabase
+    .from('articles')
+    .select('id, updated_at')
+    .eq('is_published', true)
+    .order('created_at', { ascending: false });
+
+  // 3. 기사별 URL 생성
+  const articleRoutes = (articles || []).map((article) => ({
+    url: `${baseUrl}/article?id=${article.id}`,
+    lastModified: new Date(article.updated_at || new Date()),
+    changeFrequency: 'weekly' as const,
+    priority: 0.6,
+  }));
+
+  return [...staticRoutes, ...articleRoutes];
 }
