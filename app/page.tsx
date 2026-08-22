@@ -34,7 +34,6 @@ export default function CEODailyBrief() {
     return { position: 'absolute' as 'absolute', top: '50%', left: '50%', transform: `translate(-50%, -50%) scale(${scale})`, width: '100%', height: '100%', pointerEvents: 'none' as 'none' };
   };
 
-  // 💡 비디오인지 이미지인지 판별하여 렌더링하는 컴포넌트 헬퍼
   const renderMedia = (url: string, alt: string) => {
     if (url.includes('.mp4') || url.includes('.webm')) {
       return <video src={url} autoPlay loop muted playsInline className="w-full h-full object-cover" />;
@@ -267,18 +266,18 @@ export default function CEODailyBrief() {
         </div>
       </footer>
 
-      {/* 🎬 팝업 모달 */}
+      {/* 🎬 팝업 모달 (테두리 완전 제거) */}
       {videoModal.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setVideoModal({ isOpen: false, youtubeId: '' })}>
           <div className="relative w-full max-w-5xl flex flex-col" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setVideoModal({ isOpen: false, youtubeId: '' })} className="absolute -top-12 right-0 text-white font-bold text-3xl hover:text-gray-300 transition-colors" title="Close">✕</button>
             
-            <div className="w-full aspect-video bg-black rounded-t-lg shadow-2xl overflow-hidden border border-gray-700">
+            <div className="w-full aspect-video bg-black rounded-t-lg shadow-2xl overflow-hidden">
               <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${videoModal.youtubeId}?autoplay=1&controls=1&rel=0&cc_load_policy=0&cc_lang_pref=zz`} allow="autoplay; encrypted-media; fullscreen" allowFullScreen></iframe>
             </div>
 
             {(videoModal.description || videoModal.linkUrl || videoModal.fileUrl) && (
-              <div className="bg-[#111] p-6 rounded-b-lg shadow-lg flex flex-col gap-4 border border-t-0 border-gray-700">
+              <div className="bg-[#111] p-6 rounded-b-lg shadow-lg flex flex-col gap-4">
                 {videoModal.description && <p className="text-white whitespace-pre-wrap leading-relaxed">{videoModal.description}</p>}
                 <div className="flex flex-wrap gap-4 mt-2">
                   {videoModal.linkUrl && <a href={videoModal.linkUrl} target="_blank" rel="noopener noreferrer" className="bg-red-800 text-white px-6 py-2.5 rounded-full font-bold hover:bg-red-900 transition shadow-sm text-sm">웹페이지 링크 이동</a>}
