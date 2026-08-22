@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
 import Link from 'next/link';
 
+// 💡 TypeScript 에러 해결: 부모(page.tsx)로부터 받을 데이터의 타입을 명확히 정의합니다.
+interface ArticleClientProps {
+  initialArticle: any;
+  articleId: string;
+  initialLang: string;
+}
+
 const LANGUAGES = [
   { code: 'en', name: '🇺🇸 English (Original)' },
   { code: 'ko', name: '🇰🇷 한국어' },
@@ -31,11 +38,11 @@ const getAvailableText = (articleData: any, fieldName: 'title' | 'content', targ
   return { text: articleData[fieldName] || '', hasExactLang: false };
 };
 
-export default function ArticleClient({ initialArticle, articleId, initialLang }: { initialArticle: any, articleId: string, initialLang: string }) {
+// 💡 여기서 Props 타입을 명시하여 Vercel 배포 시 타입 에러가 나지 않도록 수정했습니다.
+export default function ArticleClient({ initialArticle, articleId, initialLang }: ArticleClientProps) {
   const [article, setArticle] = useState<any>(initialArticle);
   const [currentLang, setCurrentLang] = useState(initialLang);
 
-  // 💡 SSR SEO 핵심: 로딩창 없이 서버에서 받아온 초기 HTML 즉시 렌더링
   const [displayTitle, setDisplayTitle] = useState(() => initialArticle ? getAvailableText(initialArticle, 'title', initialLang).text : '');
   const [displayContent, setDisplayContent] = useState(() => initialArticle ? getAvailableText(initialArticle, 'content', initialLang).text : '');
   const [isTranslating, setIsTranslating] = useState(false);
