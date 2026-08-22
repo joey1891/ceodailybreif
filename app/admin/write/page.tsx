@@ -45,7 +45,7 @@ function WriteArticleForm() {
   const [hashtags, setHashtags] = useState<MultiLangTagsState>(initialTagsState);
   const [hashtagInput, setHashtagInput] = useState('');
   
-  const [category, setCategory] = useState('Politics & Policy');
+  const [category, setCategory] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [authorName, setAuthorName] = useState('Editor-in-Chief');
   
@@ -77,11 +77,16 @@ function WriteArticleForm() {
 
   useEffect(() => {
     const fetchCategories = async () => {
-      const { data, error } = await supabase.from('articles').select('category');
+      // articles가 아닌 categories 테이블에서 정렬 순서대로 가져옴
+      const { data, error } = await supabase
+        .from('categories')
+        .select('name')
+        .order('sort_order', { ascending: true });
+
       if (data && !error) {
-        const uniqueCategories = Array.from(new Set(data.map(item => item.category).filter(Boolean)));
+        const uniqueCategories = data.map(item => item.name).filter(Boolean);
         if (uniqueCategories.length === 0) {
-            uniqueCategories.push('Politics & Policy', 'Economy & Markets', 'Chaebol & Industry', 'Tech & Innovation', 'K-BEAUTY TRENDS', 'K-Culture & Society');
+            uniqueCategories.push('POLITICS', 'ECONOMY', 'INDUSTRY', 'K-TECH', 'K-CULTURE', 'K-BEAUTY', 'K-MEDICAL', 'K-PHARMA', 'K-ATTRACTIONS');
         }
         setAvailableCategories(uniqueCategories as string[]);
         
@@ -129,7 +134,7 @@ function WriteArticleForm() {
         setTitle(newTitle);
         setContent(newContent);
         setHashtags(newHashtags);
-        setCategory(data.category || 'Politics & Policy');
+        setCategory(data.category || 'POLITICS');
         setImageUrl(data.image_url || '');
         setAuthorName(data.author_name || 'Editor-in-Chief');
       }
@@ -148,20 +153,16 @@ function WriteArticleForm() {
     }
   }, [thumbnailFile]);
 
-  // ✅ 붙여넣기(Ctrl+V) 전역 이벤트 리스너 추가
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
-      // 현재 포커스된 요소가 입력창(Input, Textarea)이거나 에디터(.ql-editor) 내부인지 확인
       const target = e.target as HTMLElement;
       const isInputOrEditor = 
         target.tagName === 'INPUT' || 
         target.tagName === 'TEXTAREA' || 
         target.closest('.ql-editor');
       
-      // 에디터나 입력창에서 붙여넣기 중이라면 썸네일 로직을 실행하지 않고 통과시킴
       if (isInputOrEditor) return;
 
-      // 클립보드에서 이미지 찾기
       const items = e.clipboardData?.items;
       if (!items) return;
 
