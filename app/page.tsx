@@ -22,11 +22,25 @@ export default function CEODailyBrief() {
   const formatTime = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
   const getDisplayText = (field: any) => typeof field === 'string' ? field : field?.en || field?.ko || Object.values(field || {})[0] || '';
 
-  // 💡 [추가] 유튜브 URL을 깔끔하게 만들어주는 헬퍼 함수
+  // 💡 유튜브 URL 생성 헬퍼 (자막 끄기 및 불필요한 속성 제거)
   const getYoutubeSrc = (id: string, autoplay: boolean) => {
     if (!autoplay) return `https://www.youtube.com/embed/${id}?rel=0`;
-    // 자동재생 시 컨트롤러 숨김(controls=0), 키보드 조작 금지(disablekb=1), 반복재생(loop=1) 적용
-    return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${id}&iv_load_policy=3&disablekb=1`;
+    // cc_load_policy=0 (자막 강제 비활성화), iv_load_policy=3 (특수효과 숨김), controls=0 (하단바 숨김)
+    return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${id}&iv_load_policy=3&disablekb=1&cc_load_policy=0`;
+  };
+
+  // 💡 상하단 유튜브 UI를 화면 바깥으로 밀어내기 위한 CSS 트릭
+  const getCoverIframeStyle = (autoplay: boolean) => {
+    if (!autoplay) return { width: '100%', height: '100%' };
+    return {
+      position: 'absolute' as 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: '150vmax',      // 화면 크기보다 강제로 영상 가로를 키움
+      height: '84.375vmax',  // 16:9 비율 유지
+      pointerEvents: 'none' as 'none', // iframe 내 마우스 오버 방지 (제목 뜨는 것 차단)
+    };
   };
 
   useEffect(() => {
@@ -141,14 +155,15 @@ export default function CEODailyBrief() {
               ads.article_bottom.is_youtube && ads.article_bottom.youtube_id ? (
                 <div className="relative w-full aspect-video bg-black rounded overflow-hidden shadow-md my-2 sm:my-0">
                   <iframe 
-                    className={`absolute inset-0 w-full h-full ${ads.article_bottom.autoplay ? 'pointer-events-none scale-[1.2]' : ''}`} 
+                    style={getCoverIframeStyle(ads.article_bottom.autoplay)}
                     src={getYoutubeSrc(ads.article_bottom.youtube_id, ads.article_bottom.autoplay)} 
                     title={ads.article_bottom.alt_text} 
                     allow="autoplay; encrypted-media" 
                     allowFullScreen={!ads.article_bottom.autoplay}
                   ></iframe>
-                  {ads.article_bottom.autoplay && (
-                    <a href={ads.article_bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                  {/* 링크가 등록되어 있을 때만 <a> 태그를 씌워 클릭 시 이동하도록 처리 */}
+                  {ads.article_bottom.autoplay && ads.article_bottom.link_url && (
+                    <a href={ads.article_bottom.link_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
                   )}
                 </div>
               ) : ads.article_bottom.image_url ? (
@@ -212,13 +227,13 @@ export default function CEODailyBrief() {
                 {ads.mid?.is_youtube && ads.mid?.youtube_id ? (
                   <div className="w-[300px] h-[250px] bg-black relative overflow-hidden rounded">
                     <iframe 
-                      className={`absolute inset-0 w-full h-full ${ads.mid.autoplay ? 'pointer-events-none scale-[1.2]' : ''}`} 
+                      style={getCoverIframeStyle(ads.mid.autoplay)}
                       src={getYoutubeSrc(ads.mid.youtube_id, ads.mid.autoplay)} 
                       allow="autoplay; encrypted-media" 
                       allowFullScreen={!ads.mid.autoplay}
                     ></iframe>
-                    {ads.mid.autoplay && (
-                      <a href={ads.mid.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                    {ads.mid.autoplay && ads.mid.link_url && (
+                      <a href={ads.mid.link_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
                     )}
                   </div>
                 ) : ads.mid?.image_url ? (
@@ -253,27 +268,27 @@ export default function CEODailyBrief() {
               </div>
 
               {/* 📸 [기존 배너 2] 우측 사이드바 하단 스크롤 고정 (bottom) */}
-              <div className="mt-auto sticky top-10 pb-8 flex justify-center w-full">
+              <div className="sticky top-10 pb-8 flex justify-center w-full">
                 {ads.bottom?.is_youtube && ads.bottom?.youtube_id ? (
-                  <div className="w-[300px] h-[600px] bg-black relative overflow-hidden rounded">
+                  <div className="w-[300px] h-[800px] bg-black relative overflow-hidden rounded">
                     <iframe 
-                      className={`absolute inset-0 w-full h-full ${ads.bottom.autoplay ? 'pointer-events-none scale-[1.2]' : ''}`} 
+                      style={getCoverIframeStyle(ads.bottom.autoplay)}
                       src={getYoutubeSrc(ads.bottom.youtube_id, ads.bottom.autoplay)} 
                       allow="autoplay; encrypted-media" 
                       allowFullScreen={!ads.bottom.autoplay}
                     ></iframe>
-                    {ads.bottom.autoplay && (
-                      <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+                    {ads.bottom.autoplay && ads.bottom.link_url && (
+                      <a href={ads.bottom.link_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
                     )}
                   </div>
                 ) : ads.bottom?.image_url ? (
-                  <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[600px] relative">
+                  <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[800px] relative">
                     <img src={ads.bottom.image_url} alt={ads.bottom.alt_text} className="absolute inset-0 w-full h-full object-cover border border-gray-200 rounded" />
                   </a>
                 ) : (
-                  <div className="flex flex-col items-center justify-center bg-gray-100 border text-gray-400 w-[300px] h-[600px] rounded">
+                  <div className="flex flex-col items-center justify-center bg-gray-100 border text-gray-400 w-[300px] h-[800px] rounded">
                     <span className="font-bold text-sm tracking-widest">BOTTOM AD</span>
-                    <span className="text-xs mt-1">300 x 600</span>
+                    <span className="text-xs mt-1">300 x 800</span>
                   </div>
                 )}
               </div>
@@ -289,14 +304,14 @@ export default function CEODailyBrief() {
           ads.footer_top.is_youtube && ads.footer_top.youtube_id ? (
             <div className="relative w-full aspect-video sm:aspect-[21/9] md:aspect-[24/9] bg-black rounded overflow-hidden shadow-lg border border-gray-200">
               <iframe 
-                className={`absolute inset-0 w-full h-full ${ads.footer_top.autoplay ? 'pointer-events-none scale-[1.2]' : ''}`} 
+                style={getCoverIframeStyle(ads.footer_top.autoplay)}
                 src={getYoutubeSrc(ads.footer_top.youtube_id, ads.footer_top.autoplay)} 
                 title={ads.footer_top.alt_text} 
                 allow="autoplay; encrypted-media" 
                 allowFullScreen={!ads.footer_top.autoplay}
               ></iframe>
-              {ads.footer_top.autoplay && (
-                <a href={ads.footer_top.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
+              {ads.footer_top.autoplay && ads.footer_top.link_url && (
+                <a href={ads.footer_top.link_url} target="_blank" rel="noopener noreferrer" className="absolute inset-0 z-10 block"></a>
               )}
             </div>
           ) : ads.footer_top.image_url ? (
