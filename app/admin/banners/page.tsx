@@ -31,8 +31,8 @@ const extractYoutubeId = (url: string) => {
   return match ? match[1] : url;
 };
 
-// 💡 새로운 기본값 (is_visible, youtube_scale 추가)
-const DEFAULT_AD = { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false, is_visible: true, youtube_scale: 1.0 };
+// 💡 DB에 새로 추가한 description과 file_url 기본값 세팅
+const DEFAULT_AD = { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false, is_visible: true, youtube_scale: 1.0, description: '', file_url: '' };
 type BannerPosition = 'mid' | 'bottom' | 'article_bottom' | 'footer_top';
 
 export default function AdminBanners() {
@@ -112,7 +112,7 @@ export default function AdminBanners() {
       if (position === 'footer_top') dbId = 4;
 
       const { error: dbError } = await supabase.from('ads').upsert({
-        id: dbId, position, image_url: publicUrl, link_url: ads[position].link_url, alt_text: ads[position].alt_text, is_visible: ads[position].is_visible, youtube_scale: ads[position].youtube_scale
+        id: dbId, position, image_url: publicUrl, link_url: ads[position].link_url, alt_text: ads[position].alt_text, is_visible: ads[position].is_visible, youtube_scale: ads[position].youtube_scale, description: ads[position].description, file_url: ads[position].file_url
       });
       if (dbError) throw dbError;
 
@@ -130,7 +130,9 @@ export default function AdminBanners() {
       youtube_id: ads[position].youtube_id, 
       autoplay: ads[position].autoplay,
       is_visible: ads[position].is_visible,
-      youtube_scale: ads[position].youtube_scale
+      youtube_scale: ads[position].youtube_scale,
+      description: ads[position].description,
+      file_url: ads[position].file_url
     }).eq('position', position);
     if (error) alert('저장 실패: ' + error.message); else alert('설정이 저장되었습니다.');
   };
@@ -147,7 +149,6 @@ export default function AdminBanners() {
             {title} {isActiveTarget && <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-bold">✨ 현재 Ctrl+V 대상</span>}
           </h2>
           
-          {/* 💡 배너 활성화/숨김 토글 */}
           <label className="flex items-center gap-2 cursor-pointer bg-gray-100 px-4 py-2 rounded-full shadow-sm hover:bg-gray-200 transition">
             <span className={`text-sm font-bold ${ads[position].is_visible ? 'text-green-600' : 'text-gray-400'}`}>
               {ads[position].is_visible ? '배너 켜짐 (ON)' : '배너 숨김 (OFF)'}
@@ -179,7 +180,6 @@ export default function AdminBanners() {
                     썸네일 없이 배너 형태로 자동재생
                   </label>
                   
-                  {/* 💡 영상 확대/축소 스케일 조절 (자동재생일 때만 노출) */}
                   {ads[position].autoplay && (
                     <div className="mt-2 p-3 bg-white rounded border border-red-100 flex flex-col gap-2">
                       <div className="flex justify-between">
@@ -206,19 +206,35 @@ export default function AdminBanners() {
               </div>
             </div>
             <div className="space-y-4">
-              {!ads[position].is_youtube && (
-                <div>
-                  <label className="block text-sm font-bold mb-2">연결 링크</label>
-                  <input type="text" value={ads[position].link_url || ''} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))} className="w-full border p-2 rounded"/>
-                </div>
-              )}
-              {ads[position].is_youtube && (
-                <div>
-                  <label className="block text-sm font-bold mb-2">영상 클릭 시 이동할 웹사이트 링크 (선택)</label>
-                  <input type="text" value={ads[position].link_url || ''} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))} className="w-full border p-2 rounded" placeholder="입력 시 유튜브가 아닌 지정한 페이지로 이동"/>
-                </div>
-              )}
-              <button onClick={() => saveData(position)} className="w-full bg-black text-white px-4 py-3 rounded font-bold">배너 설정 저장</button>
+              <div>
+                <label className="block text-sm font-bold mb-2">웹페이지 링크 (URL)</label>
+                <input type="text" value={ads[position].link_url || ''} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))} className="w-full border p-2 rounded" placeholder="https://example.com" />
+              </div>
+              
+              {/* 💡 새로 추가된 필드: 설명과 파일 다운로드 링크 */}
+              <div className="pt-4 border-t border-gray-100">
+                <label className="block text-sm font-bold mb-2 text-blue-800">영상/배너 상세 설명 (모달 팝업용)</label>
+                <textarea 
+                  value={ads[position].description || ''} 
+                  onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], description: e.target.value } }))} 
+                  className="w-full border p-2 rounded focus:outline-none focus:border-blue-500" 
+                  rows={3}
+                  placeholder="모달 창에서 영상 아래에 노출될 설명을 입력하세요."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold mb-2 text-blue-800">파일 다운로드 링크 (선택)</label>
+                <input type="text" value={ads[position].file_url || ''} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], file_url: e.target.value } }))} className="w-full border p-2 rounded focus:outline-none focus:border-blue-500" placeholder="PDF, 브로셔 등 다운로드 받을 URL" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-2 text-gray-500">
+                  SEO 해시태그 / 짧은 설명 <span className="text-xs font-normal ml-1">(검색 엔진 노출용)</span>
+                </label>
+                <input type="text" value={ads[position].alt_text || ''} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], alt_text: e.target.value } }))} className="w-full border border-gray-300 p-2 rounded" placeholder="예: #한국경제 #CEO뉴스레터" />
+              </div>
+              
+              <button onClick={() => saveData(position)} className="w-full bg-black text-white px-4 py-3 rounded font-bold hover:bg-gray-800 transition">배너 설정 전체 저장하기</button>
             </div>
           </div>
           <div className="shrink-0 flex flex-col items-center">
