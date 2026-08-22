@@ -22,9 +22,7 @@ export default function CEODailyBrief() {
   const [bestArticles, setBestArticles] = useState<any[]>([]);
   const [dbCategories, setDbCategories] = useState<{id: number, name: string}[]>([]);
   
-  // 메인 페이지에 배너 상태를 저장하는 공간
   const [ads, setAds] = useState<any>({ mid: null, bottom: null });
-  
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [email, setEmail] = useState('');
@@ -155,6 +153,11 @@ export default function CEODailyBrief() {
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#fcfcfc] text-black">Loading CEO Daily Brief...</div>;
 
+  // 총 카테고리 배열을 절반(또는 5개/4개)으로 나누어 양끝 정렬(justify-between) 두 줄로 표시
+  const midPoint = Math.ceil(dbCategories.length / 2);
+  const topRowCategories = dbCategories.slice(0, midPoint);
+  const bottomRowCategories = dbCategories.slice(midPoint);
+
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white">
       <header className="max-w-7xl mx-auto px-4 pt-4 sm:pt-6 pb-2">
@@ -194,16 +197,33 @@ export default function CEODailyBrief() {
           </p>
         </div>
 
-        <nav className="border-y border-gray-300 py-3 mt-6">
-          <ul className="flex flex-col sm:flex-row sm:flex-wrap justify-start sm:justify-center items-start sm:items-center gap-y-4 gap-x-3 sm:gap-x-6 md:gap-x-8 text-[11px] sm:text-sm md:text-[15px] font-bold tracking-widest uppercase px-2 sm:px-0 max-w-5xl mx-auto">
-            {dbCategories.map(cat => (
-              <li key={cat.id} className="w-full sm:w-auto text-left">
-                <Link href={`/news?category=${encodeURIComponent(cat.name)}`} className="hover:text-red-800 cursor-pointer transition-colors block w-full">
-                  {cat.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {/* 양끝 정렬된 두 줄 네비게이션 */}
+        <nav className="border-y border-gray-300 py-3 sm:py-4 mt-6">
+          <div className="max-w-6xl mx-auto flex flex-col gap-y-3 px-2 sm:px-0">
+            {topRowCategories.length > 0 && (
+              <ul className="flex justify-between items-center w-full text-[11px] sm:text-[13px] md:text-[15px] font-bold tracking-widest uppercase">
+                {topRowCategories.map(cat => (
+                  <li key={cat.id} className="whitespace-nowrap">
+                    <Link href={`/news?category=${encodeURIComponent(cat.name)}`} className="hover:text-red-800 cursor-pointer transition-colors block">
+                      {cat.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            
+            {bottomRowCategories.length > 0 && (
+              <ul className="flex justify-between items-center w-full text-[11px] sm:text-[13px] md:text-[15px] font-bold tracking-widest uppercase mt-1">
+                {bottomRowCategories.map(cat => (
+                  <li key={cat.id} className="whitespace-nowrap">
+                    <Link href={`/news?category=${encodeURIComponent(cat.name)}`} className="hover:text-red-800 cursor-pointer transition-colors block">
+                      {cat.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </nav>
       </header>
 
