@@ -17,9 +17,8 @@ const getCroppedImg = (imageSrc: string, pixelCrop: any, targetWidth: number, ta
 
       ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, targetWidth, targetHeight);
       canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(new File([blob], `cropped-${Date.now()}.jpg`, { type: 'image/jpeg' }));
-        } else reject('Blob conversion failed');
+        if (blob) resolve(new File([blob], `cropped-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+        else reject('Blob conversion failed');
       }, 'image/jpeg', 0.95);
     };
     image.onerror = reject;
@@ -32,7 +31,8 @@ const extractYoutubeId = (url: string) => {
   return match ? match[1] : url;
 };
 
-const DEFAULT_AD = { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false };
+// 💡 새로운 기본값 (is_visible, youtube_scale 추가)
+const DEFAULT_AD = { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false, is_visible: true, youtube_scale: 1.0 };
 type BannerPosition = 'mid' | 'bottom' | 'article_bottom' | 'footer_top';
 
 export default function AdminBanners() {
@@ -43,10 +43,7 @@ export default function AdminBanners() {
   const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; position: BannerPosition | null }>({ isOpen: false, imageSrc: '', position: null });
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  
-  // 💡 TypeScript 에러 해결: <any> 타입 추가
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-  
   const [pasteTarget, setPasteTarget] = useState<BannerPosition>('mid');
 
   useEffect(() => {
@@ -115,7 +112,7 @@ export default function AdminBanners() {
       if (position === 'footer_top') dbId = 4;
 
       const { error: dbError } = await supabase.from('ads').upsert({
-        id: dbId, position, image_url: publicUrl, link_url: ads[position].link_url, alt_text: ads[position].alt_text
+        id: dbId, position, image_url: publicUrl, link_url: ads[position].link_url, alt_text: ads[position].alt_text, is_visible: ads[position].is_visible, youtube_scale: ads[position].youtube_scale
       });
       if (dbError) throw dbError;
 
@@ -127,7 +124,13 @@ export default function AdminBanners() {
 
   const saveData = async (position: BannerPosition) => {
     const { error } = await supabase.from('ads').update({ 
-      link_url: ads[position].link_url, alt_text: ads[position].alt_text, is_youtube: ads[position].is_youtube, youtube_id: ads[position].youtube_id, autoplay: ads[position].autoplay
+      link_url: ads[position].link_url, 
+      alt_text: ads[position].alt_text, 
+      is_youtube: ads[position].is_youtube, 
+      youtube_id: ads[position].youtube_id, 
+      autoplay: ads[position].autoplay,
+      is_visible: ads[position].is_visible,
+      youtube_scale: ads[position].youtube_scale
     }).eq('position', position);
     if (error) alert('저장 실패: ' + error.message); else alert('설정이 저장되었습니다.');
   };
@@ -138,10 +141,21 @@ export default function AdminBanners() {
     const isActiveTarget = pasteTarget === position;
 
     return (
-      <div onMouseDownCapture={() => setPasteTarget(position)} className={`mb-8 border p-6 rounded-xl shadow-sm transition-all ${isActiveTarget ? 'border-blue-500 bg-blue-50/20' : 'bg-white border-gray-200'}`}>
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2 flex-wrap">
-          {title} {isActiveTarget && <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-bold">✨ 현재 Ctrl+V 대상</span>}
-        </h2>
+      <div onMouseDownCapture={() => setPasteTarget(position)} className={`mb-8 border p-6 rounded-xl shadow-sm transition-all ${isActiveTarget ? 'border-blue-500 bg-blue-50/20' : 'bg-white border-gray-200'} ${!ads[position].is_visible ? 'opacity-60' : ''}`}>
+        <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            {title} {isActiveTarget && <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full font-bold">✨ 현재 Ctrl+V 대상</span>}
+          </h2>
+          
+          {/* 💡 배너 활성화/숨김 토글 */}
+          <label className="flex items-center gap-2 cursor-pointer bg-gray-100 px-4 py-2 rounded-full shadow-sm hover:bg-gray-200 transition">
+            <span className={`text-sm font-bold ${ads[position].is_visible ? 'text-green-600' : 'text-gray-400'}`}>
+              {ads[position].is_visible ? '배너 켜짐 (ON)' : '배너 숨김 (OFF)'}
+            </span>
+            <input type="checkbox" checked={ads[position].is_visible} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], is_visible: e.target.checked } }))} className="w-4 h-4"/>
+          </label>
+        </div>
+
         <div className="flex gap-4 mb-6 pb-4 border-b border-gray-200">
           <label className="flex items-center gap-2 cursor-pointer font-bold text-sm">
             <input type="radio" checked={!ads[position].is_youtube} onChange={() => setAds((prev) => ({ ...prev, [position]: { ...prev[position], is_youtube: false } }))} className="w-4 h-4 text-blue-600"/> 일반 이미지
@@ -150,6 +164,7 @@ export default function AdminBanners() {
             <input type="radio" checked={ads[position].is_youtube} onChange={() => setAds((prev) => ({ ...prev, [position]: { ...prev[position], is_youtube: true } }))} className="w-4 h-4 text-red-600"/> 유튜브 영상
           </label>
         </div>
+        
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-1 space-y-6">
             {ads[position].is_youtube && (
@@ -158,12 +173,31 @@ export default function AdminBanners() {
                   <label className="block text-sm font-bold text-red-800 mb-2">유튜브 영상 링크 (또는 ID)</label>
                   <input type="text" value={ads[position].youtube_id} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], youtube_id: extractYoutubeId(e.target.value) } }))} className="w-full border p-2 rounded" placeholder="https://youtube.com/watch?v=..."/>
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer text-sm font-bold">
-                  <input type="checkbox" checked={ads[position].autoplay} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], autoplay: e.target.checked } }))} className="w-4 h-4"/>
-                  썸네일 없이 자동재생 (음소거 필수)
-                </label>
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm font-bold">
+                    <input type="checkbox" checked={ads[position].autoplay} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], autoplay: e.target.checked } }))} className="w-4 h-4"/>
+                    썸네일 없이 배너 형태로 자동재생
+                  </label>
+                  
+                  {/* 💡 영상 확대/축소 스케일 조절 (자동재생일 때만 노출) */}
+                  {ads[position].autoplay && (
+                    <div className="mt-2 p-3 bg-white rounded border border-red-100 flex flex-col gap-2">
+                      <div className="flex justify-between">
+                        <label className="text-xs font-bold text-gray-700">영상 확대 비율 (Scale): {ads[position].youtube_scale || 1.0}</label>
+                        <span className="text-[10px] text-gray-500">1.0: 정상 크기, 높일수록 UI 바깥으로 밀림</span>
+                      </div>
+                      <input 
+                        type="range" min="1.0" max="2.0" step="0.05" 
+                        value={ads[position].youtube_scale || 1.0} 
+                        onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], youtube_scale: parseFloat(e.target.value) } }))}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
+            
             <div>
               <label className="block text-sm font-bold mb-2">{ads[position].is_youtube && ads[position].autoplay ? '대체 이미지 (선택)' : '이미지 업로드'}</label>
               <div tabIndex={0} onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); setPasteTarget(position); }} onDragLeave={() => setIsDragOver(false)} onDrop={(e) => { e.preventDefault(); setIsDragOver(false); if (e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0], position); }} onClick={() => fileInputRef.current?.click()} className={`w-full border-2 border-dashed rounded p-8 text-center cursor-pointer ${isDragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white'}`}>
@@ -178,14 +212,21 @@ export default function AdminBanners() {
                   <input type="text" value={ads[position].link_url || ''} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))} className="w-full border p-2 rounded"/>
                 </div>
               )}
+              {ads[position].is_youtube && (
+                <div>
+                  <label className="block text-sm font-bold mb-2">영상 클릭 시 이동할 웹사이트 링크 (선택)</label>
+                  <input type="text" value={ads[position].link_url || ''} onChange={(e) => setAds((prev) => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))} className="w-full border p-2 rounded" placeholder="입력 시 유튜브가 아닌 지정한 페이지로 이동"/>
+                </div>
+              )}
               <button onClick={() => saveData(position)} className="w-full bg-black text-white px-4 py-3 rounded font-bold">배너 설정 저장</button>
             </div>
           </div>
           <div className="shrink-0 flex flex-col items-center">
             <label className="block text-sm font-bold mb-2 self-start">미리보기</label>
-            <div className="bg-gray-100 border flex items-center justify-center overflow-hidden" style={{ width: previewWidth, height: previewHeight }}>
+            <div className="bg-gray-100 border flex items-center justify-center overflow-hidden relative" style={{ width: previewWidth, height: previewHeight }}>
+              {!ads[position].is_visible && <div className="absolute inset-0 bg-white/70 z-20 flex items-center justify-center font-bold text-red-500">숨김 상태</div>}
               {isUploading[position] ? <span>업로드 중...</span> : ads[position].is_youtube && ads[position].autoplay && ads[position].youtube_id ? (
-                <iframe className="w-full h-full pointer-events-none" src={`https://www.youtube.com/embed/${ads[position].youtube_id}?autoplay=1&mute=1&controls=0&loop=1`} frameBorder="0"></iframe>
+                <iframe className="absolute w-full h-full pointer-events-none" style={{ transform: `scale(${ads[position].youtube_scale || 1.0})` }} src={`https://www.youtube.com/embed/${ads[position].youtube_id}?autoplay=1&mute=1&controls=0&loop=1`} frameBorder="0"></iframe>
               ) : ads[position].image_url ? (
                 <img src={ads[position].image_url} alt="Preview" className="w-full h-full object-cover" />
               ) : <span>No Content</span>}
