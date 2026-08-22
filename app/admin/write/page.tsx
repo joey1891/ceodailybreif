@@ -47,7 +47,14 @@ function WriteArticleForm() {
   
   const [category, setCategory] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  
+  // 💡 작성자 관련 상태 추가
   const [authorName, setAuthorName] = useState('Editor-in-Chief');
+  const [authorBio, setAuthorBio] = useState('');
+  const [authorImageFile, setAuthorImageFile] = useState<File | null>(null);
+  const [authorImagePreview, setAuthorImagePreview] = useState<string | null>(null);
+  const [authorImageUrl, setAuthorImageUrl] = useState('');
+  const authorFileInputRef = useRef<HTMLInputElement>(null);
   
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -77,7 +84,6 @@ function WriteArticleForm() {
 
   useEffect(() => {
     const fetchCategories = async () => {
-      // articles가 아닌 categories 테이블에서 정렬 순서대로 가져옴
       const { data, error } = await supabase
         .from('categories')
         .select('name')
@@ -136,13 +142,18 @@ function WriteArticleForm() {
         setHashtags(newHashtags);
         setCategory(data.category || 'POLITICS');
         setImageUrl(data.image_url || '');
+        
+        // 💡 작성자 정보 세팅
         setAuthorName(data.author_name || 'Editor-in-Chief');
+        setAuthorBio(data.author_bio || '');
+        setAuthorImageUrl(data.author_image_url || '');
       }
     };
 
     Promise.all([fetchCategories(), fetchArticle()]).finally(() => setIsLoading(false));
   }, [editId]);
 
+  // 💡 썸네일 미리보기 Effect
   useEffect(() => {
     if (thumbnailFile) {
       const objectUrl = URL.createObjectURL(thumbnailFile);
@@ -152,6 +163,17 @@ function WriteArticleForm() {
       setThumbnailPreview(null);
     }
   }, [thumbnailFile]);
+
+  // 💡 작성자 사진 미리보기 Effect
+  useEffect(() => {
+    if (authorImageFile) {
+      const objectUrl = URL.createObjectURL(authorImageFile);
+      setAuthorImagePreview(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setAuthorImagePreview(null);
+    }
+  }, [authorImageFile]);
 
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
@@ -251,17 +273,27 @@ function WriteArticleForm() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // 💡 작성자 사진 지우기
+  const handleClearAuthorImage = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setAuthorImageFile(null);
+    setAuthorImageUrl('');
+    if (authorFileInputRef.current) authorFileInputRef.current.value = '';
+  };
+
   const handleSubmit = async (e: React.FormEvent, isPublished: boolean) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     let finalImageUrl = imageUrl;
+    let finalAuthorImageUrl = authorImageUrl;
 
+    // 1. 기사 썸네일 업로드
     if (thumbnailFile) {
       const fileExt = thumbnailFile.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('article_images') 
         .upload(fileName, thumbnailFile);
 
@@ -269,8 +301,26 @@ function WriteArticleForm() {
         const { data: publicUrlData } = supabase.storage.from('article_images').getPublicUrl(fileName);
         finalImageUrl = publicUrlData.publicUrl;
       } else {
-        console.error("Supabase 업로드 에러:", uploadError);
-        alert(`이미지 업로드 실패: ${uploadError.message}\n(권한 설정을 확인하세요)`);
+        alert(`썸네일 업로드 실패: ${uploadError.message}`);
+        setIsSubmitting(false);
+        return; 
+      }
+    }
+
+    // 2. 작성자 프로필 사진 업로드
+    if (authorImageFile) {
+      const fileExt = authorImageFile.name.split('.').pop();
+      const fileName = `author-${Math.random()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('article_images') 
+        .upload(fileName, authorImageFile);
+
+      if (!uploadError) {
+        const { data: publicUrlData } = supabase.storage.from('article_images').getPublicUrl(fileName);
+        finalAuthorImageUrl = publicUrlData.publicUrl;
+      } else {
+        alert(`작성자 사진 업로드 실패: ${uploadError.message}`);
         setIsSubmitting(false);
         return; 
       }
@@ -300,6 +350,8 @@ function WriteArticleForm() {
       category, 
       image_url: finalImageUrl, 
       author_name: authorName, 
+      author_bio: authorBio,              // 💡 추가됨
+      author_image_url: finalAuthorImageUrl, // 💡 추가됨
       is_published: isPublished,
       translations: translationsData, 
       updated_at: new Date().toISOString()
@@ -338,18 +390,79 @@ function WriteArticleForm() {
         </div>
         
         <form className="space-y-6 text-black">
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black">
-                {availableCategories.map((cat, idx) => (
-                  <option key={idx} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">작성자 (Author)</label>
-              <input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black" />
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full md:w-1/2 border border-gray-300 rounded p-2 focus:outline-none focus:border-black">
+              {availableCategories.map((cat, idx) => (
+                <option key={idx} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* 💡 작성자 정보 입력 섹션 추가 */}
+          <div className="bg-gray-50 p-6 rounded border border-gray-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path></svg>
+              작성자 정보 (Author Profile)
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+              {/* 사진 업로드 */}
+              <div className="md:col-span-3 flex flex-col items-center">
+                <label className="block text-sm font-bold text-gray-700 mb-2 self-start">프로필 사진</label>
+                <div 
+                  onClick={() => authorFileInputRef.current?.click()}
+                  className="w-32 h-32 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer bg-white hover:bg-gray-50 transition relative overflow-hidden group"
+                >
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    ref={authorFileInputRef} 
+                    onChange={(e) => setAuthorImageFile(e.target.files ? e.target.files[0] : null)} 
+                    className="hidden" 
+                  />
+                  {authorImagePreview || authorImageUrl ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={authorImagePreview || authorImageUrl} alt="Author" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">
+                        변경
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-xs text-gray-400 text-center px-2">클릭하여<br/>업로드</span>
+                  )}
+                </div>
+                {(authorImagePreview || authorImageUrl) && (
+                  <button type="button" onClick={handleClearAuthorImage} className="mt-2 text-xs text-red-500 font-bold hover:underline">
+                    사진 삭제
+                  </button>
+                )}
+              </div>
+
+              {/* 이름 및 이력 */}
+              <div className="md:col-span-9 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">작성자 (Name / Title)</label>
+                  <input 
+                    type="text" 
+                    value={authorName} 
+                    onChange={(e) => setAuthorName(e.target.value)} 
+                    placeholder="예: John Doe, Editor-in-Chief"
+                    className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">간단한 이력/소개 (Bio)</label>
+                  <textarea 
+                    value={authorBio} 
+                    onChange={(e) => setAuthorBio(e.target.value)} 
+                    rows={2}
+                    placeholder="작성자의 전문성, 경력, 소개 등을 짧게 입력하세요."
+                    className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black" 
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -455,7 +568,7 @@ function WriteArticleForm() {
           </div>
 
           <div className="mt-8 border-t pt-6">
-            <label className="block text-sm font-bold text-gray-700 mb-2">썸네일 이미지</label>
+            <label className="block text-sm font-bold text-gray-700 mb-2">메인 썸네일 이미지</label>
             
             <div className="space-y-4">
               <div>
