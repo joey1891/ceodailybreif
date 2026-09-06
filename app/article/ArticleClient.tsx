@@ -23,7 +23,6 @@ const LANGUAGES = [
 const uiDict: Record<string, any> = {
   'en': { title: "Enjoyed this article?", desc: "Subscribe to CEO Daily Brief and get core insights into the South Korean market delivered to your inbox every morning.", placeholder: "Your email address", button: "SUBSCRIBE", success: "Successfully subscribed!", duplicate: "This email is already subscribed.", error: "An error occurred.", commentTitle: "Comments", commentName: "Name", commentEmail: "Your Subscribe Email", commentText: "Add a comment...", commentBtn: "Post Comment", noComments: "No comments yet. Be the first to share your thoughts!", notSubscribed: "Only subscribers can post comments. Please subscribe first." },
   'ko': { title: "이 기사가 마음에 드셨나요?", desc: "CEO Daily Brief를 구독하고 한국 시장의 핵심 인사이트를 매일 아침 메일로 받아보세요.", placeholder: "이메일 주소 입력", button: "구독하기", success: "환영합니다! 성공적으로 구독되었습니다.", duplicate: "이미 구독 중인 이메일입니다.", error: "구독 중 오류가 발생했습니다.", commentTitle: "댓글", commentName: "이름", commentEmail: "구독한 이메일", commentText: "댓글을 남겨보세요...", commentBtn: "등록", noComments: "아직 댓글이 없습니다. 첫 번째 의견을 남겨보세요!", notSubscribed: "구독자만 댓글을 작성할 수 있습니다. 먼저 뉴스레터를 구독해주세요." },
-  // ... (다른 언어 사전 생략 없이 기존 코드 동일)
   'ja': { title: "この記事が気に入りましたか？", desc: "CEO Daily Briefを購読して、韓国市場の重要な洞察を毎朝メールで受け取りましょう。", placeholder: "メールアドレスを入力", button: "購読する", success: "購読が完了しました！", duplicate: "既に購読しているメールアドレスです。", error: "購読中にエラーが発生しました。", commentTitle: "コメント", commentName: "名前", commentEmail: "購読メール", commentText: "コメントを追加...", commentBtn: "投稿する", noComments: "まだコメントはありません。最初のコメントを投稿しましょう！", notSubscribed: "購読者のみコメントを投稿できます。" },
   'zh-CN': { title: "喜欢这篇文章吗？", desc: "订阅 CEO Daily Brief，每天早上将韩国市场的核心洞察发送到您的收件箱。", placeholder: "输入您的电子邮件地址", button: "订阅", success: "订阅成功！", duplicate: "此邮箱已订阅。", error: "订阅时发生错误。", commentTitle: "评论", commentName: "名字", commentEmail: "订阅邮箱", commentText: "添加评论...", commentBtn: "发表评论", noComments: "暂无评论。来做第一个发表看法的人吧！", notSubscribed: "只有订阅者可以发表评论。" },
   'ru': { title: "Понравилась статья?", desc: "Подпишитесь на CEO Daily Brief и получайте ключевые идеи корейского рынка каждое утро.", placeholder: "Ваш email адрес", button: "ПОДПИСАТЬСЯ", success: "Вы успешно подписались!", duplicate: "Этот email уже подписан.", error: "Произошла ошибка при подписке.", commentTitle: "Комментарии", commentName: "Имя", commentEmail: "Ваш email", commentText: "Добавить комментарий...", commentBtn: "Опубликовать", noComments: "Пока нет комментариев. Поделитесь своими мыслями первым!", notSubscribed: "Только подписчики могут оставлять комментарии." },
@@ -31,7 +30,6 @@ const uiDict: Record<string, any> = {
   'vi': { title: "Bạn có thích bài viết này không?", desc: "Đăng ký CEO Daily Brief và nhận những thông tin cốt lõi về thị trường Hàn Quốc mỗi sáng.", placeholder: "Địa chỉ email của bạn", button: "ĐĂNG KÝ", success: "Đăng ký thành công!", duplicate: "Email này đã được đăng ký.", error: "Đã xảy ra lỗi khi đăng ký.", commentTitle: "Bình luận", commentName: "Tên", commentEmail: "Email", commentText: "Thêm bình luận...", commentBtn: "Đăng bình luận", noComments: "Chưa có bình luận nào. Hãy là người đầu tiên chia sẻ suy nghĩ của bạn!", notSubscribed: "Chỉ người đăng ký mới có thể bình luận." }
 };
 
-// 범용 텍스트 추출 함수 (author_name, author_bio 등 다국어 필드 확장 지원)
 const getAvailableText = (articleData: any, fieldName: string, targetLang: string) => {
   if (!articleData) return { text: '', hasExactLang: false };
   if (targetLang === 'en') return { text: articleData[fieldName] || '', hasExactLang: true };
@@ -46,7 +44,6 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
   const [displayTitle, setDisplayTitle] = useState(() => initialArticle ? getAvailableText(initialArticle, 'title', initialLang).text : '');
   const [displayContent, setDisplayContent] = useState(() => initialArticle ? getAvailableText(initialArticle, 'content', initialLang).text : '');
   
-  // 작성자 정보 상태 추가
   const [displayAuthorName, setDisplayAuthorName] = useState(() => initialArticle ? getAvailableText(initialArticle, 'author_name', initialLang).text || 'Editor-in-Chief' : 'Editor-in-Chief');
   const [displayAuthorBio, setDisplayAuthorBio] = useState(() => initialArticle ? getAvailableText(initialArticle, 'author_bio', initialLang).text : '');
   
@@ -60,6 +57,9 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // 💡 프로필 하단 배너 상태 추가
+  const [profileBanner, setProfileBanner] = useState<any>(null);
+
   const isAsianLang = ['ko', 'ja', 'zh-CN', 'mn', 'vi'].includes(currentLang);
   const titleFontClass = isAsianLang ? 'font-sans font-black tracking-tight' : 'font-serif font-black';
   const bodyFontClass = isAsianLang ? 'prose-p:font-sans prose-p:font-medium prose-p:tracking-wide prose-p:leading-relaxed' : 'font-serif leading-loose';
@@ -70,9 +70,22 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
     if (data) setComments(data);
   };
 
+  // 💡 배너 데이터 호출 함수 추가
+  const fetchProfileBanner = async () => {
+    const { data } = await supabase
+      .from('ads')
+      .select('*')
+      .eq('position', 'profile_bottom') 
+      .eq('is_visible', true)                   
+      .single();
+      
+    if (data) setProfileBanner(data);
+  };
+
   useEffect(() => {
     if (articleId) {
       fetchComments();
+      fetchProfileBanner(); // 컴포넌트 마운트 시 배너 로드
       supabase.auth.getSession().then(({ data }) => setIsAdmin(!!data.session));
       const savedEmail = localStorage.getItem('comment_email');
       if (savedEmail) setCommentEmail(savedEmail);
@@ -87,10 +100,9 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
 
     const titleInfo = getAvailableText(articleData, 'title', langCode);
     const contentInfo = getAvailableText(articleData, 'content', langCode);
-    
-    // 작성자 정보는 자동 번역을 거치지 않고 DB에 저장된 데이터만 노출 (미입력 시 기본값)
     const authorNameInfo = getAvailableText(articleData, 'author_name', langCode);
     const authorBioInfo = getAvailableText(articleData, 'author_bio', langCode);
+    
     setDisplayAuthorName(authorNameInfo.text || 'Editor-in-Chief');
     setDisplayAuthorBio(authorBioInfo.text || '');
 
@@ -190,7 +202,6 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
         <div className="mb-10 w-full flex flex-col items-start">
           <h1 className={`text-4xl md:text-5xl lg:text-6xl leading-[1.15] mb-6 break-words w-full ${titleFontClass}`}>{displayTitle}</h1>
           <div className="flex items-center gap-4 text-sm text-gray-500 font-serif italic border-y border-gray-200 py-3 w-full">
-            {/* 상태 변수로 업데이트된 작성자 이름 사용 */}
             <span className="font-bold text-black font-sans uppercase not-italic">By {displayAuthorName}</span>
             <span>|</span>
             <span>Published: {new Date(article.created_at).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
@@ -215,7 +226,19 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           </div>
         )}
 
-        {/* 하단 구독 폼 및 댓글 생략 없이 원본 유지 */}
+        {/* 💡 기사 프로필 하단 배너 출력 영역 추가 */}
+        {profileBanner && (
+          <div className="mt-8 flex justify-center w-full">
+            <a href={profileBanner.link_url || '#'} target="_blank" rel="noopener noreferrer" className="w-full max-w-3xl block transition-opacity hover:opacity-95">
+              <img 
+                src={profileBanner.image_url} 
+                alt={profileBanner.alt_text || "Advertisement"} 
+                className="w-full h-auto rounded-lg shadow-sm border border-gray-200 object-cover" 
+              />
+            </a>
+          </div>
+        )}
+
         <div className="mt-12 p-8 md:p-10 bg-[#f4f4f4] border border-gray-200 rounded-xl text-center shadow-sm">
           <h3 className={`text-2xl md:text-3xl font-black mb-3 ${isAsianLang ? 'font-sans tracking-tight' : 'font-serif tracking-tight'}`}>{t.title}</h3>
           <p className="text-gray-600 font-bold mb-6 text-sm md:text-base max-w-lg mx-auto leading-relaxed">{t.desc}</p>
