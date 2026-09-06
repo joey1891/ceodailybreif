@@ -49,12 +49,12 @@ const handleDownload = async (url: string, filename: string) => {
 };
 
 const DEFAULT_AD = { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false, is_visible: true, youtube_scale: 1.0, description: '', file_url: '', history: [] };
-// 💡 profile_bottom 위치 추가
-type BannerPosition = 'mid' | 'bottom' | 'article_bottom' | 'footer_top' | 'profile_bottom';
+// 💡 subscribe_bottom 위치 추가
+type BannerPosition = 'mid' | 'bottom' | 'article_bottom' | 'footer_top' | 'profile_bottom' | 'subscribe_bottom';
 
 export default function AdminBanners() {
   const [ads, setAds] = useState<Record<BannerPosition, any>>({ 
-    mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }, profile_bottom: { ...DEFAULT_AD }
+    mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }, profile_bottom: { ...DEFAULT_AD }, subscribe_bottom: { ...DEFAULT_AD }
   });
   const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
   const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; position: BannerPosition | null; originalFile: File | null }>({ isOpen: false, imageSrc: '', position: null, originalFile: null });
@@ -67,7 +67,7 @@ export default function AdminBanners() {
     async function fetchAds() {
       const { data } = await supabase.from('ads').select('*');
       if (data) {
-        const adData: any = { mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }, profile_bottom: { ...DEFAULT_AD } };
+        const adData: any = { mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }, profile_bottom: { ...DEFAULT_AD }, subscribe_bottom: { ...DEFAULT_AD } };
         data.forEach(ad => { if (adData[ad.position]) adData[ad.position] = { ...adData[ad.position], ...ad, history: ad.history || [] }; });
         setAds(adData);
       }
@@ -99,12 +99,13 @@ export default function AdminBanners() {
     const updatedAd = { ...ads[position], ...newData, history: updatedHistory };
     setAds(prev => ({ ...prev, [position]: updatedAd }));
 
-    // 💡 profile_bottom 고유 ID 할당 (5번)
+    // 💡 위치별 고유 DB ID (subscribe_bottom은 6번 할당)
     let dbId = 1; 
     if (position === 'bottom') dbId = 2; 
     if (position === 'article_bottom') dbId = 3; 
     if (position === 'footer_top') dbId = 4;
     if (position === 'profile_bottom') dbId = 5;
+    if (position === 'subscribe_bottom') dbId = 6;
     
     await supabase.from('ads').upsert({ id: dbId, position, ...newData, history: updatedHistory });
   };
@@ -132,7 +133,8 @@ export default function AdminBanners() {
     if (position === 'bottom') { targetWidth = 300; targetHeight = 600; }
     if (position === 'article_bottom') { targetWidth = 800; targetHeight = 450; } 
     if (position === 'footer_top') { targetWidth = 1200; targetHeight = 400; } 
-    if (position === 'profile_bottom') { targetWidth = 800; targetHeight = 200; } // 💡 프로필 하단 배너 비율
+    if (position === 'profile_bottom') { targetWidth = 800; targetHeight = 200; } 
+    if (position === 'subscribe_bottom') { targetWidth = 800; targetHeight = 200; } // 💡 구독 박스 하단 배너도 4:1 비율 적용
 
     setIsUploading(prev => ({ ...prev, [position]: true }));
     setCropModal({ isOpen: false, imageSrc: '', position: null, originalFile: null }); 
@@ -335,8 +337,9 @@ export default function AdminBanners() {
       {renderBannerEditor('bottom', '2. 우측 사이드 하단(스크롤 고정) 배너', '300px', '600px')}
       {renderBannerEditor('article_bottom', '3. 메인 기사 바로 아래 배너', '320px', '180px')}
       {renderBannerEditor('footer_top', '4. 푸터 위 전체너비 배너', '400px', '133px')}
-      {/* 💡 기사 프로필 하단 배너 설정 슬롯 추가 */}
       {renderBannerEditor('profile_bottom', '5. 기사 작성자 프로필 하단 배너', '400px', '100px')}
+      {/* 💡 6번째 구독 박스 하단 배너 슬롯 추가 */}
+      {renderBannerEditor('subscribe_bottom', '6. 구독(Enjoyed this article) 박스 하단 배너', '400px', '100px')}
 
       {cropModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
@@ -347,8 +350,13 @@ export default function AdminBanners() {
                 image={cropModal.imageSrc} 
                 crop={crop} 
                 zoom={zoom} 
-                /* 💡 profile_bottom의 자르기 비율(가로형) 지정 */
-                aspect={cropModal.position === 'mid' ? 300/250 : cropModal.position === 'bottom' ? 300/600 : cropModal.position === 'article_bottom' ? 16/9 : cropModal.position === 'profile_bottom' ? 4/1 : 24/9} 
+                aspect={
+                  cropModal.position === 'mid' ? 300/250 : 
+                  cropModal.position === 'bottom' ? 300/600 : 
+                  cropModal.position === 'article_bottom' ? 16/9 : 
+                  (cropModal.position === 'profile_bottom' || cropModal.position === 'subscribe_bottom') ? 4/1 : 
+                  24/9
+                } 
                 onCropChange={setCrop} 
                 onCropComplete={(a, px) => setCroppedAreaPixels(px)} 
                 onZoomChange={setZoom} 
