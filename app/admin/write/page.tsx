@@ -29,7 +29,7 @@ const getCroppedImg = (imageSrc: string, pixelCrop: any, targetWidth: number, ta
 
       ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, targetWidth, targetHeight);
       canvas.toBlob((blob) => {
-        if (blob) resolve(new File([blob], `author-${Date.now()}.jpg`, { type: 'image/jpeg' }));
+        if (blob) resolve(new File([blob], `cropped-${Date.now()}.jpg`, { type: 'image/jpeg' }));
         else reject('Blob conversion failed');
       }, 'image/jpeg', 0.95);
     };
@@ -70,10 +70,8 @@ function WriteArticleForm() {
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [allowComments, setAllowComments] = useState(true);
 
-  // 작성자 정보 다국어 처리를 위한 상태 변경
   const [authorName, setAuthorName] = useState<MultiLangState>(initialTextState);
   const [authorBio, setAuthorBio] = useState<MultiLangState>(initialTextState);
-  
   const [authorImageFile, setAuthorImageFile] = useState<File | null>(null);
   const [authorImagePreview, setAuthorImagePreview] = useState<string | null>(null);
   const [authorImageUrl, setAuthorImageUrl] = useState('');
@@ -85,12 +83,21 @@ function WriteArticleForm() {
   const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 💡 기사 개별 1:1 배너용 상태 추가
+  const [subscribeBannerFile, setSubscribeBannerFile] = useState<File | null>(null);
+  const [subscribeBannerPreview, setSubscribeBannerPreview] = useState<string | null>(null);
+  const [subscribeBannerUrl, setSubscribeBannerUrl] = useState('');
+  const [subscribeBannerLink, setSubscribeBannerLink] = useState('');
+  const [subscribeBannerVisible, setSubscribeBannerVisible] = useState(true);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [pasteTarget, setPasteTarget] = useState<'thumbnail' | 'author'>('thumbnail');
-  const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; target: 'thumbnail' | 'author' | null }>({ isOpen: false, imageSrc: '', target: null });
+  // 💡 pasteTarget 및 cropModal 타겟 확장
+  const [pasteTarget, setPasteTarget] = useState<'thumbnail' | 'author' | 'subscribe_banner'>('thumbnail');
+  const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; target: 'thumbnail' | 'author' | 'subscribe_banner' | null }>({ isOpen: false, imageSrc: '', target: null });
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
@@ -143,7 +150,7 @@ function WriteArticleForm() {
               newTitle[lang] = data.translations[lang].title || ''; 
               newContent[lang] = data.translations[lang].content || ''; 
               newHashtags[lang] = data.translations[lang].hashtags || [];
-              newAuthorName[lang] = data.translations[lang].author_name || ''; // 다국어 프로필 로드
+              newAuthorName[lang] = data.translations[lang].author_name || ''; 
               newAuthorBio[lang] = data.translations[lang].author_bio || '';
             }
           });
@@ -151,9 +158,14 @@ function WriteArticleForm() {
         setTitle(newTitle); setContent(newContent); setHashtags(newHashtags); 
         setAuthorName(newAuthorName); setAuthorBio(newAuthorBio);
         
-        setCategory(data.category || 'POLITICS'); setImageUrl(data.image_url || '');
+        setCategory(data.category || 'POLITICS'); 
+        setImageUrl(data.image_url || '');
         setAuthorImageUrl(data.author_image_url || '');
         
+        // 💡 개별 배너 데이터 로드
+        setSubscribeBannerUrl(data.subscribe_banner_url || '');
+        setSubscribeBannerLink(data.subscribe_banner_link || '');
+        if (data.subscribe_banner_visible !== undefined) setSubscribeBannerVisible(data.subscribe_banner_visible);
         if (data.allow_comments !== undefined) setAllowComments(data.allow_comments);
       }
     };
@@ -169,20 +181,32 @@ function WriteArticleForm() {
     if (authorImageFile) { const objectUrl = URL.createObjectURL(authorImageFile); setAuthorImagePreview(objectUrl); return () => URL.revokeObjectURL(objectUrl); } else setAuthorImagePreview(null);
   }, [authorImageFile]);
 
-  const handleFileSelect = (file: File, target: 'thumbnail' | 'author') => {
+  // 💡 배너 파일 프리뷰
+  useEffect(() => {
+    if (subscribeBannerFile) { const objectUrl = URL.createObjectURL(subscribeBannerFile); setSubscribeBannerPreview(objectUrl); return () => URL.revokeObjectURL(objectUrl); } else setSubscribeBannerPreview(null);
+  }, [subscribeBannerFile]);
+
+  const handleFileSelect = (file: File, target: 'thumbnail' | 'author' | 'subscribe_banner') => {
     if (!file.type.startsWith('image/')) { alert('이미지 파일만 업로드 가능합니다.'); return; }
-    if (target === 'author') {
+    if (target === 'author' || target === 'subscribe_banner') {
       const reader = new FileReader();
-      reader.onload = (e) => { setCropModal({ isOpen: true, imageSrc: e.target?.result as string, target: 'author' }); setCrop({ x: 0, y: 0 }); setZoom(1); };
+      reader.onload = (e) => { setCropModal({ isOpen: true, imageSrc: e.target?.result as string, target }); setCrop({ x: 0, y: 0 }); setZoom(1); };
       reader.readAsDataURL(file);
     } else { setThumbnailFile(file); }
   };
 
   const handleCropSave = async () => {
-    if (!croppedAreaPixels || cropModal.target !== 'author') return;
+    if (!croppedAreaPixels || !cropModal.target) return;
     try {
-      const croppedFile = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels, 300, 400); 
-      setAuthorImageFile(croppedFile); setCropModal({ isOpen: false, imageSrc: '', target: null });
+      if (cropModal.target === 'author') {
+        const croppedFile = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels, 300, 400); 
+        setAuthorImageFile(croppedFile); 
+      } else if (cropModal.target === 'subscribe_banner') {
+        // 💡 1:1 비율 (800x800) 적용
+        const croppedFile = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels, 800, 800); 
+        setSubscribeBannerFile(croppedFile);
+      }
+      setCropModal({ isOpen: false, imageSrc: '', target: null });
     } catch (e) { alert('이미지 편집 중 오류가 발생했습니다.'); }
   };
 
@@ -201,8 +225,7 @@ function WriteArticleForm() {
         const newTags = val.split('#').map(tag => tag.trim()).filter(tag => tag.length > 0);
         setHashtags(prev => {
           const currentTags = prev[currentLang] || []; const tagsToAdd = newTags.filter(tag => !currentTags.includes(tag));
-          if (tagsToAdd.length > 0) return { ...prev, [currentLang]: [...currentTags, ...tagsToAdd] };
-          return prev;
+          if (tagsToAdd.length > 0) return { ...prev, [currentLang]: [...currentTags, ...tagsToAdd] }; return prev;
         });
       }
       setHashtagInput('');
@@ -212,34 +235,31 @@ function WriteArticleForm() {
   const removeHashtag = (tagToRemove: string) => { setHashtags(prev => ({ ...prev, [currentLang]: (prev[currentLang] || []).filter(tag => tag !== tagToRemove) })); };
   const handleClearThumbnail = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setThumbnailFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
   const handleClearAuthorImage = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setAuthorImageFile(null); setAuthorImageUrl(''); if (authorFileInputRef.current) authorFileInputRef.current.value = ''; };
+  const handleClearSubscribeBanner = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setSubscribeBannerFile(null); setSubscribeBannerUrl(''); if (bannerFileInputRef.current) bannerFileInputRef.current.value = ''; };
 
   const handleSubmit = async (e: React.FormEvent, isPublished: boolean) => {
     e.preventDefault(); setIsSubmitting(true);
-    let finalImageUrl = imageUrl; let finalAuthorImageUrl = authorImageUrl;
+    let finalImageUrl = imageUrl; let finalAuthorImageUrl = authorImageUrl; let finalSubscribeBannerUrl = subscribeBannerUrl;
 
-    if (thumbnailFile) {
-      const fileExt = thumbnailFile.name.split('.').pop(); const fileName = `${Math.random()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('article_images').upload(fileName, thumbnailFile);
-      if (!uploadError) { const { data: publicUrlData } = supabase.storage.from('article_images').getPublicUrl(fileName); finalImageUrl = publicUrlData.publicUrl; } 
-      else { alert(`썸네일 업로드 실패: ${uploadError.message}`); setIsSubmitting(false); return; }
-    }
+    // 이미지 업로드 로직
+    const uploadImage = async (file: File) => {
+      const fileExt = file.name.split('.').pop(); const fileName = `${Math.random()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage.from('article_images').upload(fileName, file);
+      if (!uploadError) { const { data } = supabase.storage.from('article_images').getPublicUrl(fileName); return data.publicUrl; } 
+      throw uploadError;
+    };
 
-    if (authorImageFile) {
-      const fileExt = authorImageFile.name.split('.').pop(); const fileName = `author-${Math.random()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('article_images').upload(fileName, authorImageFile);
-      if (!uploadError) { const { data: publicUrlData } = supabase.storage.from('article_images').getPublicUrl(fileName); finalAuthorImageUrl = publicUrlData.publicUrl; } 
-      else { alert(`작성자 사진 업로드 실패: ${uploadError.message}`); setIsSubmitting(false); return; }
-    }
+    try {
+      if (thumbnailFile) finalImageUrl = await uploadImage(thumbnailFile);
+      if (authorImageFile) finalAuthorImageUrl = await uploadImage(authorImageFile);
+      if (subscribeBannerFile) finalSubscribeBannerUrl = await uploadImage(subscribeBannerFile);
+    } catch (err: any) { alert(`업로드 실패: ${err.message}`); setIsSubmitting(false); return; }
 
     const translationsData: any = {};
     LANGUAGES.forEach((lang) => {
       if (lang.code !== 'en') {
-        const tTitle = title[lang.code]; 
-        const tContent = content[lang.code]; 
-        const tHashtags = hashtags[lang.code] || [];
-        const tAuthorName = authorName[lang.code]; // 번역 데이터로 저장
-        const tAuthorBio = authorBio[lang.code];
-        
+        const tTitle = title[lang.code]; const tContent = content[lang.code]; const tHashtags = hashtags[lang.code] || [];
+        const tAuthorName = authorName[lang.code]; const tAuthorBio = authorBio[lang.code];
         if (tTitle || tContent || tHashtags.length > 0 || tAuthorName || tAuthorBio) {
           translationsData[lang.code] = { title: tTitle, content: tContent, hashtags: tHashtags, author_name: tAuthorName, author_bio: tAuthorBio };
         }
@@ -247,18 +267,14 @@ function WriteArticleForm() {
     });
 
     const articleData = {
-      title: title['en'], 
-      content: content['en'], 
-      hashtags: JSON.stringify(hashtags['en'] || []), 
-      category, 
+      title: title['en'], content: content['en'], hashtags: JSON.stringify(hashtags['en'] || []), category, 
       image_url: finalImageUrl, 
-      author_name: authorName['en'] || 'Editor-in-Chief', 
-      author_bio: authorBio['en'], 
-      author_image_url: finalAuthorImageUrl, 
+      author_name: authorName['en'] || 'Editor-in-Chief', author_bio: authorBio['en'], author_image_url: finalAuthorImageUrl, 
       allow_comments: allowComments,
-      is_published: isPublished, 
-      translations: translationsData, 
-      updated_at: new Date().toISOString()
+      subscribe_banner_url: finalSubscribeBannerUrl, // 💡 DB 반영
+      subscribe_banner_link: subscribeBannerLink, 
+      subscribe_banner_visible: subscribeBannerVisible,
+      is_published: isPublished, translations: translationsData, updated_at: new Date().toISOString()
     };
 
     let error;
@@ -304,19 +320,16 @@ function WriteArticleForm() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               <div className="md:col-span-3 flex flex-col items-center">
-                <div onMouseDownCapture={() => setPasteTarget('author')} onDragOver={(e) => { e.preventDefault(); setIsAuthorDragging(true); setPasteTarget('author'); }} onDragLeave={() => setIsAuthorDragging(false)} onDrop={(e) => { e.preventDefault(); setIsAuthorDragging(false); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'author'); }} onClick={() => { authorFileInputRef.current?.click(); setPasteTarget('author'); }} className={`w-32 h-40 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group transition-colors ${pasteTarget === 'author' ? 'border-blue-500 bg-blue-50' : isAuthorDragging ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
+                <div onMouseDownCapture={() => setPasteTarget('author')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('author'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'author'); }} onClick={() => { authorFileInputRef.current?.click(); setPasteTarget('author'); }} className={`w-32 h-40 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group transition-colors ${pasteTarget === 'author' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
                   <input type="file" accept="image/*" ref={authorFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'author'); }} className="hidden" />
                   {authorImagePreview || authorImageUrl ? (
                     <><img src={authorImagePreview || authorImageUrl} alt="Author" className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">변경</div></>
-                  ) : <span className="text-xs text-gray-400 text-center px-2 leading-relaxed">클릭, 드래그 <br/>또는 <span className="text-blue-600 font-bold">Ctrl+V</span></span>}
+                  ) : <span className="text-xs text-gray-400 text-center px-2 leading-relaxed">클릭 또는 <span className="text-blue-600 font-bold">Ctrl+V</span></span>}
                 </div>
                 {(authorImagePreview || authorImageUrl) && <button type="button" onClick={handleClearAuthorImage} className="mt-2 text-xs text-red-500 font-bold hover:underline">사진 삭제</button>}
               </div>
               <div className="md:col-span-9 flex flex-col justify-center">
-                <p className="text-sm text-gray-600 bg-white p-4 border border-gray-200 rounded-md shadow-sm">
-                  💡 <strong>작성자의 이름과 이력/소개(Bio)는 하단의 <span className="text-blue-600">[언어 선택 탭]</span>에서 언어별로 각각 입력할 수 있습니다.</strong><br/>
-                  모든 언어 버전에서 프로필 사진은 위에서 등록한 이미지가 공통으로 적용됩니다.
-                </p>
+                <p className="text-sm text-gray-600 bg-white p-4 border border-gray-200 rounded-md shadow-sm">💡 <strong>작성자의 이름과 이력/소개(Bio)는 하단의 <span className="text-blue-600">[언어 선택 탭]</span>에서 언어별로 각각 입력할 수 있습니다.</strong></p>
               </div>
             </div>
           </div>
@@ -329,24 +342,16 @@ function WriteArticleForm() {
           </div>
 
           <div className="border border-gray-300 rounded-b-md rounded-tr-md p-6 bg-white space-y-6">
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 border-b border-gray-100">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">작성자 이름 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
-                <input type="text" value={authorName[currentLang] || ''} onChange={(e) => setAuthorName(prev => ({ ...prev, [currentLang]: e.target.value }))} placeholder="예: John Doe, Editor-in-Chief" className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">작성자 소개 (Bio) <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
-                <textarea value={authorBio[currentLang] || ''} onChange={(e) => setAuthorBio(prev => ({ ...prev, [currentLang]: e.target.value }))} rows={2} placeholder="작성자의 전문성, 경력, 소개 등을 짧게 입력하세요." className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black resize-none" />
-              </div>
+              <div><label className="block text-sm font-bold text-gray-700 mb-2">작성자 이름 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label><input type="text" value={authorName[currentLang] || ''} onChange={(e) => setAuthorName(prev => ({ ...prev, [currentLang]: e.target.value }))} className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black" /></div>
+              <div><label className="block text-sm font-bold text-gray-700 mb-2">작성자 소개 (Bio) <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label><textarea value={authorBio[currentLang] || ''} onChange={(e) => setAuthorBio(prev => ({ ...prev, [currentLang]: e.target.value }))} rows={2} className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black resize-none" /></div>
             </div>
-
-            <div><label className="block text-sm font-bold text-gray-700 mb-2">기사 제목 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label><input type="text" value={title[currentLang] || ''} onChange={(e) => setTitle(prev => ({ ...prev, [currentLang]: e.target.value }))} placeholder="기사 제목을 입력하세요" className="w-full border border-gray-300 rounded p-3 text-lg focus:outline-none focus:border-black" required={currentLang === 'en'} /></div>
+            <div><label className="block text-sm font-bold text-gray-700 mb-2">기사 제목 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label><input type="text" value={title[currentLang] || ''} onChange={(e) => setTitle(prev => ({ ...prev, [currentLang]: e.target.value }))} className="w-full border border-gray-300 rounded p-3 text-lg focus:outline-none focus:border-black" required={currentLang === 'en'} /></div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">해시태그 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
               <div className="w-full border border-gray-300 rounded p-2 flex flex-wrap gap-2 items-center bg-white focus-within:border-black">
                 {(hashtags[currentLang] || []).map((tag, idx) => (<span key={idx} className="bg-gray-100 px-2 py-1 rounded text-sm flex items-center gap-1 border border-gray-200">{tag} <button type="button" onClick={() => removeHashtag(tag)} className="text-gray-400 hover:text-red-500 text-xs">✕</button></span>))}
-                <input type="text" value={hashtagInput} onChange={(e) => setHashtagInput(e.target.value)} onKeyDown={handleHashtagKeyDown} placeholder="해시태그 띄어쓰기 또는 # 기호로 구분 후 Enter" className="flex-grow outline-none p-1 text-sm min-w-[300px]" />
+                <input type="text" value={hashtagInput} onChange={(e) => setHashtagInput(e.target.value)} onKeyDown={handleHashtagKeyDown} className="flex-grow outline-none p-1 text-sm min-w-[300px]" />
               </div>
             </div>
             <div className="border border-gray-300 rounded">
@@ -357,23 +362,52 @@ function WriteArticleForm() {
               </div>
               <div className="bg-white min-h-[400px]">
                 {LANGUAGES.map(lang => (<div key={`editor-${lang.code}`} style={{ display: editorMode === 'general' && currentLang === lang.code ? 'block' : 'none' }}><ReactQuill theme="snow" defaultValue={content[lang.code] || ''} onChange={(val: string, delta: any, source: string) => { if (source === 'user') setContent(prev => ({ ...prev, [lang.code]: val })); }} className="h-96" modules={modules} /></div>))}
-                <div style={{ display: editorMode === 'html' ? 'block' : 'none' }}><textarea value={content[currentLang] || ''} onChange={(e) => setContent(prev => ({ ...prev, [currentLang]: e.target.value }))} className="w-full h-96 p-4 border-none focus:outline-none font-mono text-sm bg-gray-50 text-gray-800" placeholder="HTML 코드를 직접 입력하세요..." /></div>
+                <div style={{ display: editorMode === 'html' ? 'block' : 'none' }}><textarea value={content[currentLang] || ''} onChange={(e) => setContent(prev => ({ ...prev, [currentLang]: e.target.value }))} className="w-full h-96 p-4 border-none focus:outline-none font-mono text-sm bg-gray-50 text-gray-800" /></div>
                 <div style={{ display: editorMode === 'preview' ? 'block' : 'none' }}><div className="w-full h-96 p-4 overflow-y-auto prose max-w-none" dangerouslySetInnerHTML={{ __html: content[currentLang] || '<p className="text-gray-400">미리볼 내용이 없습니다.</p>' }} /></div>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 border-t pt-6">
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">메인 썸네일 이미지 {pasteTarget === 'thumbnail' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full shadow-sm">Ctrl+V 대상</span>}</label>
-            <div className="space-y-4">
-              <div>
-                <div onMouseDownCapture={() => setPasteTarget('thumbnail')} onDragOver={(e) => { e.preventDefault(); setIsThumbnailDragging(true); setPasteTarget('thumbnail'); }} onDragLeave={(e) => { e.preventDefault(); setIsThumbnailDragging(false); }} onDrop={(e) => { e.preventDefault(); setIsThumbnailDragging(false); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'thumbnail'); }} tabIndex={0} className={`relative w-full border-2 border-dashed rounded-lg p-6 transition-colors focus:outline-none cursor-pointer flex flex-col items-center justify-center min-h-[120px] ${pasteTarget === 'thumbnail' ? 'border-blue-500 bg-blue-50' : isThumbnailDragging ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}>
-                  <input type="file" accept=".jpg, .jpeg, .png, .webp" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'thumbnail'); }} className="hidden" id="thumbnail-upload" />
-                  {thumbnailPreview ? (<div className="relative inline-block"><img src={thumbnailPreview} alt="Thumbnail Preview" className="max-h-48 object-contain rounded border border-gray-200 shadow-sm" /><button type="button" onClick={handleClearThumbnail} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold shadow-md hover:bg-red-600 transition-colors z-10" title="이미지 삭제">✕</button></div>) : (<label htmlFor="thumbnail-upload" className="cursor-pointer flex flex-col items-center w-full"><svg className={`w-10 h-10 mb-2 transition-colors ${pasteTarget === 'thumbnail' ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg><span className="block font-bold text-gray-700 text-base text-center">클릭하여 파일 선택, <span className="text-blue-600">이미지 붙여넣기 (Ctrl+V)</span> <br/>또는 <span className="text-blue-600">여기로 파일 드래그 앤 드롭</span></span><span className="block text-xs text-gray-400 mt-2">jpg, png, webp 형식의 이미지를 업로드해주세요.</span></label>)}
+          <div className="mt-8 border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            {/* 썸네일 영역 */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">메인 썸네일 이미지</label>
+              <div className="space-y-4">
+                <div onMouseDownCapture={() => setPasteTarget('thumbnail')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('thumbnail'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'thumbnail'); }} tabIndex={0} className={`relative w-full border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center min-h-[120px] ${pasteTarget === 'thumbnail' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}>
+                  <input type="file" accept=".jpg, .jpeg, .png, .webp" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'thumbnail'); }} className="hidden" />
+                  {thumbnailPreview ? (<div className="relative inline-block"><img src={thumbnailPreview} className="max-h-48 object-contain rounded border border-gray-200 shadow-sm" /><button type="button" onClick={handleClearThumbnail} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 font-bold shadow-md">✕</button></div>) : (<label onClick={() => fileInputRef.current?.click()} className="cursor-pointer flex flex-col items-center w-full"><span className="block font-bold text-gray-700 text-base">클릭 또는 <span className="text-blue-600">Ctrl+V</span></span></label>)}
                 </div>
               </div>
-              <div><span className="block text-xs text-gray-500 mb-1">방법 2: 이미지 URL 입력 (파일 업로드 시 무시됨)</span><input type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" /></div>
             </div>
+
+            {/* 💡 기사 개별 구독 박스 하단 배너 (1:1) 영역 */}
+            <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-gray-800">해당 기사 전용 하단 광고 배너 <span className="text-xs text-red-500">(1:1 비율)</span></h3>
+                <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1 rounded shadow-sm border border-gray-200">
+                  <span className={`text-xs font-bold ${subscribeBannerVisible ? 'text-green-600' : 'text-gray-400'}`}>{subscribeBannerVisible ? 'ON' : 'OFF'}</span>
+                  <input type="checkbox" checked={subscribeBannerVisible} onChange={(e) => setSubscribeBannerVisible(e.target.checked)} className="w-3 h-3"/>
+                </label>
+              </div>
+              <div className="flex gap-4">
+                <div className="shrink-0">
+                  <div onMouseDownCapture={() => setPasteTarget('subscribe_banner')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('subscribe_banner'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'subscribe_banner'); }} onClick={() => bannerFileInputRef.current?.click()} className={`w-32 h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group ${pasteTarget === 'subscribe_banner' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
+                    <input type="file" accept="image/*" ref={bannerFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'subscribe_banner'); }} className="hidden" />
+                    {subscribeBannerPreview || subscribeBannerUrl ? (
+                      <><img src={subscribeBannerPreview || subscribeBannerUrl} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">변경</div></>
+                    ) : <span className="text-xs text-gray-400 text-center px-2">클릭 또는 <span className="text-blue-600 font-bold">Ctrl+V</span></span>}
+                  </div>
+                  {(subscribeBannerPreview || subscribeBannerUrl) && <button type="button" onClick={handleClearSubscribeBanner} className="mt-2 text-xs text-red-500 font-bold text-center w-full">삭제</button>}
+                </div>
+                <div className="flex-1 flex flex-col justify-center">
+                  <label className="block text-xs font-bold text-gray-700 mb-1">광고 클릭 시 이동할 URL</label>
+                  <input type="text" value={subscribeBannerLink} onChange={(e) => setSubscribeBannerLink(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
+                  <p className="text-[10px] text-gray-500 mt-2 leading-tight">기사 상세페이지의 'Enjoyed this article?' 구독 박스 바로 아래에 노출되는 정사각형 배너입니다.</p>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           <div className="flex justify-end gap-3 pt-6 border-t border-black">
@@ -382,14 +416,27 @@ function WriteArticleForm() {
           </div>
         </form>
       </div>
+
+      {cropModal.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg flex flex-col gap-4 shadow-2xl">
+            <div><h3 className="text-xl font-bold text-black">이미지 자르기</h3></div>
+            <div className="relative w-full h-[50vh] min-h-[300px] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+              <Cropper 
+                image={cropModal.imageSrc} 
+                crop={crop} zoom={zoom} 
+                aspect={cropModal.target === 'subscribe_banner' ? 1 / 1 : 3 / 4} 
+                onCropChange={setCrop} onCropComplete={(_, px) => setCroppedAreaPixels(px)} onZoomChange={setZoom} 
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-4"><button onClick={() => setCropModal({ isOpen: false, imageSrc: '', target: null })} className="px-6 py-2.5 border rounded font-bold">취소</button><button onClick={handleCropSave} className="px-6 py-2.5 bg-blue-700 text-white rounded font-bold">적용하기</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function WriteArticlePage() {
-  return (
-    <Suspense fallback={<div className="text-center p-10 text-black">로딩 중...</div>}>
-      <WriteArticleForm />
-    </Suspense>
-  );
+  return <Suspense fallback={<div className="text-center p-10">로딩 중...</div>}><WriteArticleForm /></Suspense>;
 }
