@@ -43,7 +43,6 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      /* 💡 h-full을 제거하고, 최상위 html 태그에 직접 bg-[#fcfcfc]를 적용하여 끊김 방지 */
       className={`${geistSans.variable} ${geistMono.variable} bg-[#fcfcfc] antialiased`}
     >
       <head>
@@ -57,6 +56,16 @@ export default function RootLayout({
             })(window,document,'script','dataLayer','GTM-PTCS5PBM');
           `}
         </Script>
+
+        {/* 💡 에디터에서 설정한 텍스트 포맷이 사이트 전체에서 유지되도록 글로벌 스타일 주입 */}
+        <style dangerouslySetInnerHTML={{__html: `
+          .ql-align-center { text-align: center; }
+          .ql-align-right { text-align: right; }
+          .ql-align-justify { text-align: justify; }
+          .ql-size-small { font-size: 0.75em; }
+          .ql-size-large { font-size: 1.5em; }
+          .ql-size-huge { font-size: 2.5em; }
+        `}} />
       </head>
       
       <body className="min-h-screen flex flex-col text-[#111111]">
