@@ -37,6 +37,63 @@ const getCroppedImg = (imageSrc: string, pixelCrop: any, targetWidth: number, ta
   });
 };
 
+// 💡 마우스 드래그 앤 드롭으로 텍스트 위치를 잡는 미리보기 컴포넌트 추가
+function DraggablePreview({ bgUrl, textHtml, aspect, x, y, onPosChange }: any) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    const handleMouseUp = () => setIsDragging(false);
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      let px = e.clientX - rect.left - offset.x;
+      let py = e.clientY - rect.top - offset.y;
+      
+      // X, Y 좌표를 % (0~100) 비율로 변환
+      let newX = (px / rect.width) * 100;
+      let newY = (py / rect.height) * 100;
+      onPosChange(Math.max(0, Math.min(100, newX)), Math.max(0, Math.min(100, newY)));
+    };
+
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, offset, onPosChange]);
+
+  return (
+    <div ref={containerRef} className="relative w-full border border-gray-300 rounded overflow-hidden shadow-sm bg-gray-100" style={{ aspectRatio: aspect }}>
+      {bgUrl ? (
+        <img src={bgUrl} alt="Background" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">배너 이미지를 먼저 등록하세요</div>
+      )}
+      {textHtml && (
+        <div
+          onMouseDown={handleMouseDown}
+          className={`absolute cursor-move p-2 border-2 ${isDragging ? 'border-blue-500 bg-blue-500/10' : 'border-dashed border-gray-400 hover:border-blue-500 hover:bg-blue-50/50'}`}
+          style={{ left: `${x}%`, top: `${y}%` }}
+        >
+          <div dangerouslySetInnerHTML={{ __html: textHtml }} className="prose-p:m-0 pointer-events-none" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 const LANGUAGES = [
   { code: 'en', label: '🇺🇸 English (Original)' },
   { code: 'ko', label: '🇰🇷 한국어' },
@@ -82,23 +139,27 @@ function WriteArticleForm() {
   const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 기사 개별 프로필 하단 배너 상태
+  // 기사 개별 프로필 배너 상태
   const [profileBannerFile, setProfileBannerFile] = useState<File | null>(null);
   const [profileBannerPreview, setProfileBannerPreview] = useState<string | null>(null);
   const [profileBannerUrl, setProfileBannerUrl] = useState('');
   const [profileBannerLink, setProfileBannerLink] = useState('');
   const [profileBannerAlt, setProfileBannerAlt] = useState('');
-  const [profileBannerText, setProfileBannerText] = useState(''); // 💡 오버레이 텍스트
+  const [profileBannerText, setProfileBannerText] = useState('');
+  const [profileBannerTextX, setProfileBannerTextX] = useState(10); // 💡 X 좌표
+  const [profileBannerTextY, setProfileBannerTextY] = useState(10); // 💡 Y 좌표
   const [profileBannerVisible, setProfileBannerVisible] = useState(true);
   const profileBannerFileInputRef = useRef<HTMLInputElement>(null);
 
-  // 기사 개별 구독 박스 하단 배너 상태
+  // 기사 개별 구독 배너 상태
   const [subscribeBannerFile, setSubscribeBannerFile] = useState<File | null>(null);
   const [subscribeBannerPreview, setSubscribeBannerPreview] = useState<string | null>(null);
   const [subscribeBannerUrl, setSubscribeBannerUrl] = useState('');
   const [subscribeBannerLink, setSubscribeBannerLink] = useState('');
   const [subscribeBannerAlt, setSubscribeBannerAlt] = useState('');
-  const [subscribeBannerText, setSubscribeBannerText] = useState(''); // 💡 오버레이 텍스트
+  const [subscribeBannerText, setSubscribeBannerText] = useState('');
+  const [subscribeBannerTextX, setSubscribeBannerTextX] = useState(10); // 💡 X 좌표
+  const [subscribeBannerTextY, setSubscribeBannerTextY] = useState(10); // 💡 Y 좌표
   const [subscribeBannerVisible, setSubscribeBannerVisible] = useState(true);
   const subscribeBannerFileInputRef = useRef<HTMLInputElement>(null);
   
@@ -172,17 +233,21 @@ function WriteArticleForm() {
         setImageUrl(data.image_url || '');
         setAuthorImageUrl(data.author_image_url || '');
         
-        // 배너 데이터 로드
+        // 배너 데이터 로드 및 좌표 연결
         setProfileBannerUrl(data.profile_banner_url || '');
         setProfileBannerLink(data.profile_banner_link || '');
         setProfileBannerAlt(data.profile_banner_alt || ''); 
-        setProfileBannerText(data.profile_banner_text || ''); // 💡 텍스트 로드
+        setProfileBannerText(data.profile_banner_text || '');
+        setProfileBannerTextX(data.profile_banner_text_x ?? 10);
+        setProfileBannerTextY(data.profile_banner_text_y ?? 10);
         if (data.profile_banner_visible !== undefined) setProfileBannerVisible(data.profile_banner_visible);
 
         setSubscribeBannerUrl(data.subscribe_banner_url || '');
         setSubscribeBannerLink(data.subscribe_banner_link || '');
         setSubscribeBannerAlt(data.subscribe_banner_alt || ''); 
-        setSubscribeBannerText(data.subscribe_banner_text || ''); // 💡 텍스트 로드
+        setSubscribeBannerText(data.subscribe_banner_text || '');
+        setSubscribeBannerTextX(data.subscribe_banner_text_x ?? 10);
+        setSubscribeBannerTextY(data.subscribe_banner_text_y ?? 10);
         if (data.subscribe_banner_visible !== undefined) setSubscribeBannerVisible(data.subscribe_banner_visible);
         
         if (data.allow_comments !== undefined) setAllowComments(data.allow_comments);
@@ -236,7 +301,6 @@ function WriteArticleForm() {
     } catch (e) { alert('이미지 편집 중 오류가 발생했습니다.'); }
   };
 
-  // 본문용 에디터 설정
   const modules = useMemo(() => ({
     toolbar: [
       [{ 'header': [1, 2, 3, 4, false] }], ['bold', 'italic', 'underline', 'strike', 'blockquote'],
@@ -245,7 +309,6 @@ function WriteArticleForm() {
     ],
   }), []);
 
-  // 💡 배너 텍스트용 미니 에디터 설정
   const miniModules = useMemo(() => ({
     toolbar: [
       [{ 'size': ['small', false, 'large', 'huge'] }],
@@ -316,12 +379,16 @@ function WriteArticleForm() {
       profile_banner_url: finalProfileBannerUrl, 
       profile_banner_link: profileBannerLink, 
       profile_banner_alt: profileBannerAlt,
-      profile_banner_text: profileBannerText, // 💡 오버레이 텍스트 저장
+      profile_banner_text: profileBannerText,
+      profile_banner_text_x: profileBannerTextX, // 💡 X 좌표 저장
+      profile_banner_text_y: profileBannerTextY, // 💡 Y 좌표 저장
       profile_banner_visible: profileBannerVisible,
       subscribe_banner_url: finalSubscribeBannerUrl, 
       subscribe_banner_link: subscribeBannerLink, 
       subscribe_banner_alt: subscribeBannerAlt,
-      subscribe_banner_text: subscribeBannerText, // 💡 오버레이 텍스트 저장
+      subscribe_banner_text: subscribeBannerText,
+      subscribe_banner_text_x: subscribeBannerTextX, // 💡 X 좌표 저장
+      subscribe_banner_text_y: subscribeBannerTextY, // 💡 Y 좌표 저장
       subscribe_banner_visible: subscribeBannerVisible,
       is_published: isPublished, translations: translationsData, updated_at: new Date().toISOString()
     };
@@ -346,7 +413,7 @@ function WriteArticleForm() {
         </div>
         
         <form className="space-y-6 text-black">
-          {/* 카테고리 & 댓글 설정 영역 */}
+          {/* 상단 폼 유지 */}
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex-1">
               <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
@@ -385,6 +452,7 @@ function WriteArticleForm() {
             </div>
           </div>
 
+          {/* 에디터 탭 및 언어 설정 */}
           <div className="mt-8 pt-4 border-t border-gray-200">
             <label className="block text-sm font-bold text-blue-600 mb-2">입력 언어 선택 (Author, Title, Tags, Content)</label>
             <nav className="flex space-x-2 overflow-x-auto" aria-label="Tabs">
@@ -432,7 +500,6 @@ function WriteArticleForm() {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 border-t border-gray-200 pt-8">
-              
               {/* 프로필 하단 배너 (4:1) */}
               <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 flex flex-col">
                 <div className="flex justify-between items-center mb-4">
@@ -446,7 +513,7 @@ function WriteArticleForm() {
                   <div onMouseDownCapture={() => setPasteTarget('profile_banner')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('profile_banner'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'profile_banner'); }} onClick={() => profileBannerFileInputRef.current?.click()} className={`w-full aspect-[4/1] rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group ${pasteTarget === 'profile_banner' ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
                     <input type="file" accept="image/*" ref={profileBannerFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'profile_banner'); }} className="hidden" />
                     {profileBannerPreview || profileBannerUrl ? (
-                      <><img src={profileBannerPreview || profileBannerUrl} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">변경</div></>
+                      <img src={profileBannerPreview || profileBannerUrl} className="w-full h-full object-cover" />
                     ) : <span className="text-xs text-gray-400 text-center px-2">클릭 또는 <span className="text-blue-600 font-bold">Ctrl+V</span></span>}
                   </div>
                   {(profileBannerPreview || profileBannerUrl) && <button type="button" onClick={handleClearProfileBanner} className="text-xs text-red-500 font-bold text-right w-full">삭제</button>}
@@ -460,12 +527,21 @@ function WriteArticleForm() {
                       <label className="block text-xs font-bold text-gray-700 mb-1">SEO 대체 텍스트 (Alt)</label>
                       <input type="text" value={profileBannerAlt} onChange={(e) => setProfileBannerAlt(e.target.value)} placeholder="예: 여드름 치료 Q&A 확인하기" className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
                     </div>
-                    {/* 💡 텍스트 오버레이 에디터 영역 */}
+                    {/* 💡 텍스트 오버레이 편집 + 드래그 미리보기 영역 */}
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">배너 오버레이 텍스트 (선택사항)</label>
-                      <div className="bg-white rounded border border-gray-300 h-32 mb-10">
+                      <label className="block text-xs font-bold text-gray-700 mb-1">배너 텍스트 입력 및 위치 조정</label>
+                      <div className="bg-white rounded border border-gray-300 h-24 mb-2">
                         <ReactQuill theme="snow" value={profileBannerText} onChange={setProfileBannerText} modules={miniModules} className="h-full" />
                       </div>
+                      <DraggablePreview 
+                        bgUrl={profileBannerPreview || profileBannerUrl} 
+                        textHtml={profileBannerText} 
+                        aspect={4/1} 
+                        x={profileBannerTextX} 
+                        y={profileBannerTextY} 
+                        onPosChange={(nx: number, ny: number) => { setProfileBannerTextX(nx); setProfileBannerTextY(ny); }} 
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">이미지 내의 텍스트 박스를 드래그하여 위치를 조정하세요.</p>
                     </div>
                   </div>
                 </div>
@@ -480,18 +556,18 @@ function WriteArticleForm() {
                     <input type="checkbox" checked={subscribeBannerVisible} onChange={(e) => setSubscribeBannerVisible(e.target.checked)} className="w-3 h-3"/>
                   </label>
                 </div>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col items-center">
-                    <div onMouseDownCapture={() => setPasteTarget('subscribe_banner')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('subscribe_banner'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'subscribe_banner'); }} onClick={() => subscribeBannerFileInputRef.current?.click()} className={`w-40 h-40 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group ${pasteTarget === 'subscribe_banner' ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
+                <div className="flex flex-col xl:flex-row gap-4">
+                  <div className="shrink-0 w-32">
+                    <div onMouseDownCapture={() => setPasteTarget('subscribe_banner')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('subscribe_banner'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'subscribe_banner'); }} onClick={() => subscribeBannerFileInputRef.current?.click()} className={`w-32 h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group ${pasteTarget === 'subscribe_banner' ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
                       <input type="file" accept="image/*" ref={subscribeBannerFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'subscribe_banner'); }} className="hidden" />
                       {subscribeBannerPreview || subscribeBannerUrl ? (
-                        <><img src={subscribeBannerPreview || subscribeBannerUrl} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">변경</div></>
+                        <img src={subscribeBannerPreview || subscribeBannerUrl} className="w-full h-full object-cover" />
                       ) : <span className="text-xs text-gray-400 text-center px-2">클릭 또는 <span className="text-blue-600 font-bold">Ctrl+V</span></span>}
                     </div>
-                    {(subscribeBannerPreview || subscribeBannerUrl) && <button type="button" onClick={handleClearSubscribeBanner} className="text-xs text-red-500 font-bold mt-2">삭제</button>}
+                    {(subscribeBannerPreview || subscribeBannerUrl) && <button type="button" onClick={handleClearSubscribeBanner} className="text-xs text-red-500 font-bold text-center w-full mt-2">삭제</button>}
                   </div>
                   
-                  <div className="mt-2 space-y-3">
+                  <div className="flex-1 space-y-3">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">광고 이동 URL</label>
                       <input type="text" value={subscribeBannerLink} onChange={(e) => setSubscribeBannerLink(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
@@ -500,12 +576,21 @@ function WriteArticleForm() {
                       <label className="block text-xs font-bold text-gray-700 mb-1">SEO 대체 텍스트 (Alt)</label>
                       <input type="text" value={subscribeBannerAlt} onChange={(e) => setSubscribeBannerAlt(e.target.value)} placeholder="문장형 제품 설명 및 키워드" className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
                     </div>
-                    {/* 💡 텍스트 오버레이 에디터 영역 */}
+                    {/* 💡 텍스트 오버레이 편집 + 드래그 미리보기 영역 */}
                     <div>
-                      <label className="block text-xs font-bold text-gray-700 mb-1">배너 오버레이 텍스트 (선택사항)</label>
-                      <div className="bg-white rounded border border-gray-300 h-32 mb-10">
+                      <label className="block text-xs font-bold text-gray-700 mb-1">배너 텍스트 입력 및 위치 조정</label>
+                      <div className="bg-white rounded border border-gray-300 h-24 mb-2">
                         <ReactQuill theme="snow" value={subscribeBannerText} onChange={setSubscribeBannerText} modules={miniModules} className="h-full" />
                       </div>
+                      <DraggablePreview 
+                        bgUrl={subscribeBannerPreview || subscribeBannerUrl} 
+                        textHtml={subscribeBannerText} 
+                        aspect={1/1} 
+                        x={subscribeBannerTextX} 
+                        y={subscribeBannerTextY} 
+                        onPosChange={(nx: number, ny: number) => { setSubscribeBannerTextX(nx); setSubscribeBannerTextY(ny); }} 
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">이미지 내의 텍스트 박스를 드래그하여 위치를 조정하세요.</p>
                     </div>
                   </div>
                 </div>
