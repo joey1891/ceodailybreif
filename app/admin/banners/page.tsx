@@ -49,11 +49,12 @@ const handleDownload = async (url: string, filename: string) => {
 };
 
 const DEFAULT_AD = { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false, is_visible: true, youtube_scale: 1.0, description: '', file_url: '', history: [] };
-type BannerPosition = 'mid' | 'bottom' | 'article_bottom' | 'footer_top';
+// 💡 profile_bottom 위치 추가
+type BannerPosition = 'mid' | 'bottom' | 'article_bottom' | 'footer_top' | 'profile_bottom';
 
 export default function AdminBanners() {
   const [ads, setAds] = useState<Record<BannerPosition, any>>({ 
-    mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }
+    mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }, profile_bottom: { ...DEFAULT_AD }
   });
   const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
   const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; position: BannerPosition | null; originalFile: File | null }>({ isOpen: false, imageSrc: '', position: null, originalFile: null });
@@ -66,7 +67,7 @@ export default function AdminBanners() {
     async function fetchAds() {
       const { data } = await supabase.from('ads').select('*');
       if (data) {
-        const adData: any = { mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD } };
+        const adData: any = { mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }, profile_bottom: { ...DEFAULT_AD } };
         data.forEach(ad => { if (adData[ad.position]) adData[ad.position] = { ...adData[ad.position], ...ad, history: ad.history || [] }; });
         setAds(adData);
       }
@@ -98,7 +99,13 @@ export default function AdminBanners() {
     const updatedAd = { ...ads[position], ...newData, history: updatedHistory };
     setAds(prev => ({ ...prev, [position]: updatedAd }));
 
-    let dbId = 1; if (position === 'bottom') dbId = 2; if (position === 'article_bottom') dbId = 3; if (position === 'footer_top') dbId = 4;
+    // 💡 profile_bottom 고유 ID 할당 (5번)
+    let dbId = 1; 
+    if (position === 'bottom') dbId = 2; 
+    if (position === 'article_bottom') dbId = 3; 
+    if (position === 'footer_top') dbId = 4;
+    if (position === 'profile_bottom') dbId = 5;
+    
     await supabase.from('ads').upsert({ id: dbId, position, ...newData, history: updatedHistory });
   };
 
@@ -113,7 +120,7 @@ export default function AdminBanners() {
       const { data: { publicUrl } } = supabase.storage.from('banners').getPublicUrl(fileName);
       const isVideo = file.type.startsWith('video/');
       
-      await updateHistoryAndSave(position, { image_url: publicUrl, is_youtube: false }, { type: isVideo ? 'video' : 'image', url: publicUrl, created_at: Date.now() });
+      await updateHistoryAndSave(position, { image_url: publicUrl, is_youtube: false }, { type: isVideo ? 'video' : 'url', url: publicUrl, created_at: Date.now() });
       alert(`업로드 완료!`);
     } catch (error: any) { alert('업로드 실패'); } finally { setIsUploading(prev => ({ ...prev, [position]: false })); }
   };
@@ -125,6 +132,7 @@ export default function AdminBanners() {
     if (position === 'bottom') { targetWidth = 300; targetHeight = 600; }
     if (position === 'article_bottom') { targetWidth = 800; targetHeight = 450; } 
     if (position === 'footer_top') { targetWidth = 1200; targetHeight = 400; } 
+    if (position === 'profile_bottom') { targetWidth = 800; targetHeight = 200; } // 💡 프로필 하단 배너 비율
 
     setIsUploading(prev => ({ ...prev, [position]: true }));
     setCropModal({ isOpen: false, imageSrc: '', position: null, originalFile: null }); 
@@ -256,7 +264,6 @@ export default function AdminBanners() {
                 <textarea value={ads[position].description || ''} onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], description: e.target.value } }))} className="w-full border p-2 rounded text-sm focus:outline-none focus:border-black" rows={2} placeholder="모달 창에서 배너 아래에 노출될 설명" />
               </div>
               
-              {/* 💡 해시태그(SEO 키워드) 입력 UI */}
               <div>
                 <label className="block text-sm font-bold mb-2 text-gray-500">
                   SEO 해시태그 <span className="text-xs font-normal ml-1">(검색 엔진 노출용)</span>
@@ -273,7 +280,7 @@ export default function AdminBanners() {
                   ))}
                   <input 
                     type="text" 
-                    placeholder="해시태그 띄어쓰기 또는 # 기호로 구분 후 Enter (예: #KBeauty)" 
+                    placeholder="해시태그 띄어쓰기 또는 # 기호로 구분 후 Enter" 
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -328,13 +335,24 @@ export default function AdminBanners() {
       {renderBannerEditor('bottom', '2. 우측 사이드 하단(스크롤 고정) 배너', '300px', '600px')}
       {renderBannerEditor('article_bottom', '3. 메인 기사 바로 아래 배너', '320px', '180px')}
       {renderBannerEditor('footer_top', '4. 푸터 위 전체너비 배너', '400px', '133px')}
+      {/* 💡 기사 프로필 하단 배너 설정 슬롯 추가 */}
+      {renderBannerEditor('profile_bottom', '5. 기사 작성자 프로필 하단 배너', '400px', '100px')}
 
       {cropModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-2xl flex flex-col gap-4 shadow-2xl">
             <div><h3 className="text-xl font-bold text-black">이미지 크롭</h3><p className="text-sm text-gray-500 mt-1">마우스로 드래그하여 영역을 맞추세요. (마우스 휠로 확대/축소 가능)</p></div>
             <div className="relative w-full h-[50vh] min-h-[300px] bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-              <Cropper image={cropModal.imageSrc} crop={crop} zoom={zoom} aspect={cropModal.position === 'mid' ? 300/250 : cropModal.position === 'bottom' ? 300/600 : cropModal.position === 'article_bottom' ? 16/9 : 24/9} onCropChange={setCrop} onCropComplete={(a, px) => setCroppedAreaPixels(px)} onZoomChange={setZoom} />
+              <Cropper 
+                image={cropModal.imageSrc} 
+                crop={crop} 
+                zoom={zoom} 
+                /* 💡 profile_bottom의 자르기 비율(가로형) 지정 */
+                aspect={cropModal.position === 'mid' ? 300/250 : cropModal.position === 'bottom' ? 300/600 : cropModal.position === 'article_bottom' ? 16/9 : cropModal.position === 'profile_bottom' ? 4/1 : 24/9} 
+                onCropChange={setCrop} 
+                onCropComplete={(a, px) => setCroppedAreaPixels(px)} 
+                onZoomChange={setZoom} 
+              />
             </div>
             <div className="flex justify-end gap-3 mt-4">
               <button onClick={() => setCropModal({ isOpen: false, imageSrc: '', position: null, originalFile: null })} className="px-6 py-2 border rounded font-bold">취소</button>
