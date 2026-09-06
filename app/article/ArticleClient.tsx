@@ -56,9 +56,6 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // 전역 프로필 배너 상태
-  const [profileBanner, setProfileBanner] = useState<any>(null);
-
   const isAsianLang = ['ko', 'ja', 'zh-CN', 'mn', 'vi'].includes(currentLang);
   const titleFontClass = isAsianLang ? 'font-sans font-black tracking-tight' : 'font-serif font-black';
   const bodyFontClass = isAsianLang ? 'prose-p:font-sans prose-p:font-medium prose-p:tracking-wide prose-p:leading-relaxed' : 'font-serif leading-loose';
@@ -69,16 +66,9 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
     if (data) setComments(data);
   };
 
-  // 💡 프로필 배너만 전역(ads 테이블)에서 불러옵니다.
-  const fetchBanners = async () => {
-    const { data } = await supabase.from('ads').select('*').eq('position', 'profile_bottom').eq('is_visible', true).single();
-    if (data) setProfileBanner(data);
-  };
-
   useEffect(() => {
     if (articleId) {
       fetchComments();
-      fetchBanners(); 
       supabase.auth.getSession().then(({ data }) => setIsAdmin(!!data.session));
       const savedEmail = localStorage.getItem('comment_email');
       if (savedEmail) setCommentEmail(savedEmail);
@@ -219,11 +209,15 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           </div>
         )}
 
-        {/* 전역 프로필 하단 배너 */}
-        {profileBanner && (
+        {/* 💡 기사 개별 프로필 하단 배너 출력 영역 (4:1 비율) */}
+        {article.profile_banner_visible && article.profile_banner_url && (
           <div className="mt-8 flex justify-center w-full">
-            <a href={profileBanner.link_url || '#'} target="_blank" rel="noopener noreferrer" className="w-full max-w-3xl block transition-opacity hover:opacity-95">
-              <img src={profileBanner.image_url} alt={profileBanner.alt_text || "Advertisement"} className="w-full h-auto rounded-lg shadow-sm border border-gray-200 object-cover" />
+            <a href={article.profile_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="w-full max-w-3xl block transition-opacity hover:opacity-95">
+              <img 
+                src={article.profile_banner_url} 
+                alt="Advertisement" 
+                className="w-full h-auto rounded-lg shadow-sm border border-gray-200 object-cover" 
+              />
             </a>
           </div>
         )}
@@ -240,7 +234,7 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           </form>
         </div>
 
-        {/* 💡 기사 개별 1:1 구독 하단 배너 출력 영역 */}
+        {/* 💡 기사 개별 구독 하단 배너 출력 영역 (1:1 비율) */}
         {article.subscribe_banner_visible && article.subscribe_banner_url && (
           <div className="mt-8 flex justify-center w-full">
             <a href={article.subscribe_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="w-full max-w-lg block transition-opacity hover:opacity-95">
