@@ -162,6 +162,16 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white pb-20">
+      {/* 💡 에디터 정렬 클래스 지원을 위한 전역 스타일 주입 */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .ql-align-center { text-align: center; }
+        .ql-align-right { text-align: right; }
+        .ql-align-justify { text-align: justify; }
+        .ql-size-small { font-size: 0.75em; }
+        .ql-size-large { font-size: 1.5em; }
+        .ql-size-huge { font-size: 2.5em; }
+      `}} />
+      
       <header className="border-b border-gray-200 py-4 px-6 mb-10 flex justify-between items-center max-w-3xl mx-auto">
         <Link href="/" className="font-black font-serif text-xl tracking-tighter uppercase hover:text-red-800 transition-colors">CEO Daily Brief</Link>
         <Link href={`/news?category=${encodeURIComponent(article.category)}`} className="text-xs font-bold text-gray-500 uppercase tracking-widest hover:text-black">{article.category}</Link>
@@ -209,15 +219,21 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           </div>
         )}
 
-        {/* 💡 기사 개별 프로필 하단 배너 출력 영역 (+ SEO Alt) */}
+        {/* 💡 기사 개별 프로필 하단 배너 (폭 통일 및 텍스트 오버레이 적용) */}
         {article.profile_banner_visible && article.profile_banner_url && (
           <div className="mt-8 flex justify-center w-full">
-            <a href={article.profile_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="w-full max-w-3xl block transition-opacity hover:opacity-95">
+            <a href={article.profile_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="relative w-full block transition-opacity hover:opacity-95 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <img 
                 src={article.profile_banner_url} 
                 alt={article.profile_banner_alt || "스폰서 광고 배너"} 
-                className="w-full h-auto rounded-lg shadow-sm border border-gray-200 object-cover" 
+                className="w-full h-auto object-cover" 
               />
+              {/* 💡 텍스트 오버레이 렌더링 */}
+              {article.profile_banner_text && (
+                <div className="absolute inset-0 p-6 sm:p-8 flex flex-col justify-center pointer-events-none">
+                   <div dangerouslySetInnerHTML={{ __html: article.profile_banner_text }} className="prose-p:m-0" />
+                </div>
+              )}
             </a>
           </div>
         )}
@@ -234,15 +250,21 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           </form>
         </div>
 
-        {/* 💡 기사 개별 구독 하단 배너 출력 영역 (+ SEO Alt) */}
+        {/* 💡 기사 개별 구독 하단 배너 (폭 통일 및 텍스트 오버레이 적용) */}
         {article.subscribe_banner_visible && article.subscribe_banner_url && (
           <div className="mt-8 flex justify-center w-full">
-            <a href={article.subscribe_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="w-full max-w-lg block transition-opacity hover:opacity-95">
+            <a href={article.subscribe_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="relative w-full block transition-opacity hover:opacity-95 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <img 
                 src={article.subscribe_banner_url} 
                 alt={article.subscribe_banner_alt || "스폰서 광고 배너"} 
-                className="w-full h-auto rounded-lg shadow-sm border border-gray-200 object-cover aspect-square" 
+                className="w-full h-auto object-cover aspect-square" 
               />
+              {/* 💡 텍스트 오버레이 렌더링 */}
+              {article.subscribe_banner_text && (
+                <div className="absolute inset-0 p-6 sm:p-8 flex flex-col justify-center pointer-events-none">
+                   <div dangerouslySetInnerHTML={{ __html: article.subscribe_banner_text }} className="prose-p:m-0" />
+                </div>
+              )}
             </a>
           </div>
         )}
