@@ -26,7 +26,7 @@ const uiDict: Record<string, any> = {
   'ja': { title: "この記事が気に入りましたか？", desc: "CEO Daily Briefを購読して、韓国市場の重要な洞察を毎朝メールで受け取りましょう。", placeholder: "メールアドレスを入力", button: "購読する", success: "購読が完了しました！", duplicate: "既に購読しているメールアドレスです。", error: "購読中にエラーが発生しました。", commentTitle: "コメント", commentName: "名前", commentEmail: "購読メール", commentText: "コメントを追加...", commentBtn: "投稿する", noComments: "まだコメントはありません。最初のコメントを投稿しましょう！", notSubscribed: "購読者のみコメントを投稿できます。" },
   'zh-CN': { title: "喜欢这篇文章吗？", desc: "订阅 CEO Daily Brief，每天早上将韩国市场的核心洞察发送到您的收件箱。", placeholder: "输入您的电子邮件地址", button: "订阅", success: "订阅成功！", duplicate: "此邮箱已订阅。", error: "订阅时发生错误。", commentTitle: "评论", commentName: "名字", commentEmail: "订阅邮箱", commentText: "添加评论...", commentBtn: "发表评论", noComments: "暂无评论。来做第一个发表看法的人吧！", notSubscribed: "只有订阅者可以发表评论。" },
   'ru': { title: "Понравилась статья?", desc: "Подпишитесь на CEO Daily Brief и получайте ключевые идеи корейского рынка каждое утро.", placeholder: "Ваш email адрес", button: "ПОДПИСАТЬСЯ", success: "Вы успешно подписались!", duplicate: "Этот email уже подписан.", error: "Произошла ошибка при подписке.", commentTitle: "Комментарии", commentName: "Имя", commentEmail: "Ваш email", commentText: "Добавить комментарий...", commentBtn: "Опубликовать", noComments: "Пока нет комментариев. Поделитесь своими мыслями первым!", notSubscribed: "Только подписчики могут оставлять комментарии." },
-  'mn': { title: "Энэ нийтлэл танд таалагдсан уу?", desc: "CEO Daily Brief-т бүртгүүлж, Өмнөд Солонгосын зах 지ээлийн гол мэдээллийг өглөө бүр имэйлээрээ аваарай.", placeholder: "Таны имэйл хаяг", button: "БҮРТГҮҮЛЭХ", success: "Амжилттай бүртгүүллээ!", duplicate: "Энэ имэйл аль хэдийн бүртгэгдсэн байна.", error: "Бүртгүүлэх үед алдаа гарлаа.", commentTitle: "Сэтгэгдэл", commentName: "Нэр", commentEmail: "Имэйл", commentText: "Сэтгэгдэл үлдээх...", commentBtn: "Нийтлэх", noComments: "Одоогоор сэтгэгдэл алга. Анхны сэтгэгдлийг үлдээгээрэй!", notSubscribed: "Зөвхөн бүртгүүлэгчид сэтгэгдэл бичих боломжтой." },
+  'mn': { title: "Энэ нийтлэл танд таалагдсан уу?", desc: "CEO Daily Brief-т бүртгүүлж, Өмнөд Солонгосын зах зээлийн гол мэдээллийг өглөө бүр имэйлээрээ аваарай.", placeholder: "Таны имэйл хаяг", button: "БҮРТГҮҮЛЭХ", success: "Амжилттай бүртгүүллээ!", duplicate: "Энэ имэйл аль хэдийн бүртгэгдсэн байна.", error: "Бүртгүүлэх үед алдаа гарлаа.", commentTitle: "Сэтгэгдэл", commentName: "Нэр", commentEmail: "Имэйл", commentText: "Сэтгэгдэл үлдээх...", commentBtn: "Нийтлэх", noComments: "Одоогоор сэтгэгдэл алга. Анхны сэтгэгдлийг үлдээгээрэй!", notSubscribed: "Зөвхөн бүртгүүлэгчид сэтгэгдэл бичих боломжтой." },
   'vi': { title: "Bạn có thích bài viết này không?", desc: "Đăng ký CEO Daily Brief và nhận những thông tin cốt lõi về thị trường Hàn Quốc mỗi sáng.", placeholder: "Địa chỉ email của bạn", button: "ĐĂNG KÝ", success: "Đăng ký thành công!", duplicate: "Email này đã được đăng ký.", error: "Đã xảy ra lỗi khi đăng ký.", commentTitle: "Bình luận", commentName: "Tên", commentEmail: "Email", commentText: "Thêm bình luận...", commentBtn: "Đăng bình luận", noComments: "Chưa có bình luận nào. Hãy là người đầu tiên chia sẻ suy nghĩ của bạn!", notSubscribed: "Chỉ người đăng ký mới có thể bình luận." }
 };
 
@@ -162,7 +162,6 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white pb-20">
-      {/* 💡 에디터에서 설정한 텍스트 포맷이 깨지지 않도록 글로벌 스타일 설정 */}
       <style dangerouslySetInnerHTML={{__html: `
         .ql-align-center { text-align: center; }
         .ql-align-right { text-align: right; }
@@ -219,7 +218,7 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           </div>
         )}
 
-        {/* 💡 기사 개별 프로필 하단 배너 (폭 통일 및 마우스 좌표 기반 텍스트 렌더링) */}
+        {/* 💡 프로필 하단 배너 (위치 및 박스 크기 추적) */}
         {article.profile_banner_visible && article.profile_banner_url && (
           <div className="mt-8 w-full flex justify-center">
             <a href={article.profile_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="relative w-full block transition-opacity hover:opacity-95 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -228,10 +227,10 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
                 alt={article.profile_banner_alt || "스폰서 광고 배너"} 
                 className="w-full h-auto object-cover" 
               />
-              {article.profile_banner_text && (
+              {article.profile_banner_has_text && (
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                   <div className="absolute p-2" style={{ left: `${article.profile_banner_text_x ?? 10}%`, top: `${article.profile_banner_text_y ?? 10}%` }}>
-                      <div dangerouslySetInnerHTML={{ __html: article.profile_banner_text }} className="prose-p:m-0" />
+                   <div className="absolute p-3 flex" style={{ left: `${article.profile_banner_text_x ?? 10}%`, top: `${article.profile_banner_text_y ?? 10}%`, width: `${article.profile_banner_text_w ?? 50}%`, height: `${article.profile_banner_text_h ?? 50}%` }}>
+                      <div dangerouslySetInnerHTML={{ __html: article.profile_banner_text }} className="prose-p:m-0 w-full h-full" />
                    </div>
                 </div>
               )}
@@ -251,7 +250,7 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           </form>
         </div>
 
-        {/* 💡 기사 개별 구독 하단 배너 (폭 통일 및 마우스 좌표 기반 텍스트 렌더링) */}
+        {/* 💡 구독 하단 배너 (위치 및 박스 크기 추적) */}
         {article.subscribe_banner_visible && article.subscribe_banner_url && (
           <div className="mt-8 w-full flex justify-center">
             <a href={article.subscribe_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="relative w-full block transition-opacity hover:opacity-95 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -260,10 +259,10 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
                 alt={article.subscribe_banner_alt || "스폰서 광고 배너"} 
                 className="w-full h-auto object-cover aspect-square" 
               />
-              {article.subscribe_banner_text && (
+              {article.subscribe_banner_has_text && (
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                   <div className="absolute p-2" style={{ left: `${article.subscribe_banner_text_x ?? 10}%`, top: `${article.subscribe_banner_text_y ?? 10}%` }}>
-                      <div dangerouslySetInnerHTML={{ __html: article.subscribe_banner_text }} className="prose-p:m-0" />
+                   <div className="absolute p-3 flex" style={{ left: `${article.subscribe_banner_text_x ?? 10}%`, top: `${article.subscribe_banner_text_y ?? 10}%`, width: `${article.subscribe_banner_text_w ?? 50}%`, height: `${article.subscribe_banner_text_h ?? 50}%` }}>
+                      <div dangerouslySetInnerHTML={{ __html: article.subscribe_banner_text }} className="prose-p:m-0 w-full h-full" />
                    </div>
                 </div>
               )}
