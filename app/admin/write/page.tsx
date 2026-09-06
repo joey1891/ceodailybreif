@@ -82,19 +82,21 @@ function WriteArticleForm() {
   const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 기사 개별 배너용 상태 (프로필 4:1)
+  // 기사 개별 프로필 하단 배너 상태
   const [profileBannerFile, setProfileBannerFile] = useState<File | null>(null);
   const [profileBannerPreview, setProfileBannerPreview] = useState<string | null>(null);
   const [profileBannerUrl, setProfileBannerUrl] = useState('');
   const [profileBannerLink, setProfileBannerLink] = useState('');
+  const [profileBannerAlt, setProfileBannerAlt] = useState(''); // 💡 SEO Alt 텍스트 상태
   const [profileBannerVisible, setProfileBannerVisible] = useState(true);
   const profileBannerFileInputRef = useRef<HTMLInputElement>(null);
 
-  // 기사 개별 배너용 상태 (구독 1:1)
+  // 기사 개별 구독 박스 하단 배너 상태
   const [subscribeBannerFile, setSubscribeBannerFile] = useState<File | null>(null);
   const [subscribeBannerPreview, setSubscribeBannerPreview] = useState<string | null>(null);
   const [subscribeBannerUrl, setSubscribeBannerUrl] = useState('');
   const [subscribeBannerLink, setSubscribeBannerLink] = useState('');
+  const [subscribeBannerAlt, setSubscribeBannerAlt] = useState(''); // 💡 SEO Alt 텍스트 상태
   const [subscribeBannerVisible, setSubscribeBannerVisible] = useState(true);
   const subscribeBannerFileInputRef = useRef<HTMLInputElement>(null);
   
@@ -171,10 +173,12 @@ function WriteArticleForm() {
         // 배너 데이터 로드
         setProfileBannerUrl(data.profile_banner_url || '');
         setProfileBannerLink(data.profile_banner_link || '');
+        setProfileBannerAlt(data.profile_banner_alt || ''); // 💡 Load SEO Text
         if (data.profile_banner_visible !== undefined) setProfileBannerVisible(data.profile_banner_visible);
 
         setSubscribeBannerUrl(data.subscribe_banner_url || '');
         setSubscribeBannerLink(data.subscribe_banner_link || '');
+        setSubscribeBannerAlt(data.subscribe_banner_alt || ''); // 💡 Load SEO Text
         if (data.subscribe_banner_visible !== undefined) setSubscribeBannerVisible(data.subscribe_banner_visible);
         
         if (data.allow_comments !== undefined) setAllowComments(data.allow_comments);
@@ -295,9 +299,11 @@ function WriteArticleForm() {
       allow_comments: allowComments,
       profile_banner_url: finalProfileBannerUrl, 
       profile_banner_link: profileBannerLink, 
+      profile_banner_alt: profileBannerAlt, // 💡 Save SEO Text
       profile_banner_visible: profileBannerVisible,
       subscribe_banner_url: finalSubscribeBannerUrl, 
       subscribe_banner_link: subscribeBannerLink, 
+      subscribe_banner_alt: subscribeBannerAlt, // 💡 Save SEO Text
       subscribe_banner_visible: subscribeBannerVisible,
       is_published: isPublished, translations: translationsData, updated_at: new Date().toISOString()
     };
@@ -322,6 +328,7 @@ function WriteArticleForm() {
         </div>
         
         <form className="space-y-6 text-black">
+          {/* 상단 폼 유지 (카테고리, 작성자, 언어 등 생략 처리 없이 전체 출력) */}
           <div className="flex flex-col md:flex-row gap-6">
             <div className="flex-1">
               <label className="block text-sm font-bold text-gray-700 mb-2">카테고리</label>
@@ -407,7 +414,7 @@ function WriteArticleForm() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-gray-200 pt-8">
-              {/* 프로필 하단 배너 (4:1) */}
+              {/* 💡 프로필 하단 배너 (4:1) + SEO Alt 입력 추가 */}
               <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-bold text-gray-800">프로필 하단 배너 <span className="text-xs text-blue-600">(4:1 비율)</span></h3>
@@ -425,14 +432,20 @@ function WriteArticleForm() {
                   </div>
                   {(profileBannerPreview || profileBannerUrl) && <button type="button" onClick={handleClearProfileBanner} className="text-xs text-red-500 font-bold text-right w-full">삭제</button>}
                   
-                  <div className="mt-2">
-                    <label className="block text-xs font-bold text-gray-700 mb-1">광고 이동 URL</label>
-                    <input type="text" value={profileBannerLink} onChange={(e) => setProfileBannerLink(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
+                  <div className="mt-2 space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">광고 이동 URL</label>
+                      <input type="text" value={profileBannerLink} onChange={(e) => setProfileBannerLink(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">SEO 대체 텍스트 (Alt)</label>
+                      <input type="text" value={profileBannerAlt} onChange={(e) => setProfileBannerAlt(e.target.value)} placeholder="예: 여드름 치료 Q&A 확인하기" className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* 구독 박스 하단 배너 (1:1) */}
+              {/* 💡 구독 박스 하단 배너 (1:1) + SEO Alt 입력 추가 */}
               <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200 flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-bold text-gray-800">구독 하단 배너 <span className="text-xs text-red-500">(1:1 비율)</span></h3>
@@ -441,18 +454,26 @@ function WriteArticleForm() {
                     <input type="checkbox" checked={subscribeBannerVisible} onChange={(e) => setSubscribeBannerVisible(e.target.checked)} className="w-3 h-3"/>
                   </label>
                 </div>
-                <div className="flex flex-col gap-4">
-                  <div onMouseDownCapture={() => setPasteTarget('subscribe_banner')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('subscribe_banner'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'subscribe_banner'); }} onClick={() => subscribeBannerFileInputRef.current?.click()} className={`w-32 h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group ${pasteTarget === 'subscribe_banner' ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
-                    <input type="file" accept="image/*" ref={subscribeBannerFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'subscribe_banner'); }} className="hidden" />
-                    {subscribeBannerPreview || subscribeBannerUrl ? (
-                      <><img src={subscribeBannerPreview || subscribeBannerUrl} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">변경</div></>
-                    ) : <span className="text-xs text-gray-400 text-center px-2">클릭 또는 <span className="text-blue-600 font-bold">Ctrl+V</span></span>}
+                <div className="flex flex-col xl:flex-row gap-4">
+                  <div className="shrink-0 w-32">
+                    <div onMouseDownCapture={() => setPasteTarget('subscribe_banner')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('subscribe_banner'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'subscribe_banner'); }} onClick={() => subscribeBannerFileInputRef.current?.click()} className={`w-32 h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group ${pasteTarget === 'subscribe_banner' ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
+                      <input type="file" accept="image/*" ref={subscribeBannerFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'subscribe_banner'); }} className="hidden" />
+                      {subscribeBannerPreview || subscribeBannerUrl ? (
+                        <><img src={subscribeBannerPreview || subscribeBannerUrl} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">변경</div></>
+                      ) : <span className="text-xs text-gray-400 text-center px-2">클릭 또는 <span className="text-blue-600 font-bold">Ctrl+V</span></span>}
+                    </div>
+                    {(subscribeBannerPreview || subscribeBannerUrl) && <button type="button" onClick={handleClearSubscribeBanner} className="text-xs text-red-500 font-bold text-center w-full mt-2">삭제</button>}
                   </div>
-                  {(subscribeBannerPreview || subscribeBannerUrl) && <button type="button" onClick={handleClearSubscribeBanner} className="text-xs text-red-500 font-bold text-left w-32">삭제</button>}
                   
-                  <div className="mt-2 flex-1">
-                    <label className="block text-xs font-bold text-gray-700 mb-1">광고 이동 URL</label>
-                    <input type="text" value={subscribeBannerLink} onChange={(e) => setSubscribeBannerLink(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">광고 이동 URL</label>
+                      <input type="text" value={subscribeBannerLink} onChange={(e) => setSubscribeBannerLink(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">SEO 대체 텍스트 (Alt)</label>
+                      <input type="text" value={subscribeBannerAlt} onChange={(e) => setSubscribeBannerAlt(e.target.value)} placeholder="문장형 제품 설명 및 키워드" className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
+                    </div>
                   </div>
                 </div>
               </div>
