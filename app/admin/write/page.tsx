@@ -68,12 +68,12 @@ function WriteArticleForm() {
   
   const [category, setCategory] = useState('');
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
-  
-  // 💡 댓글 허용 여부 상태 추가
   const [allowComments, setAllowComments] = useState(true);
 
-  const [authorName, setAuthorName] = useState('Editor-in-Chief');
-  const [authorBio, setAuthorBio] = useState('');
+  // 작성자 정보 다국어 처리를 위한 상태 변경
+  const [authorName, setAuthorName] = useState<MultiLangState>(initialTextState);
+  const [authorBio, setAuthorBio] = useState<MultiLangState>(initialTextState);
+  
   const [authorImageFile, setAuthorImageFile] = useState<File | null>(null);
   const [authorImagePreview, setAuthorImagePreview] = useState<string | null>(null);
   const [authorImageUrl, setAuthorImageUrl] = useState('');
@@ -123,7 +123,13 @@ function WriteArticleForm() {
       const { data, error } = await supabase.from('articles').select('*').eq('id', editId).single();
       if (data) {
         const newTitle = { ...initialTextState }; const newContent = { ...initialTextState }; const newHashtags = { ...initialTagsState };
-        newTitle['en'] = safeExtractString(data.title); newContent['en'] = safeExtractString(data.content);
+        const newAuthorName = { ...initialTextState }; const newAuthorBio = { ...initialTextState };
+
+        newTitle['en'] = safeExtractString(data.title); 
+        newContent['en'] = safeExtractString(data.content);
+        newAuthorName['en'] = safeExtractString(data.author_name) || 'Editor-in-Chief';
+        newAuthorBio['en'] = safeExtractString(data.author_bio);
+
         try {
           const parsedTags = data.hashtags ? JSON.parse(data.hashtags) : [];
           if (Array.isArray(parsedTags)) newHashtags['en'] = parsedTags;
@@ -134,14 +140,20 @@ function WriteArticleForm() {
         if (data.translations) {
           Object.keys(data.translations).forEach(lang => {
             if (LANGUAGES.some(l => l.code === lang)) {
-              newTitle[lang] = data.translations[lang].title || ''; newContent[lang] = data.translations[lang].content || ''; newHashtags[lang] = data.translations[lang].hashtags || [];
+              newTitle[lang] = data.translations[lang].title || ''; 
+              newContent[lang] = data.translations[lang].content || ''; 
+              newHashtags[lang] = data.translations[lang].hashtags || [];
+              newAuthorName[lang] = data.translations[lang].author_name || ''; // 다국어 프로필 로드
+              newAuthorBio[lang] = data.translations[lang].author_bio || '';
             }
           });
         }
-        setTitle(newTitle); setContent(newContent); setHashtags(newHashtags); setCategory(data.category || 'POLITICS'); setImageUrl(data.image_url || '');
-        setAuthorName(data.author_name || 'Editor-in-Chief'); setAuthorBio(data.author_bio || ''); setAuthorImageUrl(data.author_image_url || '');
+        setTitle(newTitle); setContent(newContent); setHashtags(newHashtags); 
+        setAuthorName(newAuthorName); setAuthorBio(newAuthorBio);
         
-        // 💡 DB에 저장된 댓글 허용 여부 불러오기
+        setCategory(data.category || 'POLITICS'); setImageUrl(data.image_url || '');
+        setAuthorImageUrl(data.author_image_url || '');
+        
         if (data.allow_comments !== undefined) setAllowComments(data.allow_comments);
       }
     };
@@ -165,20 +177,6 @@ function WriteArticleForm() {
       reader.readAsDataURL(file);
     } else { setThumbnailFile(file); }
   };
-
-  useEffect(() => {
-    const handleGlobalPaste = (e: ClipboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.closest('.ql-editor') || cropModal.isOpen) return;
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) { const file = items[i].getAsFile(); if (file) { handleFileSelect(file, pasteTarget); e.preventDefault(); return; } }
-      }
-    };
-    window.addEventListener('paste', handleGlobalPaste);
-    return () => window.removeEventListener('paste', handleGlobalPaste);
-  }, [pasteTarget, cropModal.isOpen]);
 
   const handleCropSave = async () => {
     if (!croppedAreaPixels || cropModal.target !== 'author') return;
@@ -236,15 +234,31 @@ function WriteArticleForm() {
     const translationsData: any = {};
     LANGUAGES.forEach((lang) => {
       if (lang.code !== 'en') {
-        const tTitle = title[lang.code]; const tContent = content[lang.code]; const tHashtags = hashtags[lang.code] || [];
-        if (tTitle || tContent || tHashtags.length > 0) translationsData[lang.code] = { title: tTitle, content: tContent, hashtags: tHashtags };
+        const tTitle = title[lang.code]; 
+        const tContent = content[lang.code]; 
+        const tHashtags = hashtags[lang.code] || [];
+        const tAuthorName = authorName[lang.code]; // 번역 데이터로 저장
+        const tAuthorBio = authorBio[lang.code];
+        
+        if (tTitle || tContent || tHashtags.length > 0 || tAuthorName || tAuthorBio) {
+          translationsData[lang.code] = { title: tTitle, content: tContent, hashtags: tHashtags, author_name: tAuthorName, author_bio: tAuthorBio };
+        }
       }
     });
 
     const articleData = {
-      title: title['en'], content: content['en'], hashtags: JSON.stringify(hashtags['en'] || []), category, image_url: finalImageUrl, 
-      author_name: authorName, author_bio: authorBio, author_image_url: finalAuthorImageUrl, allow_comments: allowComments, // 💡 댓글 허용 여부 저장
-      is_published: isPublished, translations: translationsData, updated_at: new Date().toISOString()
+      title: title['en'], 
+      content: content['en'], 
+      hashtags: JSON.stringify(hashtags['en'] || []), 
+      category, 
+      image_url: finalImageUrl, 
+      author_name: authorName['en'] || 'Editor-in-Chief', 
+      author_bio: authorBio['en'], 
+      author_image_url: finalAuthorImageUrl, 
+      allow_comments: allowComments,
+      is_published: isPublished, 
+      translations: translationsData, 
+      updated_at: new Date().toISOString()
     };
 
     let error;
@@ -274,7 +288,6 @@ function WriteArticleForm() {
                 {availableCategories.map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
               </select>
             </div>
-            {/* 💡 댓글 토글 스위치 */}
             <div className="flex-1">
               <label className="block text-sm font-bold text-gray-700 mb-2">기사 하단 댓글 활성화</label>
               <label className="flex items-center gap-2 cursor-pointer bg-gray-100 border border-gray-300 px-4 py-2 rounded shadow-sm w-max">
@@ -287,11 +300,10 @@ function WriteArticleForm() {
           <div className="bg-gray-50 p-6 rounded border border-gray-200">
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path></svg>
-              작성자 정보 (Author Profile)
+              작성자 프로필 사진 (공통)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
               <div className="md:col-span-3 flex flex-col items-center">
-                <label className="block text-sm font-bold text-gray-700 mb-2 self-start flex items-center gap-2">프로필 사진 {pasteTarget === 'author' && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full shadow-sm">Ctrl+V 대상</span>}</label>
                 <div onMouseDownCapture={() => setPasteTarget('author')} onDragOver={(e) => { e.preventDefault(); setIsAuthorDragging(true); setPasteTarget('author'); }} onDragLeave={() => setIsAuthorDragging(false)} onDrop={(e) => { e.preventDefault(); setIsAuthorDragging(false); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'author'); }} onClick={() => { authorFileInputRef.current?.click(); setPasteTarget('author'); }} className={`w-32 h-40 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group transition-colors ${pasteTarget === 'author' ? 'border-blue-500 bg-blue-50' : isAuthorDragging ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
                   <input type="file" accept="image/*" ref={authorFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'author'); }} className="hidden" />
                   {authorImagePreview || authorImageUrl ? (
@@ -300,27 +312,41 @@ function WriteArticleForm() {
                 </div>
                 {(authorImagePreview || authorImageUrl) && <button type="button" onClick={handleClearAuthorImage} className="mt-2 text-xs text-red-500 font-bold hover:underline">사진 삭제</button>}
               </div>
-              <div className="md:col-span-9 space-y-4">
-                <div><label className="block text-sm font-bold text-gray-700 mb-2">작성자 (Name / Title)</label><input type="text" value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="예: John Doe, Editor-in-Chief" className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black" /></div>
-                <div><label className="block text-sm font-bold text-gray-700 mb-2">간단한 이력/소개 (Bio)</label><textarea value={authorBio} onChange={(e) => setAuthorBio(e.target.value)} rows={3} placeholder="작성자의 전문성, 경력, 소개 등을 짧게 입력하세요." className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black" /></div>
+              <div className="md:col-span-9 flex flex-col justify-center">
+                <p className="text-sm text-gray-600 bg-white p-4 border border-gray-200 rounded-md shadow-sm">
+                  💡 <strong>작성자의 이름과 이력/소개(Bio)는 하단의 <span className="text-blue-600">[언어 선택 탭]</span>에서 언어별로 각각 입력할 수 있습니다.</strong><br/>
+                  모든 언어 버전에서 프로필 사진은 위에서 등록한 이미지가 공통으로 적용됩니다.
+                </p>
               </div>
             </div>
           </div>
 
           <div className="mt-8 pt-4 border-t border-gray-200">
-            <label className="block text-sm font-bold text-blue-600 mb-2">입력 언어 선택 (Title, Tags, Content)</label>
+            <label className="block text-sm font-bold text-blue-600 mb-2">입력 언어 선택 (Author, Title, Tags, Content)</label>
             <nav className="flex space-x-2 overflow-x-auto" aria-label="Tabs">
               {LANGUAGES.map((lang) => (<button key={lang.code} type="button" onClick={() => setCurrentLang(lang.code)} className={`py-2 px-4 border rounded-t-md font-medium text-sm transition-colors whitespace-nowrap ${currentLang === lang.code ? 'border-gray-300 border-b-transparent bg-white text-black font-bold -mb-px z-10' : 'border-transparent bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>{lang.label}</button>))}
             </nav>
           </div>
 
           <div className="border border-gray-300 rounded-b-md rounded-tr-md p-6 bg-white space-y-6">
-            <div><label className="block text-sm font-bold text-gray-700 mb-2">제목 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label><input type="text" value={title[currentLang] || ''} onChange={(e) => setTitle(prev => ({ ...prev, [currentLang]: e.target.value }))} placeholder="기사 제목을 입력하세요" className="w-full border border-gray-300 rounded p-3 text-lg focus:outline-none focus:border-black" required={currentLang === 'en'} /></div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 border-b border-gray-100">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">작성자 이름 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
+                <input type="text" value={authorName[currentLang] || ''} onChange={(e) => setAuthorName(prev => ({ ...prev, [currentLang]: e.target.value }))} placeholder="예: John Doe, Editor-in-Chief" className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">작성자 소개 (Bio) <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
+                <textarea value={authorBio[currentLang] || ''} onChange={(e) => setAuthorBio(prev => ({ ...prev, [currentLang]: e.target.value }))} rows={2} placeholder="작성자의 전문성, 경력, 소개 등을 짧게 입력하세요." className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:border-black resize-none" />
+              </div>
+            </div>
+
+            <div><label className="block text-sm font-bold text-gray-700 mb-2">기사 제목 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label><input type="text" value={title[currentLang] || ''} onChange={(e) => setTitle(prev => ({ ...prev, [currentLang]: e.target.value }))} placeholder="기사 제목을 입력하세요" className="w-full border border-gray-300 rounded p-3 text-lg focus:outline-none focus:border-black" required={currentLang === 'en'} /></div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">해시태그 <span className="text-blue-500 font-normal">[{currentLang.toUpperCase()}]</span></label>
               <div className="w-full border border-gray-300 rounded p-2 flex flex-wrap gap-2 items-center bg-white focus-within:border-black">
                 {(hashtags[currentLang] || []).map((tag, idx) => (<span key={idx} className="bg-gray-100 px-2 py-1 rounded text-sm flex items-center gap-1 border border-gray-200">{tag} <button type="button" onClick={() => removeHashtag(tag)} className="text-gray-400 hover:text-red-500 text-xs">✕</button></span>))}
-                <input type="text" value={hashtagInput} onChange={(e) => setHashtagInput(e.target.value)} onKeyDown={handleHashtagKeyDown} placeholder="해시태그 띄어쓰기 или # 기호로 구분 후 Enter" className="flex-grow outline-none p-1 text-sm min-w-[300px]" />
+                <input type="text" value={hashtagInput} onChange={(e) => setHashtagInput(e.target.value)} onKeyDown={handleHashtagKeyDown} placeholder="해시태그 띄어쓰기 또는 # 기호로 구분 후 Enter" className="flex-grow outline-none p-1 text-sm min-w-[300px]" />
               </div>
             </div>
             <div className="border border-gray-300 rounded">
@@ -356,16 +382,6 @@ function WriteArticleForm() {
           </div>
         </form>
       </div>
-
-      {cropModal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg flex flex-col gap-4 shadow-2xl">
-            <div><h3 className="text-xl font-bold text-black">프로필 사진 자르기</h3><p className="text-sm text-gray-500 mt-1">마우스로 드래그하여 영역을 맞추세요. (마우스 휠로 확대/축소 가능)</p></div>
-            <div className="relative w-full h-[50vh] min-h-[300px] bg-gray-100 rounded-lg overflow-hidden border border-gray-200"><Cropper image={cropModal.imageSrc} crop={crop} zoom={zoom} aspect={3 / 4} onCropChange={setCrop} onCropComplete={(_, px) => setCroppedAreaPixels(px)} onZoomChange={setZoom} /></div>
-            <div className="flex justify-end gap-3 mt-4"><button onClick={() => setCropModal({ isOpen: false, imageSrc: '', target: null })} className="px-6 py-2.5 border border-gray-300 text-black rounded font-bold hover:bg-gray-50 transition-colors">취소</button><button onClick={handleCropSave} className="px-6 py-2.5 bg-blue-700 text-white rounded font-bold hover:bg-blue-800 transition-colors">적용하기</button></div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
