@@ -1,8 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/utils/supabase';
 import Cropper from 'react-easy-crop';
+import dynamic from 'next/dynamic';
+import 'react-quill-new/dist/quill.snow.css';
+
+// 💡 텍스트 에디터 동적 로드
+const ReactQuill = dynamic(
+  async () => {
+    const { default: RQ } = await import('react-quill-new');
+    // eslint-disable-next-line react/display-name
+    return ({ forwardedRef, ...props }: any) => <RQ ref={forwardedRef} {...props} />;
+  },
+  { ssr: false, loading: () => <div className="h-24 flex items-center justify-center bg-gray-50 text-gray-500">에디터 로딩중...</div> }
+);
 
 const getCroppedImg = (imageSrc: string, pixelCrop: any, targetWidth: number, targetHeight: number): Promise<File> => {
   return new Promise((resolve, reject) => {
@@ -48,12 +60,84 @@ const handleDownload = async (url: string, filename: string) => {
   }
 };
 
-const DEFAULT_AD = { image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false, is_visible: true, youtube_scale: 1.0, description: '', file_url: '', history: [] };
-type BannerPosition = 'mid' | 'bottom' | 'article_bottom' | 'footer_top' | 'profile_bottom';
+// 💡 텍스트 박스의 드래그 이동과 크기 조절을 담당하는 컴포넌트
+function DraggablePreview({ bgUrl, textHtml, aspect, x, y, w, h, onPosChange, onSizeChange }: any) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (boxRef.current && (e.target as HTMLElement).closest('.drag-handle')) {
+      e.preventDefault();
+      const rect = boxRef.current.getBoundingClientRect();
+      setOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      setIsDragging(true);
+    }
+  };
+
+  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation(); setIsResizing(true);
+  };
+
+  useEffect(() => {
+    const handleMouseUp = () => { setIsDragging(false); setIsResizing(false); };
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current || !boxRef.current) return;
+      const cRect = containerRef.current.getBoundingClientRect();
+
+      if (isDragging) {
+        let px = e.clientX - cRect.left - offset.x;
+        let py = e.clientY - cRect.top - offset.y;
+        let newX = (px / cRect.width) * 100;
+        let newY = (py / cRect.height) * 100;
+        onPosChange(Math.max(0, Math.min(100 - w, newX)), Math.max(0, Math.min(100 - h, newY)));
+      } else if (isResizing) {
+        const bRect = boxRef.current.getBoundingClientRect();
+        let newWidthPx = e.clientX - bRect.left;
+        let newHeightPx = e.clientY - bRect.top;
+        let newW = (newWidthPx / cRect.width) * 100;
+        let newH = (newHeightPx / cRect.height) * 100;
+        onSizeChange(Math.max(10, Math.min(100 - x, newW)), Math.max(10, Math.min(100 - y, newH)));
+      }
+    };
+
+    if (isDragging || isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
+  }, [isDragging, isResizing, offset, x, y, w, h, onPosChange, onSizeChange]);
+
+  return (
+    <div ref={containerRef} className="relative w-full border border-gray-300 rounded overflow-hidden shadow-sm bg-gray-100" style={{ aspectRatio: aspect }}>
+      {bgUrl ? <img src={bgUrl} alt="Background" className="absolute inset-0 w-full h-full object-cover pointer-events-none" /> : <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm font-bold bg-white">배너 이미지가 없습니다</div>}
+      {textHtml !== null && (
+        <div ref={boxRef} className={`absolute flex flex-col shadow-lg border-2 ${isDragging || isResizing ? 'border-blue-500 bg-blue-50/40 ring-4 ring-blue-500/20' : 'border-dashed border-gray-400 hover:border-blue-500 hover:bg-blue-50/20'}`} style={{ left: `${x}%`, top: `${y}%`, width: `${w}%`, height: `${h}%` }}>
+          <div className="w-full h-6 bg-gray-200/90 hover:bg-gray-300 cursor-move drag-handle flex items-center justify-center shrink-0 border-b border-gray-300 pointer-events-auto" onMouseDown={handleDragStart}>
+            <div className="w-8 h-1.5 bg-gray-400 rounded-full pointer-events-none"></div>
+          </div>
+          <div className="flex-1 overflow-hidden pointer-events-none p-3 w-full h-full flex">
+            <div dangerouslySetInnerHTML={{ __html: textHtml }} className="prose-p:m-0 w-full" />
+          </div>
+          <div className="absolute -right-2 -bottom-2 w-5 h-5 bg-blue-600 cursor-se-resize rounded-full shadow-md border-2 border-white" onMouseDown={handleResizeStart}></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 💡 새로운 텍스트 관련 속성을 기본값에 추가
+const DEFAULT_AD = { 
+  image_url: '', link_url: '', alt_text: '', is_youtube: false, youtube_id: '', autoplay: false, is_visible: true, youtube_scale: 1.0, description: '', file_url: '', history: [],
+  has_text: false, text_content: '', text_x: 10, text_y: 10, text_w: 50, text_h: 50
+};
+type BannerPosition = 'mid' | 'bottom' | 'article_bottom' | 'footer_top';
 
 export default function AdminBanners() {
   const [ads, setAds] = useState<Record<BannerPosition, any>>({ 
-    mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }, profile_bottom: { ...DEFAULT_AD }
+    mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }
   });
   const [isUploading, setIsUploading] = useState<Record<string, boolean>>({});
   const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; position: BannerPosition | null; originalFile: File | null }>({ isOpen: false, imageSrc: '', position: null, originalFile: null });
@@ -62,12 +146,37 @@ export default function AdminBanners() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [pasteTarget, setPasteTarget] = useState<BannerPosition>('mid');
 
+  // 미니 에디터 설정
+  const miniModules = useMemo(() => ({
+    toolbar: [
+      [{ 'size': ['small', false, 'large', 'huge'] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'align': [] }],
+      ['clean']
+    ],
+  }), []);
+
   useEffect(() => {
     async function fetchAds() {
       const { data } = await supabase.from('ads').select('*');
       if (data) {
-        const adData: any = { mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD }, profile_bottom: { ...DEFAULT_AD } };
-        data.forEach(ad => { if (adData[ad.position]) adData[ad.position] = { ...adData[ad.position], ...ad, history: ad.history || [] }; });
+        const adData: any = { mid: { ...DEFAULT_AD }, bottom: { ...DEFAULT_AD }, article_bottom: { ...DEFAULT_AD }, footer_top: { ...DEFAULT_AD } };
+        data.forEach(ad => { 
+          if (adData[ad.position]) {
+            adData[ad.position] = { 
+              ...adData[ad.position], 
+              ...ad, 
+              history: ad.history || [],
+              has_text: ad.has_text ?? false,
+              text_content: ad.text_content || '',
+              text_x: ad.text_x ?? 10,
+              text_y: ad.text_y ?? 10,
+              text_w: ad.text_w ?? 50,
+              text_h: ad.text_h ?? 50
+            }; 
+          }
+        });
         setAds(adData);
       }
     }
@@ -98,12 +207,7 @@ export default function AdminBanners() {
     const updatedAd = { ...ads[position], ...newData, history: updatedHistory };
     setAds(prev => ({ ...prev, [position]: updatedAd }));
 
-    let dbId = 1; 
-    if (position === 'bottom') dbId = 2; 
-    if (position === 'article_bottom') dbId = 3; 
-    if (position === 'footer_top') dbId = 4;
-    if (position === 'profile_bottom') dbId = 5;
-    
+    let dbId = 1; if (position === 'bottom') dbId = 2; if (position === 'article_bottom') dbId = 3; if (position === 'footer_top') dbId = 4;
     await supabase.from('ads').upsert({ id: dbId, position, ...newData, history: updatedHistory });
   };
 
@@ -130,7 +234,6 @@ export default function AdminBanners() {
     if (position === 'bottom') { targetWidth = 300; targetHeight = 600; }
     if (position === 'article_bottom') { targetWidth = 800; targetHeight = 450; } 
     if (position === 'footer_top') { targetWidth = 1200; targetHeight = 400; } 
-    if (position === 'profile_bottom') { targetWidth = 800; targetHeight = 200; } 
 
     setIsUploading(prev => ({ ...prev, [position]: true }));
     setCropModal({ isOpen: false, imageSrc: '', position: null, originalFile: null }); 
@@ -161,18 +264,9 @@ export default function AdminBanners() {
     }
   };
 
-  // 💡 배너 삭제 함수 추가
   const handleClearBanner = (position: BannerPosition) => {
-    if (window.confirm('현재 등록된 배너를 지우시겠습니까?\n(삭제 후 하단의 [배너 설정 전체 저장하기]를 눌러야 최종 반영됩니다.)')) {
-      setAds(prev => ({
-        ...prev,
-        [position]: {
-          ...prev[position],
-          image_url: '',
-          youtube_id: '',
-          is_youtube: false
-        }
-      }));
+    if (window.confirm('현재 등록된 배너 이미지를 지우시겠습니까?')) {
+      setAds(prev => ({ ...prev, [position]: { ...prev[position], image_url: '', youtube_id: '', is_youtube: false } }));
     }
   };
 
@@ -187,15 +281,26 @@ export default function AdminBanners() {
       is_visible: ads[position].is_visible,
       youtube_scale: ads[position].youtube_scale,
       description: ads[position].description,
-      file_url: ads[position].file_url
+      file_url: ads[position].file_url,
+      // 💡 텍스트 오버레이 데이터 저장
+      has_text: ads[position].has_text,
+      text_content: ads[position].has_text ? ads[position].text_content : '',
+      text_x: ads[position].text_x,
+      text_y: ads[position].text_y,
+      text_w: ads[position].text_w,
+      text_h: ads[position].text_h
     }).eq('position', position);
     if (error) alert('저장 실패: ' + error.message); else alert('설정이 저장되었습니다.');
   };
 
-  const renderBannerEditor = (position: BannerPosition, title: string, previewWidth: string, previewHeight: string) => {
+  const renderBannerEditor = (position: BannerPosition, title: string, aspectRatio: number) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDragOver, setIsDragOver] = useState(false);
     const isActiveTarget = pasteTarget === position;
+    
+    const previewBg = ads[position].is_youtube && ads[position].youtube_id 
+        ? `https://img.youtube.com/vi/${ads[position].youtube_id}/hqdefault.jpg` 
+        : ads[position].image_url;
 
     return (
       <div onMouseDownCapture={() => setPasteTarget(position)} className={`mb-8 border p-6 rounded-xl shadow-sm transition-all ${isActiveTarget ? 'border-blue-500 bg-blue-50/20' : 'bg-white border-gray-200'} ${!ads[position].is_visible ? 'opacity-60' : ''}`}>
@@ -269,19 +374,36 @@ export default function AdminBanners() {
                 <label className="block text-sm font-bold text-gray-700 mb-2">웹페이지 링크 (URL)</label>
                 <input type="text" value={ads[position].link_url || ''} onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], link_url: e.target.value } }))} className="w-full border p-2 rounded text-sm focus:outline-none focus:border-black" placeholder="https://..." />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">파일 다운로드 링크 (URL)</label>
-                <input type="text" value={ads[position].file_url || ''} onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], file_url: e.target.value } }))} className="w-full border p-2 rounded text-sm focus:outline-none focus:border-black" placeholder="PDF, 브로셔 등 다운로드 받을 URL" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">모달 팝업용 설명</label>
-                <textarea value={ads[position].description || ''} onChange={(e) => setAds(prev => ({ ...prev, [position]: { ...prev[position], description: e.target.value } }))} className="w-full border p-2 rounded text-sm focus:outline-none focus:border-black" rows={2} placeholder="모달 창에서 배너 아래에 노출될 설명" />
-              </div>
               
+              {/* 💡 텍스트 오버레이 박스 제어 (추가/삭제 및 드래그) */}
+              <div className="pt-4 border-t border-gray-100">
+                <label className="block text-sm font-bold text-gray-700 mb-2">배너 텍스트 오버레이</label>
+                {!ads[position].has_text ? (
+                  <button type="button" onClick={() => setAds(prev => ({ ...prev, [position]: { ...prev[position], has_text: true } }))} className="px-4 py-2 bg-blue-600 text-white rounded font-bold text-xs hover:bg-blue-700 transition shadow-sm">+ 텍스트 박스 만들기</button>
+                ) : (
+                  <div className="space-y-3 bg-white p-4 rounded border border-gray-200 shadow-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">내용 편집 및 위치 조정</span>
+                      <button type="button" onClick={() => { if(window.confirm('텍스트 박스를 삭제하시겠습니까?')) { setAds(prev => ({ ...prev, [position]: { ...prev[position], has_text: false, text_content: '' } })); } }} className="px-3 py-1 bg-red-100 text-red-600 rounded font-bold text-xs hover:bg-red-200 transition">🗑 삭제</button>
+                    </div>
+                    <div className="bg-white rounded border border-gray-300 h-24 mb-2">
+                      <ReactQuill theme="snow" value={ads[position].text_content} onChange={(v: string) => setAds(prev => ({ ...prev, [position]: { ...prev[position], text_content: v } }))} modules={miniModules} className="h-full" />
+                    </div>
+                    <DraggablePreview 
+                      bgUrl={previewBg} 
+                      textHtml={ads[position].text_content} 
+                      aspect={aspectRatio} 
+                      x={ads[position].text_x} y={ads[position].text_y} w={ads[position].text_w} h={ads[position].text_h}
+                      onPosChange={(nx: number, ny: number) => setAds(prev => ({ ...prev, [position]: { ...prev[position], text_x: nx, text_y: ny } }))} 
+                      onSizeChange={(nw: number, nh: number) => setAds(prev => ({ ...prev, [position]: { ...prev[position], text_w: nw, text_h: nh } }))}
+                    />
+                    <p className="text-[10px] text-gray-500 leading-tight">상단 바를 잡아 이동하고, 우측 하단 포인터를 드래그해 크기를 조절하세요.</p>
+                  </div>
+                )}
+              </div>
+
               <div>
-                <label className="block text-sm font-bold mb-2 text-gray-500">
-                  SEO 해시태그 <span className="text-xs font-normal ml-1">(검색 엔진 노출용)</span>
-                </label>
+                <label className="block text-sm font-bold mb-2 text-gray-500 mt-4">SEO 대체 텍스트 / 해시태그 <span className="text-xs font-normal ml-1">(검색 엔진 노출용)</span></label>
                 <div className="w-full border border-gray-300 rounded p-2 flex flex-wrap gap-2 items-center bg-white focus-within:border-black transition-colors">
                   {(ads[position].alt_text || '').split(' ').filter(Boolean).map((tag: string, idx: number) => (
                     <span key={idx} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm flex items-center gap-1 border border-gray-200 shadow-sm">
@@ -294,7 +416,7 @@ export default function AdminBanners() {
                   ))}
                   <input 
                     type="text" 
-                    placeholder="해시태그 띄어쓰기 또는 # 기호로 구분 후 Enter" 
+                    placeholder="해시태그 또는 텍스트 입력 후 Enter" 
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -315,24 +437,23 @@ export default function AdminBanners() {
                 </div>
               </div>
 
-              <button onClick={() => saveData(position)} className="w-full bg-black text-white px-4 py-3 rounded font-bold hover:bg-gray-800">배너 설정 전체 저장하기</button>
+              <button onClick={() => saveData(position)} className="w-full bg-black text-white px-4 py-3 rounded font-bold hover:bg-gray-800 mt-6">배너 설정 전체 저장하기</button>
             </div>
           </div>
 
           <div className="shrink-0 flex flex-col items-center w-[300px]">
             <div className="flex justify-between w-full mb-2">
-              <label className="text-sm font-bold">현재 화면</label>
-              {/* 💡 버튼 그룹으로 묶고 삭제 버튼 추가 */}
+              <label className="text-sm font-bold">현재 화면 (단순 미리보기)</label>
               <div className="flex gap-3">
                 {!ads[position].is_youtube && ads[position].image_url && (
                   <button onClick={() => handleDownload(ads[position].image_url, `banner-${position}`)} className="text-xs text-blue-600 hover:underline font-bold">⬇ 파일 다운로드</button>
                 )}
                 {(ads[position].image_url || ads[position].youtube_id) && (
-                  <button onClick={() => handleClearBanner(position)} className="text-xs text-red-600 hover:underline font-bold">🗑 삭제</button>
+                  <button onClick={() => handleClearBanner(position)} className="text-xs text-red-600 hover:underline font-bold">🗑 이미지 삭제</button>
                 )}
               </div>
             </div>
-            <div className="bg-gray-100 border w-full aspect-video flex items-center justify-center overflow-hidden relative rounded shadow-inner">
+            <div className="bg-gray-100 border w-full flex items-center justify-center overflow-hidden relative rounded shadow-inner" style={{ aspectRatio: aspectRatio }}>
               {!ads[position].is_visible && <div className="absolute inset-0 bg-white/70 z-20 flex items-center justify-center font-bold text-red-500">숨김 상태</div>}
               {isUploading[position] ? <span>업로드 중...</span> : ads[position].is_youtube && ads[position].autoplay && ads[position].youtube_id ? (
                 <iframe className="absolute w-full h-full pointer-events-none" style={{ transform: `scale(${ads[position].youtube_scale || 1.0})` }} src={`https://www.youtube.com/embed/${ads[position].youtube_id}?autoplay=1&mute=1&controls=0&loop=1`} frameBorder="0"></iframe>
@@ -350,12 +471,12 @@ export default function AdminBanners() {
 
   return (
     <div className="p-2 md:p-8 max-w-5xl mx-auto font-sans text-black">
-      <h1 className="text-3xl font-black mb-8">광고 배너 관리</h1>
-      {renderBannerEditor('mid', '1. 우측 사이드 중앙 배너', '300px', '250px')}
-      {renderBannerEditor('bottom', '2. 우측 사이드 하단(스크롤 고정) 배너', '300px', '600px')}
-      {renderBannerEditor('article_bottom', '3. 메인 기사 바로 아래 배너', '320px', '180px')}
-      {renderBannerEditor('footer_top', '4. 푸터 위 전체너비 배너', '400px', '133px')}
-      {renderBannerEditor('profile_bottom', '5. 기사 작성자 프로필 하단 배너', '400px', '100px')}
+      <h1 className="text-3xl font-black mb-8">전역 광고 배너 관리</h1>
+      {/* 각 위치별 비율 전달 */}
+      {renderBannerEditor('mid', '1. 우측 사이드 중앙 배너', 300/250)}
+      {renderBannerEditor('bottom', '2. 우측 사이드 하단(스크롤 고정) 배너', 300/600)}
+      {renderBannerEditor('article_bottom', '3. 메인 기사 바로 아래 배너', 16/9)}
+      {renderBannerEditor('footer_top', '4. 푸터 위 전체너비 배너', 3/1)}
 
       {cropModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
@@ -366,7 +487,7 @@ export default function AdminBanners() {
                 image={cropModal.imageSrc} 
                 crop={crop} 
                 zoom={zoom} 
-                aspect={cropModal.position === 'mid' ? 300/250 : cropModal.position === 'bottom' ? 300/600 : cropModal.position === 'article_bottom' ? 16/9 : cropModal.position === 'profile_bottom' ? 4/1 : 24/9} 
+                aspect={cropModal.position === 'mid' ? 300/250 : cropModal.position === 'bottom' ? 300/600 : cropModal.position === 'article_bottom' ? 16/9 : 3/1} 
                 onCropChange={setCrop} 
                 onCropComplete={(a, px) => setCroppedAreaPixels(px)} 
                 onZoomChange={setZoom} 
