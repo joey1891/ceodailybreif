@@ -209,13 +209,13 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           </div>
         )}
 
-        {/* 💡 기사 개별 프로필 하단 배너 출력 영역 (4:1 비율) */}
+        {/* 💡 기사 개별 프로필 하단 배너 출력 영역 (+ SEO Alt) */}
         {article.profile_banner_visible && article.profile_banner_url && (
           <div className="mt-8 flex justify-center w-full">
             <a href={article.profile_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="w-full max-w-3xl block transition-opacity hover:opacity-95">
               <img 
                 src={article.profile_banner_url} 
-                alt="Advertisement" 
+                alt={article.profile_banner_alt || "스폰서 광고 배너"} 
                 className="w-full h-auto rounded-lg shadow-sm border border-gray-200 object-cover" 
               />
             </a>
@@ -234,13 +234,13 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           </form>
         </div>
 
-        {/* 💡 기사 개별 구독 하단 배너 출력 영역 (1:1 비율) */}
+        {/* 💡 기사 개별 구독 하단 배너 출력 영역 (+ SEO Alt) */}
         {article.subscribe_banner_visible && article.subscribe_banner_url && (
           <div className="mt-8 flex justify-center w-full">
             <a href={article.subscribe_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="w-full max-w-lg block transition-opacity hover:opacity-95">
               <img 
                 src={article.subscribe_banner_url} 
-                alt="Advertisement" 
+                alt={article.subscribe_banner_alt || "스폰서 광고 배너"} 
                 className="w-full h-auto rounded-lg shadow-sm border border-gray-200 object-cover aspect-square" 
               />
             </a>
