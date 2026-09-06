@@ -41,6 +41,26 @@ export default function CEODailyBrief() {
     return <img src={url} alt={alt} className="w-full h-full object-cover" />;
   };
 
+  // 💡 배너 텍스트 오버레이 렌더러 함수 추가
+  const renderTextOverlay = (ad: any) => {
+    if (!ad || !ad.has_text) return null;
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div 
+          className="absolute p-3 flex" 
+          style={{ 
+            left: `${ad.text_x ?? 10}%`, 
+            top: `${ad.text_y ?? 10}%`, 
+            width: `${ad.text_w ?? 50}%`, 
+            height: `${ad.text_h ?? 50}%` 
+          }}
+        >
+          <div dangerouslySetInnerHTML={{ __html: ad.text_content }} className="prose-p:m-0 w-full h-full" />
+        </div>
+      </div>
+    );
+  };
+
   useEffect(() => {
     const fetchNews = async () => {
       const [{ data: headlineMap }, { data: articles }, { data: topArticles }, { data: categoryData }, { data: adData }] = await Promise.all([
@@ -134,7 +154,7 @@ export default function CEODailyBrief() {
               </Link>
             ) : <div className="h-64 flex items-center justify-center bg-gray-50 border text-gray-400 font-serif italic text-xl">No Lead Story Published Yet.</div>}
 
-            {/* 배너 3: 기사 하단 */}
+            {/* 💡 배너 3: 기사 하단 */}
             {ads.article_bottom?.is_visible && (
               ads.article_bottom.is_youtube && ads.article_bottom.youtube_id ? (
                 <div className="relative w-full aspect-video bg-black rounded overflow-hidden shadow-md my-2 sm:my-0">
@@ -143,7 +163,10 @@ export default function CEODailyBrief() {
                 </div>
               ) : ads.article_bottom.image_url ? (
                 <div className="w-full my-2 sm:my-0 rounded overflow-hidden shadow-md border border-gray-200">
-                  <a href={ads.article_bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-full">{renderMedia(ads.article_bottom.image_url, ads.article_bottom.alt_text)}</a>
+                  <a href={ads.article_bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block relative w-full">
+                    {renderMedia(ads.article_bottom.image_url, ads.article_bottom.alt_text)}
+                    {renderTextOverlay(ads.article_bottom)}
+                  </a>
                 </div>
               ) : null
             )}
@@ -179,7 +202,7 @@ export default function CEODailyBrief() {
                 </ul>
               </div>
 
-              {/* 배너 1: 우측 중앙 */}
+              {/* 💡 배너 1: 우측 중앙 */}
               {ads.mid?.is_visible && (
                 <div className="flex justify-center w-full">
                   {ads.mid.is_youtube && ads.mid.youtube_id ? (
@@ -190,6 +213,7 @@ export default function CEODailyBrief() {
                   ) : ads.mid.image_url ? (
                     <a href={ads.mid.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[250px] relative rounded overflow-hidden border border-gray-200">
                       {renderMedia(ads.mid.image_url, ads.mid.alt_text)}
+                      {renderTextOverlay(ads.mid)}
                     </a>
                   ) : null}
                 </div>
@@ -209,7 +233,7 @@ export default function CEODailyBrief() {
                 </ul>
               </div>
 
-              {/* 배너 2: 우측 하단 */}
+              {/* 💡 배너 2: 우측 하단 */}
               {ads.bottom?.is_visible && (
                 <div className="flex-1 w-full relative pb-8 min-h-[600px]">
                   {ads.bottom.is_youtube && ads.bottom.youtube_id ? (
@@ -220,6 +244,7 @@ export default function CEODailyBrief() {
                   ) : ads.bottom.image_url ? (
                     <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bottom-8 block w-full rounded overflow-hidden border border-gray-200">
                       {renderMedia(ads.bottom.image_url, ads.bottom.alt_text)}
+                      {renderTextOverlay(ads.bottom)}
                     </a>
                   ) : null}
                 </div>
@@ -229,7 +254,7 @@ export default function CEODailyBrief() {
         </div>
       </main>
 
-      {/* 배너 4: 푸터 위 */}
+      {/* 💡 배너 4: 푸터 위 */}
       {ads.footer_top?.is_visible && (
         <div className="max-w-7xl mx-auto px-4 mb-16">
           {ads.footer_top.is_youtube && ads.footer_top.youtube_id ? (
@@ -238,8 +263,9 @@ export default function CEODailyBrief() {
               {ads.footer_top.autoplay && <div onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.footer_top.youtube_id, linkUrl: ads.footer_top.link_url, description: ads.footer_top.description, fileUrl: ads.footer_top.file_url })} className="absolute inset-0 z-10 block cursor-pointer"></div>}
             </div>
           ) : ads.footer_top.image_url ? (
-            <a href={ads.footer_top.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-full rounded overflow-hidden shadow-lg border border-gray-200">
+            <a href={ads.footer_top.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block relative w-full rounded overflow-hidden shadow-lg border border-gray-200">
               {renderMedia(ads.footer_top.image_url, ads.footer_top.alt_text)}
+              {renderTextOverlay(ads.footer_top)}
             </a>
           ) : null}
         </div>
@@ -266,7 +292,7 @@ export default function CEODailyBrief() {
         </div>
       </footer>
 
-      {/* 🎬 팝업 모달 (테두리 완전 제거) */}
+      {/* 🎬 팝업 모달 */}
       {videoModal.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setVideoModal({ isOpen: false, youtubeId: '' })}>
           <div className="relative w-full max-w-5xl flex flex-col" onClick={(e) => e.stopPropagation()}>
