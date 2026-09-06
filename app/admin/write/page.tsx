@@ -76,28 +76,34 @@ function WriteArticleForm() {
   const [authorImagePreview, setAuthorImagePreview] = useState<string | null>(null);
   const [authorImageUrl, setAuthorImageUrl] = useState('');
   const authorFileInputRef = useRef<HTMLInputElement>(null);
-  const [isAuthorDragging, setIsAuthorDragging] = useState(false);
   
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-  const [isThumbnailDragging, setIsThumbnailDragging] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 💡 기사 개별 1:1 배너용 상태 추가
+  // 기사 개별 배너용 상태 (프로필 4:1)
+  const [profileBannerFile, setProfileBannerFile] = useState<File | null>(null);
+  const [profileBannerPreview, setProfileBannerPreview] = useState<string | null>(null);
+  const [profileBannerUrl, setProfileBannerUrl] = useState('');
+  const [profileBannerLink, setProfileBannerLink] = useState('');
+  const [profileBannerVisible, setProfileBannerVisible] = useState(true);
+  const profileBannerFileInputRef = useRef<HTMLInputElement>(null);
+
+  // 기사 개별 배너용 상태 (구독 1:1)
   const [subscribeBannerFile, setSubscribeBannerFile] = useState<File | null>(null);
   const [subscribeBannerPreview, setSubscribeBannerPreview] = useState<string | null>(null);
   const [subscribeBannerUrl, setSubscribeBannerUrl] = useState('');
   const [subscribeBannerLink, setSubscribeBannerLink] = useState('');
   const [subscribeBannerVisible, setSubscribeBannerVisible] = useState(true);
-  const bannerFileInputRef = useRef<HTMLInputElement>(null);
+  const subscribeBannerFileInputRef = useRef<HTMLInputElement>(null);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 💡 pasteTarget 및 cropModal 타겟 확장
-  const [pasteTarget, setPasteTarget] = useState<'thumbnail' | 'author' | 'subscribe_banner'>('thumbnail');
-  const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; target: 'thumbnail' | 'author' | 'subscribe_banner' | null }>({ isOpen: false, imageSrc: '', target: null });
+  type PasteTarget = 'thumbnail' | 'author' | 'profile_banner' | 'subscribe_banner';
+  const [pasteTarget, setPasteTarget] = useState<PasteTarget>('thumbnail');
+  const [cropModal, setCropModal] = useState<{ isOpen: boolean; imageSrc: string; target: PasteTarget | null }>({ isOpen: false, imageSrc: '', target: null });
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
@@ -162,10 +168,15 @@ function WriteArticleForm() {
         setImageUrl(data.image_url || '');
         setAuthorImageUrl(data.author_image_url || '');
         
-        // 💡 개별 배너 데이터 로드
+        // 배너 데이터 로드
+        setProfileBannerUrl(data.profile_banner_url || '');
+        setProfileBannerLink(data.profile_banner_link || '');
+        if (data.profile_banner_visible !== undefined) setProfileBannerVisible(data.profile_banner_visible);
+
         setSubscribeBannerUrl(data.subscribe_banner_url || '');
         setSubscribeBannerLink(data.subscribe_banner_link || '');
         if (data.subscribe_banner_visible !== undefined) setSubscribeBannerVisible(data.subscribe_banner_visible);
+        
         if (data.allow_comments !== undefined) setAllowComments(data.allow_comments);
       }
     };
@@ -181,18 +192,23 @@ function WriteArticleForm() {
     if (authorImageFile) { const objectUrl = URL.createObjectURL(authorImageFile); setAuthorImagePreview(objectUrl); return () => URL.revokeObjectURL(objectUrl); } else setAuthorImagePreview(null);
   }, [authorImageFile]);
 
-  // 💡 배너 파일 프리뷰
+  useEffect(() => {
+    if (profileBannerFile) { const objectUrl = URL.createObjectURL(profileBannerFile); setProfileBannerPreview(objectUrl); return () => URL.revokeObjectURL(objectUrl); } else setProfileBannerPreview(null);
+  }, [profileBannerFile]);
+
   useEffect(() => {
     if (subscribeBannerFile) { const objectUrl = URL.createObjectURL(subscribeBannerFile); setSubscribeBannerPreview(objectUrl); return () => URL.revokeObjectURL(objectUrl); } else setSubscribeBannerPreview(null);
   }, [subscribeBannerFile]);
 
-  const handleFileSelect = (file: File, target: 'thumbnail' | 'author' | 'subscribe_banner') => {
+  const handleFileSelect = (file: File, target: PasteTarget) => {
     if (!file.type.startsWith('image/')) { alert('이미지 파일만 업로드 가능합니다.'); return; }
-    if (target === 'author' || target === 'subscribe_banner') {
+    if (target === 'thumbnail') { 
+      setThumbnailFile(file); 
+    } else {
       const reader = new FileReader();
       reader.onload = (e) => { setCropModal({ isOpen: true, imageSrc: e.target?.result as string, target }); setCrop({ x: 0, y: 0 }); setZoom(1); };
       reader.readAsDataURL(file);
-    } else { setThumbnailFile(file); }
+    }
   };
 
   const handleCropSave = async () => {
@@ -201,8 +217,10 @@ function WriteArticleForm() {
       if (cropModal.target === 'author') {
         const croppedFile = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels, 300, 400); 
         setAuthorImageFile(croppedFile); 
+      } else if (cropModal.target === 'profile_banner') {
+        const croppedFile = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels, 800, 200); 
+        setProfileBannerFile(croppedFile);
       } else if (cropModal.target === 'subscribe_banner') {
-        // 💡 1:1 비율 (800x800) 적용
         const croppedFile = await getCroppedImg(cropModal.imageSrc, croppedAreaPixels, 800, 800); 
         setSubscribeBannerFile(croppedFile);
       }
@@ -235,13 +253,16 @@ function WriteArticleForm() {
   const removeHashtag = (tagToRemove: string) => { setHashtags(prev => ({ ...prev, [currentLang]: (prev[currentLang] || []).filter(tag => tag !== tagToRemove) })); };
   const handleClearThumbnail = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setThumbnailFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
   const handleClearAuthorImage = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setAuthorImageFile(null); setAuthorImageUrl(''); if (authorFileInputRef.current) authorFileInputRef.current.value = ''; };
-  const handleClearSubscribeBanner = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setSubscribeBannerFile(null); setSubscribeBannerUrl(''); if (bannerFileInputRef.current) bannerFileInputRef.current.value = ''; };
+  const handleClearProfileBanner = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setProfileBannerFile(null); setProfileBannerUrl(''); if (profileBannerFileInputRef.current) profileBannerFileInputRef.current.value = ''; };
+  const handleClearSubscribeBanner = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setSubscribeBannerFile(null); setSubscribeBannerUrl(''); if (subscribeBannerFileInputRef.current) subscribeBannerFileInputRef.current.value = ''; };
 
   const handleSubmit = async (e: React.FormEvent, isPublished: boolean) => {
     e.preventDefault(); setIsSubmitting(true);
-    let finalImageUrl = imageUrl; let finalAuthorImageUrl = authorImageUrl; let finalSubscribeBannerUrl = subscribeBannerUrl;
+    let finalImageUrl = imageUrl; 
+    let finalAuthorImageUrl = authorImageUrl; 
+    let finalProfileBannerUrl = profileBannerUrl;
+    let finalSubscribeBannerUrl = subscribeBannerUrl;
 
-    // 이미지 업로드 로직
     const uploadImage = async (file: File) => {
       const fileExt = file.name.split('.').pop(); const fileName = `${Math.random()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage.from('article_images').upload(fileName, file);
@@ -252,6 +273,7 @@ function WriteArticleForm() {
     try {
       if (thumbnailFile) finalImageUrl = await uploadImage(thumbnailFile);
       if (authorImageFile) finalAuthorImageUrl = await uploadImage(authorImageFile);
+      if (profileBannerFile) finalProfileBannerUrl = await uploadImage(profileBannerFile);
       if (subscribeBannerFile) finalSubscribeBannerUrl = await uploadImage(subscribeBannerFile);
     } catch (err: any) { alert(`업로드 실패: ${err.message}`); setIsSubmitting(false); return; }
 
@@ -271,7 +293,10 @@ function WriteArticleForm() {
       image_url: finalImageUrl, 
       author_name: authorName['en'] || 'Editor-in-Chief', author_bio: authorBio['en'], author_image_url: finalAuthorImageUrl, 
       allow_comments: allowComments,
-      subscribe_banner_url: finalSubscribeBannerUrl, // 💡 DB 반영
+      profile_banner_url: finalProfileBannerUrl, 
+      profile_banner_link: profileBannerLink, 
+      profile_banner_visible: profileBannerVisible,
+      subscribe_banner_url: finalSubscribeBannerUrl, 
       subscribe_banner_link: subscribeBannerLink, 
       subscribe_banner_visible: subscribeBannerVisible,
       is_published: isPublished, translations: translationsData, updated_at: new Date().toISOString()
@@ -368,42 +393,67 @@ function WriteArticleForm() {
             </div>
           </div>
 
-          <div className="mt-8 border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="mt-8 border-t pt-6 space-y-8">
             
             {/* 썸네일 영역 */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">메인 썸네일 이미지</label>
               <div className="space-y-4">
-                <div onMouseDownCapture={() => setPasteTarget('thumbnail')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('thumbnail'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'thumbnail'); }} tabIndex={0} className={`relative w-full border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center min-h-[120px] ${pasteTarget === 'thumbnail' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}>
+                <div onMouseDownCapture={() => setPasteTarget('thumbnail')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('thumbnail'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'thumbnail'); }} tabIndex={0} className={`relative w-full max-w-md border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center min-h-[120px] ${pasteTarget === 'thumbnail' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}>
                   <input type="file" accept=".jpg, .jpeg, .png, .webp" ref={fileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'thumbnail'); }} className="hidden" />
                   {thumbnailPreview ? (<div className="relative inline-block"><img src={thumbnailPreview} className="max-h-48 object-contain rounded border border-gray-200 shadow-sm" /><button type="button" onClick={handleClearThumbnail} className="absolute -top-3 -right-3 bg-red-500 text-white rounded-full w-8 h-8 font-bold shadow-md">✕</button></div>) : (<label onClick={() => fileInputRef.current?.click()} className="cursor-pointer flex flex-col items-center w-full"><span className="block font-bold text-gray-700 text-base">클릭 또는 <span className="text-blue-600">Ctrl+V</span></span></label>)}
                 </div>
               </div>
             </div>
 
-            {/* 💡 기사 개별 구독 박스 하단 배너 (1:1) 영역 */}
-            <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-bold text-gray-800">해당 기사 전용 하단 광고 배너 <span className="text-xs text-red-500">(1:1 비율)</span></h3>
-                <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1 rounded shadow-sm border border-gray-200">
-                  <span className={`text-xs font-bold ${subscribeBannerVisible ? 'text-green-600' : 'text-gray-400'}`}>{subscribeBannerVisible ? 'ON' : 'OFF'}</span>
-                  <input type="checkbox" checked={subscribeBannerVisible} onChange={(e) => setSubscribeBannerVisible(e.target.checked)} className="w-3 h-3"/>
-                </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-gray-200 pt-8">
+              {/* 프로필 하단 배너 (4:1) */}
+              <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 flex flex-col">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-bold text-gray-800">프로필 하단 배너 <span className="text-xs text-blue-600">(4:1 비율)</span></h3>
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1 rounded shadow-sm border border-gray-200">
+                    <span className={`text-xs font-bold ${profileBannerVisible ? 'text-green-600' : 'text-gray-400'}`}>{profileBannerVisible ? 'ON' : 'OFF'}</span>
+                    <input type="checkbox" checked={profileBannerVisible} onChange={(e) => setProfileBannerVisible(e.target.checked)} className="w-3 h-3"/>
+                  </label>
+                </div>
+                <div className="flex flex-col gap-4">
+                  <div onMouseDownCapture={() => setPasteTarget('profile_banner')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('profile_banner'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'profile_banner'); }} onClick={() => profileBannerFileInputRef.current?.click()} className={`w-full aspect-[4/1] rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group ${pasteTarget === 'profile_banner' ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
+                    <input type="file" accept="image/*" ref={profileBannerFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'profile_banner'); }} className="hidden" />
+                    {profileBannerPreview || profileBannerUrl ? (
+                      <><img src={profileBannerPreview || profileBannerUrl} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">변경</div></>
+                    ) : <span className="text-xs text-gray-400 text-center px-2">클릭 또는 <span className="text-blue-600 font-bold">Ctrl+V</span></span>}
+                  </div>
+                  {(profileBannerPreview || profileBannerUrl) && <button type="button" onClick={handleClearProfileBanner} className="text-xs text-red-500 font-bold text-right w-full">삭제</button>}
+                  
+                  <div className="mt-2">
+                    <label className="block text-xs font-bold text-gray-700 mb-1">광고 이동 URL</label>
+                    <input type="text" value={profileBannerLink} onChange={(e) => setProfileBannerLink(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-4">
-                <div className="shrink-0">
-                  <div onMouseDownCapture={() => setPasteTarget('subscribe_banner')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('subscribe_banner'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'subscribe_banner'); }} onClick={() => bannerFileInputRef.current?.click()} className={`w-32 h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group ${pasteTarget === 'subscribe_banner' ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
-                    <input type="file" accept="image/*" ref={bannerFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'subscribe_banner'); }} className="hidden" />
+
+              {/* 구독 박스 하단 배너 (1:1) */}
+              <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200 flex flex-col">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-bold text-gray-800">구독 하단 배너 <span className="text-xs text-red-500">(1:1 비율)</span></h3>
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1 rounded shadow-sm border border-gray-200">
+                    <span className={`text-xs font-bold ${subscribeBannerVisible ? 'text-green-600' : 'text-gray-400'}`}>{subscribeBannerVisible ? 'ON' : 'OFF'}</span>
+                    <input type="checkbox" checked={subscribeBannerVisible} onChange={(e) => setSubscribeBannerVisible(e.target.checked)} className="w-3 h-3"/>
+                  </label>
+                </div>
+                <div className="flex flex-col gap-4">
+                  <div onMouseDownCapture={() => setPasteTarget('subscribe_banner')} onDragOver={(e) => { e.preventDefault(); setPasteTarget('subscribe_banner'); }} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0], 'subscribe_banner'); }} onClick={() => subscribeBannerFileInputRef.current?.click()} className={`w-32 h-32 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer relative overflow-hidden group ${pasteTarget === 'subscribe_banner' ? 'border-blue-500 bg-blue-100' : 'border-gray-300 bg-white hover:bg-gray-50'}`}>
+                    <input type="file" accept="image/*" ref={subscribeBannerFileInputRef} onChange={(e) => { if(e.target.files?.[0]) handleFileSelect(e.target.files[0], 'subscribe_banner'); }} className="hidden" />
                     {subscribeBannerPreview || subscribeBannerUrl ? (
                       <><img src={subscribeBannerPreview || subscribeBannerUrl} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white text-xs font-bold">변경</div></>
                     ) : <span className="text-xs text-gray-400 text-center px-2">클릭 또는 <span className="text-blue-600 font-bold">Ctrl+V</span></span>}
                   </div>
-                  {(subscribeBannerPreview || subscribeBannerUrl) && <button type="button" onClick={handleClearSubscribeBanner} className="mt-2 text-xs text-red-500 font-bold text-center w-full">삭제</button>}
-                </div>
-                <div className="flex-1 flex flex-col justify-center">
-                  <label className="block text-xs font-bold text-gray-700 mb-1">광고 클릭 시 이동할 URL</label>
-                  <input type="text" value={subscribeBannerLink} onChange={(e) => setSubscribeBannerLink(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
-                  <p className="text-[10px] text-gray-500 mt-2 leading-tight">기사 상세페이지의 'Enjoyed this article?' 구독 박스 바로 아래에 노출되는 정사각형 배너입니다.</p>
+                  {(subscribeBannerPreview || subscribeBannerUrl) && <button type="button" onClick={handleClearSubscribeBanner} className="text-xs text-red-500 font-bold text-left w-32">삭제</button>}
+                  
+                  <div className="mt-2 flex-1">
+                    <label className="block text-xs font-bold text-gray-700 mb-1">광고 이동 URL</label>
+                    <input type="text" value={subscribeBannerLink} onChange={(e) => setSubscribeBannerLink(e.target.value)} placeholder="https://..." className="w-full border border-gray-300 rounded p-2 text-sm focus:outline-none focus:border-black" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -425,7 +475,11 @@ function WriteArticleForm() {
               <Cropper 
                 image={cropModal.imageSrc} 
                 crop={crop} zoom={zoom} 
-                aspect={cropModal.target === 'subscribe_banner' ? 1 / 1 : 3 / 4} 
+                aspect={
+                  cropModal.target === 'profile_banner' ? 4 / 1 :
+                  cropModal.target === 'subscribe_banner' ? 1 / 1 : 
+                  3 / 4
+                } 
                 onCropChange={setCrop} onCropComplete={(_, px) => setCroppedAreaPixels(px)} onZoomChange={setZoom} 
               />
             </div>
