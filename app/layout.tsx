@@ -1,4 +1,3 @@
-// STREAMING_CHUNK: Importing dependencies and fonts...
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script"; // GTM 스크립트 삽입을 위해 추가
@@ -14,7 +13,6 @@ variable: "--font-geist-mono",
 subsets: ["latin"],
 });
 
-// STREAMING_CHUNK: Configuring global metadata...
 export const metadata: Metadata = {
 title: "CEO Daily Brief",
 description: "The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence",
@@ -37,7 +35,6 @@ height: 630,
 },
 };
 
-// STREAMING_CHUNK: Defining JSON-LD Schema for Sitelinks...
 // 💡 SEO: 구글 사이트링크 및 검색창 노출을 위한 구조화 데이터(JSON-LD) 추가
 const jsonLd = {
 "@context": "https://schema.org",
@@ -65,7 +62,6 @@ const jsonLd = {
 ]
 };
 
-// STREAMING_CHUNK: Rendering the RootLayout component...
 export default function RootLayout({
 children,
 }: Readonly<{
@@ -94,12 +90,17 @@ dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       `}
     </Script>
 
-
-// STREAMING_CHUNK: Injecting global styles...
-{/* 💡 에디터에서 설정한 텍스트 포맷이 사이트 전체에서 유지되도록 글로벌 스타일 주입 */}
-<style dangerouslySetInnerHTML={{__html: .ql-align-center { text-align: center; } .ql-align-right { text-align: right; } .ql-align-justify { text-align: justify; } .ql-size-small { font-size: 0.75em; } .ql-size-large { font-size: 1.5em; } .ql-size-huge { font-size: 2.5em; }}} />
-
-
+    {/* 💡 에디터에서 설정한 텍스트 포맷이 사이트 전체에서 유지되도록 글로벌 스타일 주입 */}
+    <style dangerouslySetInnerHTML={{__html: `
+      .ql-align-center { text-align: center; }
+      .ql-align-right { text-align: right; }
+      .ql-align-justify { text-align: justify; }
+      .ql-size-small { font-size: 0.75em; }
+      .ql-size-large { font-size: 1.5em; }
+      .ql-size-huge { font-size: 2.5em; }
+    `}} />
+  </head>
+  
   <body className="min-h-screen flex flex-col text-[#111111]">
     {/* Google Tag Manager (noscript) - Body */}
     <noscript>
