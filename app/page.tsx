@@ -1,3 +1,4 @@
+/* STREAMING_CHUNK:Importing React hooks and Next.js modules... */
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -5,6 +6,7 @@ import { supabase } from '@/utils/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+/* STREAMING_CHUNK:Initializing state variables... */
 export default function CEODailyBrief() {
 const router = useRouter();
 
@@ -20,13 +22,13 @@ const [email, setEmail] = useState('');
 
 const [videoModal, setVideoModal] = useState<{ isOpen: boolean; youtubeId: string; linkUrl?: string; description?: string; fileUrl?: string; }>({ isOpen: false, youtubeId: '', linkUrl: '', description: '', fileUrl: '' });
 
+/* STREAMING_CHUNK:Defining helper functions for display and media... */
 const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).toUpperCase();
 const formatTime = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
 const getDisplayText = (field: any) => typeof field === 'string' ? field : field?.en || field?.ko || Object.values(field || {})[0] || '';
 
-const getYoutubeSrc = (id: string, autoplay: boolean) => {
-if (!autoplay) return https://www.youtube.com/embed/${id}?rel=0;
-return https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${id}&iv_load_policy=3&disablekb=1&cc_load_policy=0&cc_lang_pref=zz;
+// 💡 에러 수정: 아래 리턴값의 URL 템플릿 리터럴에 백틱() 복구 완료 const getYoutubeSrc = (id: string, autoplay: boolean) => { if (!autoplay) return https://www.youtube.com/embed/${id}?rel=0`;
+return `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${id}&iv_load_policy=3&disablekb=1&cc_load_policy=0&cc_lang_pref=zz`;
 };
 
 const getCoverStyle = (autoplay: boolean, scale: number = 1.0) => {
@@ -61,6 +63,7 @@ height: ${ad.text_h ?? 50}%
 );
 };
 
+/* STREAMING_CHUNK:Fetching news articles and banner data... /
 useEffect(() => {
 const fetchNews = async () => {
 const [{ data: headlineMap }, { data: articles }, { data: topArticles }, { data: categoryData }, { data: adData }] = await Promise.all([
@@ -68,7 +71,7 @@ supabase.from('headlines').select(''),
 supabase.from('articles').select('').eq('is_published', true).order('created_at', { ascending: false }),
 supabase.from('articles').select('').eq('is_published', true).order('view_count', { ascending: false }).limit(6),
 supabase.from('categories').select('').order('sort_order', { ascending: true }),
-supabase.from('ads').select('*')
+supabase.from('ads').select('')
 ]);
 
   if (categoryData) setDbCategories(categoryData);
@@ -100,6 +103,7 @@ fetchNews();
 
 }, []);
 
+/* STREAMING_CHUNK:Handling form submissions... */
 const handleSearch = (e: React.FormEvent) => {
 e.preventDefault();
 if (searchQuery.trim()) router.push(/news?search=${encodeURIComponent(searchQuery)});
@@ -117,9 +121,10 @@ else { alert(Successfully subscribed with ${email}!); setEmail(''); }
 
 if (isLoading) return Loading CEO Daily Brief...;
 
+/* STREAMING_CHUNK:Rendering the main header and navigation... /
 return (
 
-{/* --- HEADER --- /}
+{/ --- HEADER --- /}
 
 
 {currentDate}
@@ -149,6 +154,7 @@ The Executive's Window into South Korea's Markets, Policy, and Industry Intellig
     </nav>
   </header>
 
+  {/* STREAMING_CHUNK:Rendering the hero section and article grid... */}
   {/* --- MAIN CONTENT --- */}
   <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 pb-8 sm:pb-12">
@@ -199,6 +205,7 @@ The Executive's Window into South Korea's Markets, Policy, and Industry Intellig
         </div>
       </div>
 
+      {/* STREAMING_CHUNK:Rendering the executive briefing sidebar... */}
       <div className="lg:col-span-4 h-full relative">
         <div className="px-2 sm:px-0 flex flex-col gap-10 h-full">
           <div>
@@ -267,6 +274,7 @@ The Executive's Window into South Korea's Markets, Policy, and Industry Intellig
     </div>
   </main>
 
+  {/* STREAMING_CHUNK:Rendering the footer and newsletter section... */}
   {/* 💡 배너 4: 푸터 위 */}
   {ads.footer_top?.is_visible && (
     <div className="max-w-7xl mx-auto px-4 mb-16">
@@ -305,6 +313,7 @@ The Executive's Window into South Korea's Markets, Policy, and Industry Intellig
     </div>
   </footer>
 
+  {/* STREAMING_CHUNK:Rendering the video popup modal... */}
   {/* 🎬 팝업 모달 */}
   {videoModal.isOpen && (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm" onClick={() => setVideoModal({ isOpen: false, youtubeId: '' })}>
