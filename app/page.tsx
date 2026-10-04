@@ -1,4 +1,3 @@
-// STREAMING_CHUNK: Initializing client component and imports...
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -6,7 +5,6 @@ import { supabase } from '@/utils/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-// STREAMING_CHUNK: Defining CEODailyBrief main component...
 export default function CEODailyBrief() {
 const router = useRouter();
 
@@ -22,7 +20,6 @@ const [email, setEmail] = useState('');
 
 const [videoModal, setVideoModal] = useState<{ isOpen: boolean; youtubeId: string; linkUrl?: string; description?: string; fileUrl?: string; }>({ isOpen: false, youtubeId: '', linkUrl: '', description: '', fileUrl: '' });
 
-// STREAMING_CHUNK: Defining utility functions for dates and media...
 const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).toUpperCase();
 const formatTime = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
 const getDisplayText = (field: any) => typeof field === 'string' ? field : field?.en || field?.ko || Object.values(field || {})[0] || '';
@@ -37,7 +34,6 @@ if (!autoplay) return { width: '100%', height: '100%' };
 return { position: 'absolute' as 'absolute', top: '50%', left: '50%', transform: translate(-50%, -50%) scale(${scale}), width: '100%', height: '100%', pointerEvents: 'none' as 'none' };
 };
 
-// STREAMING_CHUNK: Setting up media and overlay renderers...
 const renderMedia = (url: string, alt: string) => {
 if (url.includes('.mp4') || url.includes('.webm')) {
 return ;
@@ -65,7 +61,6 @@ height: ${ad.text_h ?? 50}%
 );
 };
 
-// STREAMING_CHUNK: Fetching data from Supabase...
 useEffect(() => {
 const fetchNews = async () => {
 const [{ data: headlineMap }, { data: articles }, { data: topArticles }, { data: categoryData }, { data: adData }] = await Promise.all([
@@ -84,16 +79,14 @@ supabase.from('ads').select('*')
     setAds(adMap);
   }
 
-
-// STREAMING_CHUNK: Processing headlines and remaining articles...
-if (articles && headlineMap) {
-const newHeadlines: any = { MAIN_HERO: null, SUB_1: null, SUB_2: null, SUB_3: null, SUB_4: null, SUB_5: null, SUB_6: null };
-const usedArticleIds = new Set();
-headlineMap.forEach(h => {
-const matchedArticle = articles.find(a => a.id === h.article_id);
-if (matchedArticle) { newHeadlines[h.position] = matchedArticle; usedArticleIds.add(matchedArticle.id); }
-});
-setHeadlines(newHeadlines);
+  if (articles && headlineMap) {
+    const newHeadlines: any = { MAIN_HERO: null, SUB_1: null, SUB_2: null, SUB_3: null, SUB_4: null, SUB_5: null, SUB_6: null };
+    const usedArticleIds = new Set();
+    headlineMap.forEach(h => {
+      const matchedArticle = articles.find(a => a.id === h.article_id);
+      if (matchedArticle) { newHeadlines[h.position] = matchedArticle; usedArticleIds.add(matchedArticle.id); }
+    });
+    setHeadlines(newHeadlines);
 
     const remainingArticles = articles.filter(a => !usedArticleIds.has(a.id));
     setBriefingArticles(remainingArticles.length >= 8 ? remainingArticles.slice(0, 8) : [...remainingArticles, ...articles.filter(a => usedArticleIds.has(a.id)).slice(0, 8 - remainingArticles.length)]);
@@ -107,21 +100,23 @@ fetchNews();
 
 }, []);
 
-// STREAMING_CHUNK: Handling user interactions (search, subscribe)...
-const handleSearch = (e: React.FormEvent) => { e.preventDefault(); if (searchQuery.trim()) router.push(/news?search=${encodeURIComponent(searchQuery)}); };
+const handleSearch = (e: React.FormEvent) => {
+e.preventDefault();
+if (searchQuery.trim()) router.push(/news?search=${encodeURIComponent(searchQuery)});
+};
+
 const handleSubscribe = async (e: React.FormEvent) => {
 e.preventDefault();
 if (!email) return;
 try {
 const { error } = await supabase.from('subscribers').insert([{ email }]);
-if (error) alert(error.code === '23505' ? 'This email is already subscribed.' : 'Error: ' + error.message);
+if (error) alert(error.code === '23505' ? 'This email is already subscribed.' : Error: ${error.message});
 else { alert(Successfully subscribed with ${email}!); setEmail(''); }
 } catch (err) { alert('An unexpected error occurred. Please try again.'); }
 };
 
 if (isLoading) return Loading CEO Daily Brief...;
 
-// STREAMING_CHUNK: Rendering Header with SEO enhancements...
 return (
 
 {/* --- HEADER --- /}
@@ -154,12 +149,10 @@ The Executive's Window into South Korea's Markets, Policy, and Industry Intellig
     </nav>
   </header>
 
-
-// STREAMING_CHUNK: Rendering Main content and Hero article...
-{/* --- MAIN CONTENT --- */}
-
-
-
+  {/* --- MAIN CONTENT --- */}
+  <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 pb-8 sm:pb-12">
+      
       <div className="lg:col-span-8 flex flex-col gap-8 sm:gap-10">
         {headlines.MAIN_HERO ? (
           <Link href={`/article?id=${headlines.MAIN_HERO.id}`}>
@@ -174,152 +167,143 @@ The Executive's Window into South Korea's Markets, Policy, and Industry Intellig
           </Link>
         ) : <div className="h-64 flex items-center justify-center bg-gray-50 border text-gray-400 font-serif italic text-xl">No Lead Story Published Yet.</div>}
 
-
-// STREAMING_CHUNK: Rendering article_bottom ad banner...
-{/* 💡 배너 3: 기사 하단 */}
-{ads.article_bottom?.is_visible && (
-ads.article_bottom.is_youtube && ads.article_bottom.youtube_id ? (
-
-<iframe style={getCoverStyle(ads.article_bottom.autoplay, ads.article_bottom.youtube_scale)} src={getYoutubeSrc(ads.article_bottom.youtube_id, ads.article_bottom.autoplay)} allow="autoplay; encrypted-media" allowFullScreen={!ads.article_bottom.autoplay}>
-{ads.article_bottom.autoplay && <div onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.article_bottom.youtube_id, linkUrl: ads.article_bottom.link_url, description: ads.article_bottom.description, fileUrl: ads.article_bottom.file_url })} className="absolute inset-0 z-10 block cursor-pointer">}
-
-) : ads.article_bottom.image_url ? (
-
-<a href={ads.article_bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block relative w-full">
-{renderMedia(ads.article_bottom.image_url, ads.article_bottom.alt_text)}
-{renderTextOverlay(ads.article_bottom)}
-
-
-) : null
-)}
-
-// STREAMING_CHUNK: Rendering sub articles grid...
-
-{[headlines.SUB_1, headlines.SUB_2, headlines.SUB_3, headlines.SUB_4, headlines.SUB_5, headlines.SUB_6].map((subArticle, idx) => (
-subArticle ? (
-<Link key={idx} href={/article?id=${subArticle.id}}>
-
-{subArticle.image_url && }
-{subArticle.category}
-{getDisplayText(subArticle.title)}
-
-
-) : null
-))}
-
-
-
-// STREAMING_CHUNK: Rendering Executive Briefing sidebar...
-
-
-
-
-EXECUTIVE BRIEFING
-
-
-{briefingArticles.map((article, index) => (
-<li key={${article.id}-${index}} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
-
-<Link href={/article?id=${article.id}}>{article.category}{getDisplayText(article.title)}
-
-))}
-
-
-
-// STREAMING_CHUNK: Rendering mid sidebar ad banner...
-{/* 💡 배너 1: 우측 중앙 */}
-{ads.mid?.is_visible && (
-
-{ads.mid.is_youtube && ads.mid.youtube_id ? (
-
-<iframe style={getCoverStyle(ads.mid.autoplay, ads.mid.youtube_scale)} src={getYoutubeSrc(ads.mid.youtube_id, ads.mid.autoplay)} allow="autoplay; encrypted-media" allowFullScreen={!ads.mid.autoplay}>
-{ads.mid.autoplay && <div onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.mid.youtube_id, linkUrl: ads.mid.link_url, description: ads.mid.description, fileUrl: ads.mid.file_url })} className="absolute inset-0 z-10 block cursor-pointer">}
-
-) : ads.mid.image_url ? (
-<a href={ads.mid.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[250px] relative rounded overflow-hidden border border-gray-200">
-{renderMedia(ads.mid.image_url, ads.mid.alt_text)}
-{renderTextOverlay(ads.mid)}
-
-) : null}
-
-)}
-
-// STREAMING_CHUNK: Rendering Most Viewed section...
-
-
-MOST VIEWED
-
-
-{bestArticles.map((article, index) => (
-
-{index + 1}
-<Link href={/article?id=${article.id}}>{article.category}{getDisplayText(article.title)}
-
-))}
-
-
-
-// STREAMING_CHUNK: Rendering bottom sidebar ad banner...
-{/* 💡 배너 2: 우측 하단 */}
-{ads.bottom?.is_visible && (
-
-{ads.bottom.is_youtube && ads.bottom.youtube_id ? (
-
-<iframe style={getCoverStyle(ads.bottom.autoplay, ads.bottom.youtube_scale)} src={getYoutubeSrc(ads.bottom.youtube_id, ads.bottom.autoplay)} allow="autoplay; encrypted-media" allowFullScreen={!ads.bottom.autoplay}>
-{ads.bottom.autoplay && <div onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.bottom.youtube_id, linkUrl: ads.bottom.link_url, description: ads.bottom.description, fileUrl: ads.bottom.file_url })} className="absolute inset-0 z-10 block cursor-pointer">}
-
-) : ads.bottom.image_url ? (
-<a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bottom-8 block w-full rounded overflow-hidden border border-gray-200">
-{renderMedia(ads.bottom.image_url, ads.bottom.alt_text)}
-{renderTextOverlay(ads.bottom)}
-
-) : null}
-
-)}
-
-
-
-
-
-// STREAMING_CHUNK: Rendering Footer top ad banner...
-{/* 💡 배너 4: 푸터 위 */}
-{ads.footer_top?.is_visible && (
-
-{ads.footer_top.is_youtube && ads.footer_top.youtube_id ? (
-
-<iframe style={getCoverStyle(ads.footer_top.autoplay, ads.footer_top.youtube_scale)} src={getYoutubeSrc(ads.footer_top.youtube_id, ads.footer_top.autoplay)} allow="autoplay; encrypted-media" allowFullScreen={!ads.footer_top.autoplay}>
-{ads.footer_top.autoplay && <div onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.footer_top.youtube_id, linkUrl: ads.footer_top.link_url, description: ads.footer_top.description, fileUrl: ads.footer_top.file_url })} className="absolute inset-0 z-10 block cursor-pointer">}
-
-) : ads.footer_top.image_url ? (
-<a href={ads.footer_top.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block relative w-full rounded overflow-hidden shadow-lg border border-gray-200">
-{renderMedia(ads.footer_top.image_url, ads.footer_top.alt_text)}
-{renderTextOverlay(ads.footer_top)}
-
-) : null}
-
-)}
-
-// STREAMING_CHUNK: Rendering Footer and Modal...
-{/* --- FOOTER --- */}
-
-
-
-Newsletter
-Get the latest intelligence delivered directly to your inbox.
-
-<input type="email" placeholder="Your email address" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-2 border rounded text-black focus:outline-none"/>
-Subscribe
-
-
-
-
-CEO Daily Brief
-The Global Executive's Guide to South Korea.
-
-Admin Login
-
-
-
+        {/* 💡 배너 3: 기사 하단 */}
+        {ads.article_bottom?.is_visible && (
+          ads.article_bottom.is_youtube && ads.article_bottom.youtube_id ? (
+            <div className="relative w-full aspect-video bg-black rounded overflow-hidden shadow-md my-2 sm:my-0">
+              <iframe style={getCoverStyle(ads.article_bottom.autoplay, ads.article_bottom.youtube_scale)} src={getYoutubeSrc(ads.article_bottom.youtube_id, ads.article_bottom.autoplay)} allow="autoplay; encrypted-media" allowFullScreen={!ads.article_bottom.autoplay}></iframe>
+              {ads.article_bottom.autoplay && <div onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.article_bottom.youtube_id, linkUrl: ads.article_bottom.link_url, description: ads.article_bottom.description, fileUrl: ads.article_bottom.file_url })} className="absolute inset-0 z-10 block cursor-pointer"></div>}
+            </div>
+          ) : ads.article_bottom.image_url ? (
+            <div className="w-full my-2 sm:my-0 rounded overflow-hidden shadow-md border border-gray-200">
+              <a href={ads.article_bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block relative w-full">
+                {renderMedia(ads.article_bottom.image_url, ads.article_bottom.alt_text)}
+                {renderTextOverlay(ads.article_bottom)}
+              </a>
+            </div>
+          ) : null
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mt-4 sm:mt-2">
+          {[headlines.SUB_1, headlines.SUB_2, headlines.SUB_3, headlines.SUB_4, headlines.SUB_5, headlines.SUB_6].map((subArticle, idx) => (
+            subArticle ? (
+              <Link key={idx} href={`/article?id=${subArticle.id}`}>
+                <article className="group cursor-pointer flex flex-col h-full">
+                  {subArticle.image_url && <div className="relative w-full aspect-[4/3] bg-gray-100 mb-3 sm:mb-4 overflow-hidden rounded"><img src={subArticle.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-700 grayscale-[20%]"/></div>}
+                  <span className="text-red-800 font-bold text-[10px] sm:text-xs tracking-widest mb-2 uppercase">{subArticle.category}</span>
+                  <h3 className="text-xl sm:text-lg font-bold font-serif leading-snug group-hover:text-red-800 transition-colors">{getDisplayText(subArticle.title)}</h3>
+                </article>
+              </Link>
+            ) : null
+          ))}
+        </div>
+      </div>
+
+      <div className="lg:col-span-4 h-full relative">
+        <div className="px-2 sm:px-0 flex flex-col gap-10 h-full">
+          <div>
+            <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
+              <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">EXECUTIVE BRIEFING</h3>
+            </div>
+            <ul className="flex flex-col gap-4 sm:gap-6">
+              {briefingArticles.map((article, index) => (
+                <li key={`${article.id}-${index}`} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
+                  <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
+                  <Link href={`/article?id=${article.id}`}><div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div><p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 text-gray-800">{getDisplayText(article.title)}</p></Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* 💡 배너 1: 우측 중앙 */}
+          {ads.mid?.is_visible && (
+            <div className="flex justify-center w-full">
+              {ads.mid.is_youtube && ads.mid.youtube_id ? (
+                <div className="w-[300px] h-[250px] bg-black relative overflow-hidden rounded">
+                  <iframe style={getCoverStyle(ads.mid.autoplay, ads.mid.youtube_scale)} src={getYoutubeSrc(ads.mid.youtube_id, ads.mid.autoplay)} allow="autoplay; encrypted-media" allowFullScreen={!ads.mid.autoplay}></iframe>
+                  {ads.mid.autoplay && <div onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.mid.youtube_id, linkUrl: ads.mid.link_url, description: ads.mid.description, fileUrl: ads.mid.file_url })} className="absolute inset-0 z-10 block cursor-pointer"></div>}
+                </div>
+              ) : ads.mid.image_url ? (
+                <a href={ads.mid.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block w-[300px] h-[250px] relative rounded overflow-hidden border border-gray-200">
+                  {renderMedia(ads.mid.image_url, ads.mid.alt_text)}
+                  {renderTextOverlay(ads.mid)}
+                </a>
+              ) : null}
+            </div>
+          )}
+
+          <div>
+            <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-4 sm:mb-5">
+              <h3 className="text-base sm:text-lg font-bold tracking-widest uppercase">MOST VIEWED</h3>
+            </div>
+            <ul className="flex flex-col gap-4 sm:gap-6">
+              {bestArticles.map((article, index) => (
+                <li key={article.id} className="relative pl-7 sm:pl-8 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
+                  <span className="absolute left-0 top-0 text-red-800 font-black text-xl italic font-serif">{index + 1}</span>
+                  <Link href={`/article?id=${article.id}`}><div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div><p className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 text-gray-800">{getDisplayText(article.title)}</p></Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* 💡 배너 2: 우측 하단 */}
+          {ads.bottom?.is_visible && (
+            <div className="flex-1 w-full relative pb-8 min-h-[600px]">
+              {ads.bottom.is_youtube && ads.bottom.youtube_id ? (
+                <div className="absolute inset-0 bottom-8 w-full bg-black relative overflow-hidden rounded">
+                  <iframe style={getCoverStyle(ads.bottom.autoplay, ads.bottom.youtube_scale)} src={getYoutubeSrc(ads.bottom.youtube_id, ads.bottom.autoplay)} allow="autoplay; encrypted-media" allowFullScreen={!ads.bottom.autoplay}></iframe>
+                  {ads.bottom.autoplay && <div onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.bottom.youtube_id, linkUrl: ads.bottom.link_url, description: ads.bottom.description, fileUrl: ads.bottom.file_url })} className="absolute inset-0 z-10 block cursor-pointer"></div>}
+                </div>
+              ) : ads.bottom.image_url ? (
+                <a href={ads.bottom.link_url || '#'} target="_blank" rel="noopener noreferrer" className="absolute inset-0 bottom-8 block w-full rounded overflow-hidden border border-gray-200">
+                  {renderMedia(ads.bottom.image_url, ads.bottom.alt_text)}
+                  {renderTextOverlay(ads.bottom)}
+                </a>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </main>
+
+  {/* 💡 배너 4: 푸터 위 */}
+  {ads.footer_top?.is_visible && (
+    <div className="max-w-7xl mx-auto px-4 mb-16">
+      {ads.footer_top.is_youtube && ads.footer_top.youtube_id ? (
+        <div className="relative w-full aspect-video sm:aspect-[21/9] md:aspect-[24/9] bg-black rounded overflow-hidden shadow-lg border border-gray-200">
+          <iframe style={getCoverStyle(ads.footer_top.autoplay, ads.footer_top.youtube_scale)} src={getYoutubeSrc(ads.footer_top.youtube_id, ads.footer_top.autoplay)} allow="autoplay; encrypted-media" allowFullScreen={!ads.footer_top.autoplay}></iframe>
+          {ads.footer_top.autoplay && <div onClick={() => setVideoModal({ isOpen: true, youtubeId: ads.footer_top.youtube_id, linkUrl: ads.footer_top.link_url, description: ads.footer_top.description, fileUrl: ads.footer_top.file_url })} className="absolute inset-0 z-10 block cursor-pointer"></div>}
+        </div>
+      ) : ads.footer_top.image_url ? (
+        <a href={ads.footer_top.link_url || '#'} target="_blank" rel="noopener noreferrer" className="block relative w-full rounded overflow-hidden shadow-lg border border-gray-200">
+          {renderMedia(ads.footer_top.image_url, ads.footer_top.alt_text)}
+          {renderTextOverlay(ads.footer_top)}
+        </a>
+      ) : null}
+    </div>
+  )}
+
+  {/* --- FOOTER --- */}
+  <footer className="bg-gray-50 text-gray-400 py-10 border-t border-gray-200">
+    <div className="max-w-7xl mx-auto px-4 flex flex-col lg:flex-row justify-between items-start gap-8">
+      <div className="w-full lg:w-1/3">
+        <h3 className="text-black font-bold uppercase tracking-widest mb-3">Newsletter</h3>
+        <p className="text-sm mb-4">Get the latest intelligence delivered directly to your inbox.</p>
+        <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-2">
+          <input type="email" placeholder="Your email address" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-2 border rounded text-black focus:outline-none"/>
+          <button type="submit" className="bg-blue-950 text-white px-6 py-2 rounded font-bold uppercase text-xs">Subscribe</button>
+        </form>
+      </div>
+      <div className="w-full lg:w-auto flex flex-col sm:flex-row justify-between gap-8 lg:gap-16">
+        <div>
+          <h2 className="text-base font-serif font-black text-gray-800 uppercase tracking-tighter">CEO Daily Brief</h2>
+          <p className="text-xs font-serif italic mt-1">The Global Executive's Guide to South Korea.</p>
+        </div>
+        <div className="shrink-0"><Link href="/admin" className="inline-block bg-gray-200 text-gray-600 px-4 py-2 rounded-md text-[10px] font-bold uppercase">Admin Login</Link></div>
+      </div>
+    </div>
+  </footer>
 
   {/* 🎬 팝업 모달 */}
   {videoModal.isOpen && (
