@@ -1,4 +1,71 @@
-/* STREAMING_CHUNK:Importing dependencies and styles... */import type { Metadata } from "next";import { Geist, Geist_Mono } from "next/font/google";import Script from "next/script"; // GTM 스크립트 삽입을 위해 추가import "./globals.css";/* STREAMING_CHUNK:Configuring fonts and metadata... */const geistSans = Geist({variable: "--font-geist-sans",subsets: ["latin"],});const geistMono = Geist_Mono({variable: "--font-geist-mono",subsets: ["latin"],});export const metadata: Metadata = {title: "CEO Daily Brief",description: "The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence",icons: {icon: "https://inpfhtkdghdidkbgtrzj.supabase.co/storage/v1/object/public/article_images/fabicon.jpg",},openGraph: {title: "CEO Daily Brief",description: "The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence",url: "https://www.ceodailybrief.com",siteName: "CEO Daily Brief",type: "website",images: [{url: "https://inpfhtkdghdidkbgtrzj.supabase.co/storage/v1/object/public/article_images/thumb.jpg",width: 1200,height: 630,},],},};/* STREAMING_CHUNK:Defining SEO JSON-LD schema... */// 💡 SEO: 구글 사이트링크 및 검색창 노출을 위한 구조화 데이터(JSON-LD) 추가const jsonLd = {"@context": "https://schema.org","@graph": [{"@type": "WebSite","@id": "https://www.ceodailybrief.com/#website","url": "https://www.ceodailybrief.com/","name": "CEO Daily Brief","description": "The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence","potentialAction": {"@type": "SearchAction","target": "https://www.ceodailybrief.com/news?search={search_term_string}","query-input": "required name=search_term_string"}},{"@type": "SiteNavigationElement","name": ["All News", "Subscribe"],"url": ["https://www.ceodailybrief.com/news","https://www.ceodailybrief.com/subscribe"]}]};/* STREAMING_CHUNK:Rendering the RootLayout component... /
+/* STREAMING_CHUNK:Importing dependencies and styles... */
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script"; // GTM 스크립트 삽입을 위해 추가
+import "./globals.css";
+
+/* STREAMING_CHUNK:Configuring fonts and metadata... */
+const geistSans = Geist({
+variable: "--font-geist-sans",
+subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+variable: "--font-geist-mono",
+subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+title: "CEO Daily Brief",
+description: "The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence",
+icons: {
+icon: "https://inpfhtkdghdidkbgtrzj.supabase.co/storage/v1/object/public/article_images/fabicon.jpg",
+},
+openGraph: {
+title: "CEO Daily Brief",
+description: "The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence",
+url: "https://www.ceodailybrief.com",
+siteName: "CEO Daily Brief",
+type: "website",
+images: [
+{
+url: "https://inpfhtkdghdidkbgtrzj.supabase.co/storage/v1/object/public/article_images/thumb.jpg",
+width: 1200,
+height: 630,
+},
+],
+},
+};
+
+/* STREAMING_CHUNK:Defining SEO JSON-LD schema... */
+// 💡 SEO: 구글 사이트링크 및 검색창 노출을 위한 구조화 데이터(JSON-LD) 추가
+const jsonLd = {
+"@context": "https://schema.org",
+"@graph": [
+{
+"@type": "WebSite",
+"@id": "https://www.ceodailybrief.com/#website",
+"url": "https://www.ceodailybrief.com/",
+"name": "CEO Daily Brief",
+"description": "The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence",
+"potentialAction": {
+"@type": "SearchAction",
+"target": "https://www.ceodailybrief.com/news?search={search_term_string}",
+"query-input": "required name=search_term_string"
+}
+},
+{
+"@type": "SiteNavigationElement",
+"name": ["All News", "Subscribe"],
+"url": [
+"https://www.ceodailybrief.com/news",
+"https://www.ceodailybrief.com/subscribe"
+]
+}
+]
+};
+
+/* STREAMING_CHUNK:Rendering the RootLayout component... /
 export default function RootLayout({
 children,
 }: Readonly<{
@@ -7,10 +74,16 @@ children: React.ReactNode;
 return (
 <html
 lang="en"
-className={${geistSans.variable} ${geistMono.variable} bg-[#fcfcfc] antialiased}
+{/ 💡 에러 수정: 아래 className 부분의 백틱() 복구 완료 */} className={${geistSans.variable} ${geistMono.variable} bg-[#fcfcfc] antialiased`}
 >
 
-{/ 💡 SEO: JSON-LD 구조화 데이터 삽입 */}<scripttype="application/ld+json"dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}/>    {/* Google Tag Manager (Head) */}
+{/* 💡 SEO: JSON-LD 구조화 데이터 삽입 */}
+<script
+type="application/ld+json"
+dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+/>
+
+    {/* Google Tag Manager (Head) */}
     <Script id="google-tag-manager" strategy="afterInteractive">
       {`
         (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -46,4 +119,7 @@ className={${geistSans.variable} ${geistMono.variable} bg-[#fcfcfc] antialiased}
     {children}
   </body>
 </html>
-);}
+
+
+);
+}
