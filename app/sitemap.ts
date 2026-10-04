@@ -1,8 +1,6 @@
-// STREAMING_CHUNK: Importing dependencies for sitemap...
 import { MetadataRoute } from 'next';
 import { supabase } from '@/utils/supabase';
 
-// STREAMING_CHUNK: Generating dynamic sitemap routes...
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 const baseUrl = 'https://www.ceodailybrief.com'; // 실제 운영하시는 도메인으로 변경하세요
 
