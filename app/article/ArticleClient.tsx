@@ -84,7 +84,7 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
   const applyLanguage = async (articleData: any, langCode: string) => {
     setCurrentLang(langCode);
     if (typeof window !== 'undefined') {
-      const newUrl = new URL(window.location.href); newUrl.searchParams.set('lang', langCode); window.history.replaceState({}, '', newUrl.toString());
+      const newUrl = new URL(window.location.href); if (langCode === 'en') newUrl.searchParams.delete('lang'); else newUrl.searchParams.set('lang', langCode); window.history.replaceState({}, '', newUrl.toString());
     }
 
     const titleInfo = getAvailableText(articleData, 'title', langCode);
@@ -129,7 +129,7 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
 
   const handleShare = async () => {
     if (typeof window === 'undefined') return;
-    const shareUrl = `https://ceodailybrief.com/article?id=${article?.id}&lang=${currentLang}`;
+    const shareUrl = `https://www.ceodailybrief.com/article/${article?.id}${currentLang !== 'en' ? `?lang=${currentLang}` : ''}`;
     try { if (navigator.share) await navigator.share({ title: displayTitle || article?.title, url: shareUrl }); else throw new Error('Not supported'); } 
     catch (err) { try { if (navigator.clipboard) { await navigator.clipboard.writeText(shareUrl); alert('기사 링크가 클립보드에 복사되었습니다.'); } } catch (e) { alert('링크 복사에 실패했습니다.'); } }
   };
@@ -202,11 +202,11 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
           <div className="flex items-center gap-4 text-sm text-gray-500 font-serif italic border-y border-gray-200 py-3 w-full">
             <span className="font-bold text-black font-sans uppercase not-italic">By {displayAuthorName}</span>
             <span>|</span>
-            <span>Published: {new Date(article.created_at).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
+            <span>Published: <time dateTime={article.created_at}>{new Date(article.created_at).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })}</time></span>
           </div>
         </div>
 
-        {article.image_url && <div className="mb-12 w-full"><img src={article.image_url} alt="Article main" className="w-full h-auto object-cover rounded-sm grayscale-[10%]" /></div>}
+        {article.image_url && <div className="mb-12 w-full"><img src={article.image_url} alt={displayTitle || article.title} fetchPriority="high" className="w-full h-auto object-cover rounded-sm grayscale-[10%]" /></div>}
 
         <div className={`prose prose-lg max-w-none text-gray-800 prose-img:rounded-sm prose-a:text-red-700 hover:prose-a:text-red-900 ${bodyFontClass}`} dangerouslySetInnerHTML={{ __html: displayContent }} />
 
@@ -214,7 +214,7 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
         {(article?.author_image_url || displayAuthorBio) && (
           <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col sm:flex-row items-center sm:items-start gap-6 bg-gray-50 p-6 rounded-lg">
             {article.author_image_url && (
-              <div className="shrink-0"><img src={article.author_image_url} alt={displayAuthorName} className="w-24 sm:w-28 aspect-[3/4] rounded-md object-cover border border-gray-300 shadow-sm"/></div>
+              <div className="shrink-0"><img src={article.author_image_url} alt={displayAuthorName} loading="lazy" className="w-24 sm:w-28 aspect-[3/4] rounded-md object-cover border border-gray-300 shadow-sm"/></div>
             )}
             <div className="flex flex-col text-center sm:text-left w-full mt-2 sm:mt-0">
               <span className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-1">Written By</span>
@@ -227,7 +227,7 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
         {/* 💡 프로필 하단 배너 (위치 및 박스 크기 추적) */}
         {article.profile_banner_visible && article.profile_banner_url && (
           <div className="mt-8 w-full flex justify-center">
-            <a href={article.profile_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="relative w-full block transition-opacity hover:opacity-95 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <a href={article.profile_banner_link || '#'} target="_blank" rel="sponsored noopener noreferrer" className="relative w-full block transition-opacity hover:opacity-95 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <img 
                 src={article.profile_banner_url} 
                 alt={article.profile_banner_alt || "스폰서 광고 배너"} 
@@ -259,7 +259,7 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
         {/* 💡 구독 하단 배너 (위치 및 박스 크기 추적) */}
         {article.subscribe_banner_visible && article.subscribe_banner_url && (
           <div className="mt-8 w-full flex justify-center">
-            <a href={article.subscribe_banner_link || '#'} target="_blank" rel="noopener noreferrer" className="relative w-full block transition-opacity hover:opacity-95 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <a href={article.subscribe_banner_link || '#'} target="_blank" rel="sponsored noopener noreferrer" className="relative w-full block transition-opacity hover:opacity-95 rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <img 
                 src={article.subscribe_banner_url} 
                 alt={article.subscribe_banner_alt || "스폰서 광고 배너"} 
@@ -312,6 +312,13 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
     </div>
   );
 }
+
+
+
+
+
+
+
 
 
 
