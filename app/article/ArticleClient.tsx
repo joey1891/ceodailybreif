@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
 import Link from 'next/link';
+import { articleUrl } from '@/lib/seo';
 
 interface ArticleClientProps {
   initialArticle: any;
@@ -129,7 +130,7 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
 
   const handleShare = async () => {
     if (typeof window === 'undefined') return;
-    const shareUrl = `https://www.ceodailybrief.com/article/${article?.id}${currentLang !== 'en' ? `?lang=${currentLang}` : ''}`;
+    const shareUrl = articleUrl(article, currentLang);
     try { if (navigator.share) await navigator.share({ title: displayTitle || article?.title, url: shareUrl }); else throw new Error('Not supported'); } 
     catch (err) { try { if (navigator.clipboard) { await navigator.clipboard.writeText(shareUrl); alert('기사 링크가 클립보드에 복사되었습니다.'); } } catch (e) { alert('링크 복사에 실패했습니다.'); } }
   };
@@ -312,7 +313,6 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
     </div>
   );
 }
-
 
 
 
