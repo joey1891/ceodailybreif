@@ -1,4 +1,4 @@
-sitemap.xml — 모든 기사(+이미지·배너 이미지·번역본), 카테고리, 메인 배너를 구글에 알립니다.
+//sitemap.xml — 모든 기사(+이미지·배너 이미지·번역본), 카테고리, 메인 배너를 구글에 알립니다.
 
 import type { MetadataRoute } from 'next';
 import { supabase } from '@/utils/supabase';
