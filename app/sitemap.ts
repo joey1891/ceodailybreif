@@ -4,7 +4,7 @@ import type { MetadataRoute } from 'next';
 import { supabase } from '@/utils/supabase';
 import {
   SITE_URL, type Article, type Ad,
-  articleUrl, storedLanguages, xmlSafe, isVideoFile, youtubeThumb,
+  articleUrl, storedLanguages, xmlSafe, isVideoFile,
 } from '@/lib/seo';
 
 export const revalidate = 3600; // 1시간마다 갱신
@@ -43,21 +43,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const latest = articles[0]?.updated_at || articles[0]?.created_at || new Date().toISOString();
   const visibleAds = ((ads || []) as Ad[]).filter((a) => a.is_visible);
 
-  // 메인 화면 배너: 이미지 배너는 image, 유튜브 배너는 video 로 등록
+  // 메인 화면 배너 이미지 (실제로 메인에 보이는 배너 칸만)
+  //  - 유튜브 배너는 넣지 않습니다. 영상은 유튜브에서 이미 검색 등록되고,
+  //    <video:> 항목은 네이버 서치어드바이저가 "형식 오류"로 거부합니다.
+  const HOME_BANNER_POSITIONS = ['mid', 'bottom', 'article_bottom', 'footer_top'];
   const home: MetadataRoute.Sitemap[number] = {
     url: SITE_URL,
     lastModified: new Date(latest),
     changeFrequency: 'hourly',
     priority: 1.0,
-    images: safeImages(visibleAds.filter((a) => !a.is_youtube).map((a) => a.image_url)),
-    videos: visibleAds
-      .filter((a) => a.is_youtube && a.youtube_id)
-      .map((a) => ({
-        title: xmlSafe(a.alt_text || a.description || 'CEO Daily Brief video'),
-        description: xmlSafe((a.description || a.alt_text || 'CEO Daily Brief featured video').slice(0, 2000)),
-        thumbnail_loc: xmlSafe(youtubeThumb(a.youtube_id!)),
-        player_loc: xmlSafe(`https://www.youtube.com/embed/${a.youtube_id}`),
-      })),
+    images: safeImages(
+      visibleAds
+        .filter((a) => !a.is_youtube && HOME_BANNER_POSITIONS.includes(a.position))
+        .map((a) => a.image_url)
+    ),
   };
 
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -74,7 +73,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const articleRoutes: MetadataRoute.Sitemap = articles.map((a) => {
-    const langs = storedLanguages(a);
     const entry: MetadataRoute.Sitemap[number] = {
       url: articleUrl(a),
       lastModified: new Date(a.updated_at || a.created_at),
@@ -87,12 +85,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         a.subscribe_banner_visible !== false ? a.subscribe_banner_url : null,
       ]),
     };
-    if (langs.length > 1) {
-      const languages: Record<string, string> = {};
-      for (const code of langs) languages[code] = xmlSafe(articleUrl(a, code));
-      languages['x-default'] = articleUrl(a);
-      entry.alternates = { languages };
-    }
+    // 번역본 연결(hreflang)은 각 기사 페이지의 <link rel="alternate"> 로 알립니다.
+    // (사이트맵의 <xhtml:link> 는 네이버가 형식 오류로 거부할 수 있어 넣지 않음)
     return entry;
   });
 
@@ -110,6 +104,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [...staticRoutes, ...categoryRoutes, ...articleRoutes, ...translatedRoutes];
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
