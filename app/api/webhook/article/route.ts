@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { articleUrl as articleUrlFor } from '@/lib/seo';
 
 /**
  * Supabase Database Webhook → 뉴스레터 발송
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
     // 페이로드만 믿지 않고 DB에서 실제 상태를 다시 확인 (위조·중복 발송 방지)
     const { data: article, error: articleError } = await supabaseAdmin
       .from('articles')
-      .select('id, title, category, is_published, newsletter_sent_at')
+      .select('id, article_no, title, category, is_published, newsletter_sent_at')
       .eq('id', webhookArticle.id)
       .single();
 
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
     const subscriberEmails = subscribers.map((sub) => sub.email);
     const safeTitle = escapeHtml(article.title);
     const safeCategory = escapeHtml(String(article.category ?? '').toUpperCase());
-    const articleUrl = `https://www.ceodailybrief.com/article/${encodeURIComponent(String(article.id))}`;
+    const articleUrl = articleUrlFor(article);
     // 메일 제목은 HTML이 아니지만 줄바꿈 등 헤더 주입 문자는 제거
     const subjectTitle = String(article.title ?? '').replace(/[\r\n]+/g, ' ').slice(0, 150);
 
@@ -158,7 +159,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
-
 
 
 
