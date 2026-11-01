@@ -1,3 +1,5 @@
+// SEO 공통 상수와 도우미 함수 (서버·클라이언트 공용)
+
 export const SITE_URL = 'https://www.ceodailybrief.com';
 export const SITE_NAME = 'CEO Daily Brief';
 export const SITE_DESCRIPTION =
@@ -12,6 +14,7 @@ export const LANG_CODES = ['en', 'ko', 'ja', 'zh-CN', 'ru', 'mn', 'vi'] as const
 
 export type Article = {
   id: string;
+  article_no?: number | null; // 기사 번호 (짧은 주소용, DB에서 자동으로 매김)
   title: string;
   content?: string | null;
   category: string;
@@ -82,12 +85,41 @@ export function stripHtml(html: string | null | undefined, max = 160): string {
   return text.length > max ? text.slice(0, max - 1).trimEnd() + '…' : text;
 }
 
-export function articlePath(id: string, lang?: string): string {
-  return lang && lang !== 'en' ? `/article/${id}?lang=${encodeURIComponent(lang)}` : `/article/${id}`;
+// 영문 제목 → 주소용 문자열 (예: "hair-rollers-in-public-the-confident-pragmatism")
+//  - 맨 앞의 [Editorial], [Op-Ed] 같은 머리말은 뺍니다.
+//  - 영어·숫자만 남기고 나머지는 '-' 로 바꾸며, 60자 안에서 단어 단위로 자릅니다.
+export function slugify(title: unknown, maxLen = 60): string {
+  let s = getDisplayText(title)
+    .replace(/^\s*(\[[^\]]*\]\s*)+/, '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/['’‘`"“”]/g, '')
+    .replace(/(\d),(?=\d{3}\b)/g, '$1') // 5,000 → 5000
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (s.length > maxLen) {
+    s = s.slice(0, maxLen);
+    const cut = s.lastIndexOf('-');
+    if (cut > 20) s = s.slice(0, cut);
+    s = s.replace(/-+$/, '');
+  }
+  return s;
 }
 
-export function articleUrl(id: string, lang?: string): string {
-  return SITE_URL + articlePath(id, lang);
+type ArticleRef = Pick<Article, 'id' | 'title'> & { article_no?: number | null };
+
+// 기사 주소: /article/15/hair-rollers-in-public-…  (번호가 없으면 예전 방식 /article/UUID)
+export function articlePath(article: ArticleRef, lang?: string): string {
+  const query = lang && lang !== 'en' ? `?lang=${encodeURIComponent(lang)}` : '';
+  if (article.article_no == null) return `/article/${article.id}${query}`;
+  const slug = slugify(article.title);
+  return `/article/${article.article_no}${slug ? `/${slug}` : ''}${query}`;
+}
+
+export function articleUrl(article: ArticleRef, lang?: string): string {
+  return SITE_URL + articlePath(article, lang);
 }
 
 // 번역본이 DB에 실제로 저장된 언어 목록 (자동번역은 제외 → 검색엔진에 중복/저품질로 보이지 않게)
@@ -155,6 +187,9 @@ export function cleanEmbeddedHtml(html: string | null | undefined): string {
   s = s.replace(/<\/?(html|body)\b[^>]*>/gi, '');
   return s.trim();
 }
+
+
+
 
 
 
