@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
 };
 
-const LIST_COLUMNS = 'id, title, category, image_url, created_at, updated_at, author_name';
+const LIST_COLUMNS = 'id, article_no, title, category, image_url, created_at, updated_at, author_name';
 type Position = 'MAIN_HERO' | 'SUB_1' | 'SUB_2' | 'SUB_3' | 'SUB_4' | 'SUB_5' | 'SUB_6';
 
 const formatDate = (s: string) =>
@@ -104,7 +104,7 @@ export default async function HomePage() {
       itemListElement: uniqueFeatured.map((a, i) => ({
         '@type': 'ListItem',
         position: i + 1,
-        url: articleUrl(a.id),
+        url: articleUrl(a),
         name: getDisplayText(a.title),
       })),
     },
@@ -145,7 +145,7 @@ export default async function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 pb-8 sm:pb-12">
           <div className="lg:col-span-8 flex flex-col gap-8 sm:gap-10">
             {hero ? (
-              <Link href={articlePath(hero.id)}>
+              <Link href={articlePath(hero)}>
                 <article className="group cursor-pointer">
                   {hero.image_url && (
                     <div className="w-full bg-gray-100 mb-4 sm:mb-6 overflow-hidden rounded">
@@ -168,7 +168,7 @@ export default async function HomePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mt-4 sm:mt-2">
               {subs.map((sub) => (
-                <Link key={sub.id} href={articlePath(sub.id)}>
+                <Link key={sub.id} href={articlePath(sub)}>
                   <article className="group cursor-pointer flex flex-col h-full">
                     {sub.image_url && (
                       <div className="relative w-full aspect-[4/3] bg-gray-100 mb-3 sm:mb-4 overflow-hidden rounded">
@@ -194,7 +194,7 @@ export default async function HomePage() {
                   {briefing.map((article, index) => (
                     <li key={`${article.id}-${index}`} className="relative pl-3 sm:pl-4 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
                       <span className="absolute left-0 top-1.5 sm:top-2 w-1.5 h-1.5 bg-red-800 rounded-full group-hover:scale-150 transition-transform"></span>
-                      <Link href={articlePath(article.id)}>
+                      <Link href={articlePath(article)}>
                         <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
                         <h3 className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 text-gray-800">{getDisplayText(article.title)}</h3>
                       </Link>
@@ -213,7 +213,7 @@ export default async function HomePage() {
                   {best.map((article, index) => (
                     <li key={article.id} className="relative pl-7 sm:pl-8 group cursor-pointer border-b border-gray-100 pb-4 last:border-0">
                       <span className="absolute left-0 top-0 text-red-800 font-black text-xl italic font-serif">{index + 1}</span>
-                      <Link href={articlePath(article.id)}>
+                      <Link href={articlePath(article)}>
                         <div className="text-[10px] font-bold text-gray-400 mb-1 tracking-wider">{article.category}</div>
                         <h3 className="text-sm sm:text-[16px] font-bold font-serif leading-snug group-hover:text-red-800 text-gray-800">{getDisplayText(article.title)}</h3>
                       </Link>
@@ -237,7 +237,7 @@ export default async function HomePage() {
             <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3">
               {allListed.slice(0, 30).map((a) => (
                 <li key={a.id} className="border-b border-gray-100 pb-3">
-                  <Link href={articlePath(a.id)} className="group block">
+                  <Link href={articlePath(a)} className="group block">
                     <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase mr-2">{a.category}</span>
                     <span className="text-sm font-bold font-serif text-gray-800 group-hover:text-red-800">{getDisplayText(a.title)}</span>
                   </Link>
@@ -272,3 +272,14 @@ export default async function HomePage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
