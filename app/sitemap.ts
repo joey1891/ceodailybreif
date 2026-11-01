@@ -1,4 +1,4 @@
-//sitemap.xml — 모든 기사(+이미지·배너 이미지·번역본), 카테고리, 메인 배너를 구글에 알립니다.
+// sitemap.xml — 모든 기사(+이미지·배너 이미지·번역본), 카테고리, 메인 배너를 구글에 알립니다.
 
 import type { MetadataRoute } from 'next';
 import { supabase } from '@/utils/supabase';
@@ -10,7 +10,7 @@ import {
 export const revalidate = 3600; // 1시간마다 갱신
 
 const ARTICLE_COLUMNS =
-  'id, title, created_at, updated_at, image_url, author_image_url, translations, ' +
+  'id, article_no, title, created_at, updated_at, image_url, author_image_url, translations, ' +
   'profile_banner_url, profile_banner_visible, subscribe_banner_url, subscribe_banner_visible';
 
 // 구글 사이트맵 한도(5만 URL)를 넘지 않도록 1,000개씩 끝까지 가져오기
@@ -76,7 +76,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const articleRoutes: MetadataRoute.Sitemap = articles.map((a) => {
     const langs = storedLanguages(a);
     const entry: MetadataRoute.Sitemap[number] = {
-      url: articleUrl(a.id),
+      url: articleUrl(a),
       lastModified: new Date(a.updated_at || a.created_at),
       changeFrequency: 'weekly',
       priority: 0.9,
@@ -89,8 +89,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
     if (langs.length > 1) {
       const languages: Record<string, string> = {};
-      for (const code of langs) languages[code] = xmlSafe(articleUrl(a.id, code));
-      languages['x-default'] = articleUrl(a.id);
+      for (const code of langs) languages[code] = xmlSafe(articleUrl(a, code));
+      languages['x-default'] = articleUrl(a);
       entry.alternates = { languages };
     }
     return entry;
@@ -101,7 +101,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     storedLanguages(a)
       .filter((code) => code !== 'en')
       .map((code) => ({
-        url: xmlSafe(articleUrl(a.id, code)),
+        url: xmlSafe(articleUrl(a, code)),
         lastModified: new Date(a.updated_at || a.created_at),
         changeFrequency: 'weekly' as const,
         priority: 0.6,
@@ -110,6 +110,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [...staticRoutes, ...categoryRoutes, ...articleRoutes, ...translatedRoutes];
 }
+
+
+
+
 
 
 
