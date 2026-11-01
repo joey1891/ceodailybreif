@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+Copyimport { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
     const subscriberEmails = subscribers.map((sub) => sub.email);
     const safeTitle = escapeHtml(article.title);
     const safeCategory = escapeHtml(String(article.category ?? '').toUpperCase());
-    const articleUrl = `https://www.ceodailybrief.com/article?id=${encodeURIComponent(String(article.id))}`;
+    const articleUrl = `https://www.ceodailybrief.com/article/${encodeURIComponent(String(article.id))}`;
     // 메일 제목은 HTML이 아니지만 줄바꿈 등 헤더 주입 문자는 제거
     const subjectTitle = String(article.title ?? '').replace(/[\r\n]+/g, ' ').slice(0, 150);
 
@@ -158,6 +158,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+
+
+
+
+
+
 
 
 
