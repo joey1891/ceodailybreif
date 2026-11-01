@@ -1,10 +1,12 @@
-// 기사 상세 — /article/[id]  (서버 컴포넌트)
+// 기사 상세 — /article/15/영문-제목  (서버 컴포넌트)
+//  - /article/15, /article/15/틀린-제목, 예전 /article/UUID 주소는 모두 정식 주소로 영구 이동(308)합니다.
+//  - 같은 코드를 app/article/[id]/[slug]/page.tsx 에서도 그대로 사용합니다.
 //  - 기사 본문·제목·작성자·배너를 서버에서 완성된 HTML로 보냅니다.
 //  - NewsArticle / BreadcrumbList 구조화 데이터(JSON-LD)로 구글 뉴스·검색 결과에 기사 정보가 표시되게 합니다.
 //  - DB에 저장된 번역본이 있는 언어만 ?lang=xx 주소로 hreflang 연결합니다.
 
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
 import { supabase } from '@/utils/supabase';
 import ArticleClient from '../ArticleClient';
@@ -14,16 +16,18 @@ import {
   getDisplayText, stripHtml, articlePath, articleUrl, storedLanguages, parseHashtags, jsonLd, cleanEmbeddedHtml,
 } from '@/lib/seo';
 
-type Params = Promise<{ id: string }>;
+type Params = Promise<{ id: string; slug?: string }>;
 type SearchParams = Promise<{ lang?: string }>;
 
 // generateMetadata 와 페이지 본문이 같은 요청에서 DB를 두 번 조회하지 않도록 캐시
+// id 자리에는 기사 번호(15) 또는 예전 UUID 가 올 수 있습니다.
 const getArticle = cache(async (id: string): Promise<Article | null> => {
-  if (!UUID_RE.test(id)) return null;
+  const isNumber = /^[1-9][0-9]{0,9}$/.test(id);
+  if (!isNumber && !UUID_RE.test(id)) return null;
   const { data } = await supabase
     .from('articles')
     .select('*')
-    .eq('id', id)
+    .eq(isNumber ? 'article_no' : 'id', id)
     .eq('is_published', true)
     .maybeSingle();
   if (!data) return null;
@@ -70,8 +74,8 @@ export async function generateMetadata(
 
   // 번역본이 저장된 언어끼리 서로 연결 (hreflang)
   const languages: Record<string, string> = {};
-  for (const code of langs) languages[code] = articlePath(article.id, code);
-  languages['x-default'] = articlePath(article.id);
+  for (const code of langs) languages[code] = articlePath(article, code);
+  languages['x-default'] = articlePath(article);
 
   return {
     title: `${title} | ${SITE_NAME}`,
@@ -80,12 +84,12 @@ export async function generateMetadata(
     authors: [{ name: authorName }],
     category: article.category,
     alternates: {
-      canonical: articlePath(article.id, lang),
+      canonical: articlePath(article, lang),
       languages: langs.length > 1 ? languages : undefined,
     },
     openGraph: {
       type: 'article',
-      url: articleUrl(article.id, lang),
+      url: articleUrl(article, lang),
       siteName: SITE_NAME,
       title,
       description,
@@ -121,6 +125,15 @@ export default async function ArticlePage(
   const article = await getArticle(id);
   if (!article) notFound();
 
+  // 정식 주소(/article/번호/영문-제목)가 아니면 정식 주소로 영구 이동 → 검색 순위가 한 주소로 모입니다.
+  const canonicalPath = articlePath(article, requested);
+  const [canonicalPathname] = canonicalPath.split('?');
+  const { slug } = await params;
+  const currentPathname = `/article/${id}${slug ? `/${slug}` : ''}`;
+  if (decodeURIComponent(currentPathname) !== decodeURIComponent(canonicalPathname)) {
+    permanentRedirect(canonicalPath);
+  }
+
   // 요청한 언어가 저장된 번역이 아니면 화면에서는 자동번역(기존 기능)을 쓰고,
   // 검색엔진용 canonical 은 영어 원문을 가리킵니다.
   const { lang } = resolveLang(article, requested);
@@ -136,8 +149,8 @@ export default async function ArticlePage(
     {
       '@context': 'https://schema.org',
       '@type': 'NewsArticle',
-      '@id': `${articleUrl(article.id, lang)}#article`,
-      mainEntityOfPage: { '@type': 'WebPage', '@id': articleUrl(article.id, lang) },
+      '@id': `${articleUrl(article, lang)}#article`,
+      mainEntityOfPage: { '@type': 'WebPage', '@id': articleUrl(article, lang) },
       headline: title.length > 110 ? title.slice(0, 109) + '…' : title,
       description: stripHtml(localized(article, 'content', lang), 300),
       image: images.length ? images : [DEFAULT_OG_IMAGE],
@@ -167,7 +180,7 @@ export default async function ArticlePage(
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
         { '@type': 'ListItem', position: 2, name: article.category, item: `${SITE_URL}/news?category=${encodeURIComponent(article.category)}` },
-        { '@type': 'ListItem', position: 3, name: title, item: articleUrl(article.id, lang) },
+        { '@type': 'ListItem', position: 3, name: title, item: articleUrl(article, lang) },
       ],
     },
   ];
@@ -179,6 +192,9 @@ export default async function ArticlePage(
     </>
   );
 }
+
+
+
 
 
 
