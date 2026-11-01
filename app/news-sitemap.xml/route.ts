@@ -10,7 +10,7 @@ export async function GET() {
   const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from('articles')
-    .select('id, title, created_at, hashtags')
+    .select('id, article_no, title, created_at, hashtags')
     .eq('is_published', true)
     .gte('created_at', since)
     .order('created_at', { ascending: false })
@@ -18,7 +18,7 @@ export async function GET() {
 
   const items = (data || [])
     .map((a) => `  <url>
-    <loc>${xmlSafe(articleUrl(a.id))}</loc>
+    <loc>${xmlSafe(articleUrl(a))}</loc>
     <news:news>
       <news:publication>
         <news:name>${xmlSafe(SITE_NAME)}</news:name>
