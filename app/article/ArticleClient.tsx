@@ -62,14 +62,20 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
 
   const fetchComments = async () => {
     if (!articleId) return;
-    const { data } = await supabase.from('comments').select('*').eq('article_id', String(articleId)).order('created_at', { ascending: false });
+    // email 컬럼은 RLS/컬럼 권한으로 공개 조회가 막혀 있으므로 공개 컬럼만 명시적으로 조회
+    const { data } = await supabase.from('comments').select('id, article_id, author_name, content, created_at').eq('article_id', String(articleId)).order('created_at', { ascending: false });
     if (data) setComments(data);
   };
 
   useEffect(() => {
     if (articleId) {
       fetchComments();
-      supabase.auth.getSession().then(({ data }) => setIsAdmin(!!data.session));
+      // 로그인 여부가 아니라 DB의 관리자 판정(is_admin)으로 확인
+      supabase.auth.getSession().then(async ({ data }) => {
+        if (!data.session) { setIsAdmin(false); return; }
+        const { data: adminFlag } = await supabase.rpc('is_admin');
+        setIsAdmin(adminFlag === true);
+      });
       const savedEmail = localStorage.getItem('comment_email');
       if (savedEmail) setCommentEmail(savedEmail);
     }
@@ -141,8 +147,9 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
     e.preventDefault(); if (!commentName.trim() || !commentText.trim() || !commentEmail.trim()) return;
     setIsSubmittingComment(true); const t = uiDict[currentLang] || uiDict['en'];
 
-    const { data: subscriber } = await supabase.from('subscribers').select('email').eq('email', commentEmail.trim()).single();
-    if (!subscriber) { alert(t.notSubscribed); setIsSubmittingComment(false); return; }
+    // 구독자 목록은 공개 조회가 막혀 있으므로, 단일 이메일 여부만 돌려주는 RPC로 확인 (최종 검증은 comments INSERT 정책이 수행)
+    const { data: isSubscriber } = await supabase.rpc('is_active_subscriber', { p_email: commentEmail.trim() });
+    if (isSubscriber !== true) { alert(t.notSubscribed); setIsSubmittingComment(false); return; }
     
     const { error } = await supabase.from('comments').insert([{ article_id: String(articleId), author_name: commentName.trim(), content: commentText.trim(), email: commentEmail.trim() }]);
     setIsSubmittingComment(false);
@@ -158,7 +165,6 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
   if (!article) return <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] text-black"><h1 className="text-2xl mb-4">기사를 찾을 수 없습니다.</h1><Link href="/" className="text-blue-600 underline">홈으로 돌아가기</Link></div>;
 
   const t = uiDict[currentLang] || uiDict['en'];
-  const localEmail = typeof window !== 'undefined' ? localStorage.getItem('comment_email') : null;
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] text-[#111111] font-sans selection:bg-black selection:text-white pb-20">
@@ -286,8 +292,8 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
             </form>
             <div className="space-y-6">
               {comments.length > 0 ? comments.map((comment) => {
-                const isOwner = comment.email === localEmail;
-                const canDelete = isAdmin || isOwner;
+                // 댓글 삭제는 관리자만 가능 (localStorage 이메일 비교는 위조 가능하므로 제거)
+                const canDelete = isAdmin;
                 return (
                   <div key={comment.id} className="bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-100 relative group">
                     <div className="flex justify-between items-center mb-2">
@@ -306,3 +312,8 @@ export default function ArticleClient({ initialArticle, articleId, initialLang }
     </div>
   );
 }
+
+
+
+
+
