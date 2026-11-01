@@ -14,6 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // 상대 경로(canonical, og:url 등)를 이 도메인 기준 절대 주소로 바꿔 줌
+  metadataBase: new URL("https://www.ceodailybrief.com"),
   title: "CEO Daily Brief",
   description: "The Executive's Window into South Korea's Markets, Policy, and Industry Intelligence",
   icons: {
@@ -112,3 +114,10 @@ export default function RootLayout({
     </html>
   );
 }
+
+
+
+
+
+
+
