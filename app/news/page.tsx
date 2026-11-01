@@ -12,7 +12,7 @@ import {
 } from '@/lib/seo';
 
 const PAGE_SIZE = 30;
-const LIST_COLUMNS = 'id, title, category, image_url, created_at, updated_at, author_name';
+const LIST_COLUMNS = 'id, article_no, title, category, image_url, created_at, updated_at, author_name';
 
 type SearchParams = Promise<{ category?: string; search?: string; page?: string }>;
 
@@ -96,7 +96,7 @@ export default async function NewsPage({ searchParams }: { searchParams: SearchP
             itemListElement: articles.map((a, i) => ({
               '@type': 'ListItem',
               position: (page - 1) * PAGE_SIZE + i + 1,
-              url: articleUrl(a.id),
+              url: articleUrl(a),
               name: getDisplayText(a.title),
             })),
           },
@@ -136,7 +136,7 @@ export default async function NewsPage({ searchParams }: { searchParams: SearchP
             {articles.map((article) => {
               const title = getDisplayText(article.title);
               return (
-                <Link key={article.id} href={articlePath(article.id)}>
+                <Link key={article.id} href={articlePath(article)}>
                   <article className="flex flex-col md:flex-row gap-6 group cursor-pointer border-b border-gray-200 pb-10">
                     {article.image_url && (
                       <div className="w-full md:w-1/3 h-48 bg-gray-200 overflow-hidden flex-shrink-0">
@@ -177,6 +177,10 @@ export default async function NewsPage({ searchParams }: { searchParams: SearchP
     </div>
   );
 }
+
+
+
+
 
 
 
